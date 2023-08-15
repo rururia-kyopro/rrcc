@@ -1,6 +1,12 @@
 
 void error(char *fmt, ...);
 
+typedef struct Token Token;
+typedef struct Node Node;
+typedef struct LVar LVar;
+
+/// Token ///
+
 // トークンの種類
 typedef enum {
     TK_RESERVED,
@@ -8,8 +14,6 @@ typedef enum {
     TK_NUM,
     TK_EOF
 } TokenKind;
-
-typedef struct Token Token;
 
 struct Token {
     TokenKind kind;
@@ -22,6 +26,8 @@ struct Token {
 extern Token *token;
 
 extern char *user_input;
+
+/// Parse ///
 
 typedef enum {
     ND_ADD,
@@ -39,14 +45,13 @@ typedef enum {
     ND_LVAR,
 } NodeKind;
 
-typedef struct Node Node;
 
 struct Node {
     NodeKind kind;
     Node *lhs;
     Node *rhs;
     int val;
-    char *ident;
+    LVar *lvar;
 };
 
 extern Node *code[100];
@@ -61,6 +66,22 @@ Node *add();
 Node *primary();
 Node *mul();
 Node *unary();
+
+/// LVar ///
+
+struct LVar {
+    LVar *next;
+    char *name;
+    int len;
+    int offset;
+};
+
+extern LVar *locals;
+extern int local_count;
+
+LVar *find_lvar(char *ident, int ident_len);
+LVar *new_lvar(char *ident, int ident_len);
+int lvar_count(LVar *locals);
 
 Token *tokenize(char *);
 void gen(Node *);

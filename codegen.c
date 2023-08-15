@@ -9,8 +9,7 @@ void gen_lvar(Node *node) {
         error("lhs of assignment is not a variable");
     
     printf("  mov rax, rbp\n");
-    int offset = (node->ident[0] - 'a' + 1) * 8;
-    printf("  sub rax,%d\n", offset);
+    printf("  sub rax,%d\n", node->lvar->offset);
     printf("  push rax\n");
 }
 

@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   printf("main:\n");
   printf("  push rbp\n");
   printf("  mov rbp,rsp\n");
-  printf("  sub rsp,26*8\n");
+  printf("  sub rsp,%d*8\n", lvar_count(locals));
 
   for(int i = 0; code[i]; i++){
       gen(code[i]);

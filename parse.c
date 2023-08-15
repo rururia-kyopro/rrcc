@@ -12,6 +12,9 @@ char *user_input;
 
 Node *code[100];
 
+LVar *locals;
+int local_count = 0;
+
 char *node_kind(NodeKind kind){
     switch(kind){
         case ND_ADD: return "ND_ADD";
@@ -72,10 +75,11 @@ void expect(char *op){
     token = token->next;
 }
 
-bool consume_ident(char **ident) {
+bool consume_ident(char **ident, int *ident_len) {
     if(token->kind != TK_IDENT)
         return false;
     *ident = token->str;
+    *ident_len = token->len;
     token = token->next;
     return true;
 }
@@ -101,6 +105,15 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len){
     return tok;
 }
 
+int read_ident(char *p) {
+    char *q = p;
+    p++;
+    while(*p == '_' || isalpha(*p) || isdigit(*p)){
+        p++;
+    }
+    return p - q;
+}
+
 Token *tokenize(char *p){
     Token head;
     head.next = NULL;
@@ -121,8 +134,10 @@ Token *tokenize(char *p){
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
-        if(islower(*p)){
-            cur = new_token(TK_IDENT, cur, p++, 1);
+        if(*p == '_' || isalpha(*p)){
+            int len = read_ident(p);
+            cur = new_token(TK_IDENT, cur, p, len);
+            p += len;
             continue;
         }
 
@@ -154,10 +169,10 @@ Node *new_node_num(int val) {
     return node;
 }
 
-Node *new_node_ident(char *ident) {
+Node *new_node_ident(LVar *lvar) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
-    node->ident = ident;
+    node->lvar = lvar;
     return node;
 }
 
@@ -257,10 +272,42 @@ Node *primary() {
         return node;
     }
     char *ident;
-    if(consume_ident(&ident)){
-        return new_node_ident(ident);
+    int ident_len;
+    if(consume_ident(&ident, &ident_len)){
+        LVar *lvar = find_lvar(ident, ident_len);
+        if(lvar == NULL){
+            lvar = new_lvar(ident, ident_len);
+        }
+        Node *node = new_node_ident(lvar);
+        return node;
     }
     return new_node_num(expect_number());
+}
+
+/// LVar ///
+
+LVar *find_lvar(char *ident, int ident_len) {
+    for(LVar *var = locals; var; var = var->next) {
+        if(var->len == ident_len && !memcmp(ident, var->name, var->len)) {
+            return var;
+        }
+    }
+    return NULL;
+}
+
+LVar *new_lvar(char *ident, int ident_len) {
+    LVar *lvar = calloc(1, sizeof(LVar));
+    lvar->name = ident;
+    lvar->len = ident_len;
+    local_count++;
+    lvar->offset = 8*local_count;
+    lvar->next = locals;
+    locals = lvar;
+    return lvar;
+}
+
+int lvar_count(LVar *locals) {
+    return local_count;
 }
 
 void dumpnodes_inner(Node *node, int level) {
