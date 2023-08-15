@@ -10,6 +10,22 @@ Token *token;
 
 char *user_input;
 
+char *node_kind(NodeKind kind){
+    switch(kind){
+        case ND_ADD: return "ND_ADD";
+        case ND_SUB: return "ND_SUB";
+        case ND_MUL: return "ND_MUL";
+        case ND_DIV: return "ND_DIV";
+        case ND_EQUAL: return "ND_EQUAL";
+        case ND_NOT_EQUAL: return "ND_NOT_EQUAL";
+        case ND_LESS: return "ND_LESS";
+        case ND_LESS_OR_EQUAL: return "ND_LESS_OR_EQUAL";
+        case ND_GREATER: return "ND_GREATER";
+        case ND_GREATER_OR_EQUAL: return "ND_GREATER_OR_EQUAL";
+        case ND_NUM: return "ND_NUM";
+    }
+}
+
 void error_at(char *loc, char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -181,4 +197,15 @@ Node *primary() {
         return node;
     }
     return new_node_num(expect_number());
+}
+
+void dumpnodes_inner(Node *node, int level) {
+    if(node == NULL) return;
+    fprintf(stderr, "%*s%s\n", (level+1)*2, " ", node_kind(node->kind));
+    dumpnodes_inner(node->lhs, level + 1);
+    dumpnodes_inner(node->rhs, level + 1);
+}
+
+void dumpnodes(Node *node) {
+    dumpnodes_inner(node, 0);
 }

@@ -56,3 +56,4 @@ Node *unary();
 Token *tokenize(char *);
 void gen(Node *);
 
+void dumpnodes(Node *node);
