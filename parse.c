@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <assert.h>
 #include "9cc.h"
 
 Token *token;
@@ -30,6 +31,8 @@ char *node_kind(NodeKind kind){
         case ND_GREATER_OR_EQUAL: return "ND_GREATER_OR_EQUAL";
         case ND_NUM: return "ND_NUM";
         case ND_LVAR: return "ND_IDENT";
+        case ND_RETURN: return "ND_RETURN";
+        default: assert(false);
     }
 }
 
@@ -64,6 +67,13 @@ bool is_prefix(char *prefix, char *str, int len) {
 
 bool consume(char* op){
     if(token->kind != TK_RESERVED || !is_prefix(op, token->str, token->len))
+        return false;
+    token = token->next;
+    return true;
+}
+
+bool consume_kind(TokenKind kind) {
+    if(token->kind != kind)
         return false;
     token = token->next;
     return true;
@@ -114,6 +124,13 @@ int read_ident(char *p) {
     return p - q;
 }
 
+bool is_keyword(char *keyword, char *str, int len) {
+    if(strlen(keyword) > len) {
+        len = strlen(keyword);
+    }
+    return strncmp(str, keyword, len) == 0;
+}
+
 Token *tokenize(char *p){
     Token head;
     head.next = NULL;
@@ -136,7 +153,11 @@ Token *tokenize(char *p){
         }
         if(*p == '_' || isalpha(*p)){
             int len = read_ident(p);
-            cur = new_token(TK_IDENT, cur, p, len);
+            if (is_keyword("return", p, len)){
+                cur = new_token(TK_RETURN, cur, p, len);
+            }else{
+                cur = new_token(TK_IDENT, cur, p, len);
+            }
             p += len;
             continue;
         }
@@ -185,6 +206,11 @@ void program() {
 }
 
 Node *stmt() {
+    if(consume_kind(TK_RETURN)){
+        Node *node = new_node(ND_RETURN, expr(), NULL);
+        expect(";");
+        return node;
+    }
     Node *node = expr();
     expect(";");
     return node;

@@ -10,9 +10,10 @@ typedef struct LVar LVar;
 // トークンの種類
 typedef enum {
     TK_RESERVED,
+    TK_RETURN,
     TK_IDENT,
     TK_NUM,
-    TK_EOF
+    TK_EOF,
 } TokenKind;
 
 struct Token {
@@ -43,6 +44,7 @@ typedef enum {
     ND_GREATER_OR_EQUAL,
     ND_NUM,
     ND_LVAR,
+    ND_RETURN,
 } NodeKind;
 
 

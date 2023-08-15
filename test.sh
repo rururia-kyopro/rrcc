@@ -40,5 +40,8 @@ assert 0 '1*1==20<=19;'
 assert 1 '1*0==20<=19;'
 assert 14 'a=7;a*2;'
 assert 20 'a=10;a*2;'
+assert 30 'abc=10;abc*3;'
+assert 2 'abc=10;def=2*1;ghi=4+1;abc/ghi;'
+assert 5 'abc=10;def=2*1;return ghi=4+1;abc/ghi;'
 
 echo OK
