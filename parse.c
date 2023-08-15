@@ -10,6 +10,8 @@ Token *token;
 
 char *user_input;
 
+Node *code[100];
+
 char *node_kind(NodeKind kind){
     switch(kind){
         case ND_ADD: return "ND_ADD";
@@ -52,6 +54,13 @@ void expect(char *op){
     token = token->next;
 }
 
+bool consume_ident(char **ident) {
+    if(token->kind != TK_IDENT)
+        return false;
+    *ident = token->str;
+    return true;
+}
+
 int expect_number() {
     if(token->kind != TK_NUM)
         error_at(token->str, "Not a number");
@@ -89,8 +98,12 @@ Token *tokenize(char *p){
             p += 2;
             continue;
         }
-        if(*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')' || *p == '>' || *p == '<'){
+        if(strchr("+-*/()><=;", *p)){
             cur = new_token(TK_RESERVED, cur, p++, 1);
+            continue;
+        }
+        if(islower(*p)){
+            cur = new_token(TK_IDENT, cur, p++, 1);
             continue;
         }
 
@@ -122,8 +135,36 @@ Node *new_node_num(int val) {
     return node;
 }
 
+Node *new_node_ident(char *ident) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_NUM;
+    node->ident = ident;
+    return node;
+}
+
+void program() {
+    int i = 0;
+    while(!at_eof()){
+        code[i++] = stmt();
+    }
+    code[i] = NULL;
+}
+
+Node *stmt() {
+    Node *node = expr();
+    expect(";");
+    return node;
+}
+
 Node *expr() {
-    return equality();
+    return assign();
+}
+
+Node *assign() {
+    Node *node = equality();
+    if(consume("="))
+        node = new_node(ND_ASSIGN, node, assign());
+    return node;
 }
 
 Node *equality() {
@@ -195,6 +236,10 @@ Node *primary() {
         Node *node = expr();
         expect(")");
         return node;
+    }
+    char *ident;
+    if(consume_ident(&ident)){
+        return new_node_ident(ident);
     }
     return new_node_num(expect_number());
 }

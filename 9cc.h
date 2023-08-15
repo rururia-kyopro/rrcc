@@ -3,6 +3,7 @@
 // トークンの種類
 typedef enum {
     TK_RESERVED,
+    TK_IDENT,
     TK_NUM,
     TK_EOF
 } TokenKind;
@@ -26,6 +27,7 @@ typedef enum {
     ND_SUB,
     ND_MUL,
     ND_DIV,
+    ND_ASSIGN,
     ND_EQUAL,
     ND_NOT_EQUAL,
     ND_LESS,
@@ -42,10 +44,14 @@ struct Node {
     Node *lhs;
     Node *rhs;
     int val;
+    char *ident;
 };
 
 
+void program();
+Node *stmt();
 Node *expr();
+Node *assign();
 Node *equality();
 Node *relational();
 Node *add();
