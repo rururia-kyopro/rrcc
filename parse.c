@@ -18,6 +18,7 @@ char *node_kind(NodeKind kind){
         case ND_SUB: return "ND_SUB";
         case ND_MUL: return "ND_MUL";
         case ND_DIV: return "ND_DIV";
+        case ND_ASSIGN: return "ND_ASSIGN";
         case ND_EQUAL: return "ND_EQUAL";
         case ND_NOT_EQUAL: return "ND_NOT_EQUAL";
         case ND_LESS: return "ND_LESS";
@@ -25,7 +26,17 @@ char *node_kind(NodeKind kind){
         case ND_GREATER: return "ND_GREATER";
         case ND_GREATER_OR_EQUAL: return "ND_GREATER_OR_EQUAL";
         case ND_NUM: return "ND_NUM";
+        case ND_LVAR: return "ND_IDENT";
     }
+}
+
+void error(char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
+    exit(1);
 }
 
 void error_at(char *loc, char *fmt, ...) {
@@ -41,15 +52,22 @@ void error_at(char *loc, char *fmt, ...) {
     exit(1);
 }
 
+bool is_prefix(char *prefix, char *str, int len) {
+    if(len < strlen(prefix)){
+        len = strlen(prefix);
+    }
+    return strncmp(str, prefix, len) == 0;
+}
+
 bool consume(char* op){
-    if(token->kind != TK_RESERVED || strncmp(token->str, op, token->len))
+    if(token->kind != TK_RESERVED || !is_prefix(op, token->str, token->len))
         return false;
     token = token->next;
     return true;
 }
 
 void expect(char *op){
-    if(token->kind != TK_RESERVED || strncmp(token->str, op, token->len))
+    if(token->kind != TK_RESERVED || !is_prefix(op, token->str, token->len))
         error_at(token->str, "Not '%s'", op);
     token = token->next;
 }
@@ -58,6 +76,7 @@ bool consume_ident(char **ident) {
     if(token->kind != TK_IDENT)
         return false;
     *ident = token->str;
+    token = token->next;
     return true;
 }
 
@@ -137,7 +156,7 @@ Node *new_node_num(int val) {
 
 Node *new_node_ident(char *ident) {
     Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_NUM;
+    node->kind = ND_LVAR;
     node->ident = ident;
     return node;
 }

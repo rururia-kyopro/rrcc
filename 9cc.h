@@ -1,4 +1,5 @@
 
+void error(char *fmt, ...);
 
 // トークンの種類
 typedef enum {
@@ -35,6 +36,7 @@ typedef enum {
     ND_GREATER,
     ND_GREATER_OR_EQUAL,
     ND_NUM,
+    ND_LVAR,
 } NodeKind;
 
 typedef struct Node Node;
@@ -47,6 +49,7 @@ struct Node {
     char *ident;
 };
 
+extern Node *code[100];
 
 void program();
 Node *stmt();

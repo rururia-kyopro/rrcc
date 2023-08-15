@@ -14,17 +14,26 @@ int main(int argc, char **argv) {
 
   user_input = argv[1];
   token = tokenize(user_input);
-  Node *node = expr();
+  program();
 
-  dumpnodes(node);
+  for(int i = 0; code[i]; i++){
+      dumpnodes(code[i]);
+  }
 
   printf(".intel_syntax noprefix\n");
   printf(".globl main\n");
   printf("main:\n");
+  printf("  push rbp\n");
+  printf("  mov rbp,rsp\n");
+  printf("  sub rsp,26*8\n");
 
-  gen(node);
+  for(int i = 0; code[i]; i++){
+      gen(code[i]);
+      printf("  pop rax\n");
+  }
 
-  printf("  pop rax\n");
+  printf("  mov rsp,rbp\n");
+  printf("  pop rbp\n");
   printf("  ret\n");
   return 0;
 }
