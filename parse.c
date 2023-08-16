@@ -76,6 +76,7 @@ Node *new_node_ident(LVar *lvar) {
     return node;
 }
 
+// program = stmt*
 void program() {
     int i = 0;
     while(!at_eof()){
@@ -84,6 +85,11 @@ void program() {
     code[i] = NULL;
 }
 
+// stmt    = expr ";"
+//         | "if" "(" expr ")" stmt ("else" stmt)?
+//         | "while" "(" expr ")" stmt
+//         | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//         | "return" expr ";"
 Node *stmt() {
     if(consume_kind(TK_RETURN)){
         Node *node = new_node(ND_RETURN, expr(), NULL);

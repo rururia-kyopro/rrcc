@@ -98,7 +98,7 @@ Token *tokenize(char *p){
             p += 2;
             continue;
         }
-        if(strchr("+-*/()><=;", *p)){
+        if(strchr("+-*/()><=;{}", *p)){
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -106,6 +106,16 @@ Token *tokenize(char *p){
             int len = read_ident(p);
             if (is_keyword("return", p, len)){
                 cur = new_token(TK_RETURN, cur, p, len);
+            }else if (is_keyword("if", p, len)){
+                cur = new_token(TK_IF, cur, p, len);
+            }else if (is_keyword("else", p, len)){
+                cur = new_token(TK_ELSE, cur, p, len);
+            }else if (is_keyword("while", p, len)){
+                cur = new_token(TK_WHILE, cur, p, len);
+            }else if (is_keyword("for", p, len)){
+                cur = new_token(TK_FOR, cur, p, len);
+            }else if (is_keyword("do", p, len)){
+                cur = new_token(TK_DO, cur, p, len);
             }else{
                 cur = new_token(TK_IDENT, cur, p, len);
             }
