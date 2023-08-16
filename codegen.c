@@ -8,12 +8,13 @@ int cur_label = 0;
 static const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 void gen_lvar(Node *node) {
-    if(node->kind != ND_LVAR)
-        error("lhs of assignment is not a variable");
-    
-    printf("  mov rax, rbp\n");
-    printf("  sub rax,%d\n", node->lvar->offset);
-    printf("  push rax\n");
+    if(node->kind == ND_LVAR) {
+        printf("  mov rax, rbp\n");
+        printf("  sub rax,%d\n", node->lvar->offset);
+        printf("  push rax\n");
+    } else if(node->kind == ND_DEREF) {
+        gen(node->lhs);
+    }
 }
 
 void gen(Node *node){
