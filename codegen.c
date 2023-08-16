@@ -113,6 +113,10 @@ void gen(Node *node){
             }
             printf("  push rax\n");
             return;
+        case ND_CALL:
+            printf("  call %.*s\n", node->call_ident_len, node->call_ident);
+            printf("  push rax\n");
+            return;
     }
     gen(node->lhs);
     gen(node->rhs);

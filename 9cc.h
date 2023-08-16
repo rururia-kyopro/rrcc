@@ -81,7 +81,7 @@ struct Node {
             Node *for_stmt;
         };
         Node **compound_stmt_list;
-        union {
+        struct {
             char *call_ident;
             int call_ident_len;
         };

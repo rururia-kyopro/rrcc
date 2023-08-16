@@ -33,6 +33,7 @@ char *node_kind(NodeKind kind){
         case ND_FOR: return "ND_FOR";
         case ND_DO: return "ND_DO";
         case ND_COMPOUND: return "ND_COMPOUND";
+        case ND_CALL: return "ND_CALL";
         default: assert(false);
     }
 }

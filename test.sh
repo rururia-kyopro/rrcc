@@ -16,6 +16,29 @@ assert() {
   fi
 }
 
+assert_stdout() {
+  expected_code="$1"
+  expected_stdout="$2"
+  input="$3"
+
+  ./9cc "$input" > tmp.s
+  cc -o tmp tmp.s calltest.c
+  stdout_text=$(./tmp)
+  actual="$?"
+
+  if [ "$actual" = "$expected_code" ]; then
+    if [ "$stdout_text" = "$expected_stdout" ]; then
+      echo "$input => $actual, $stdout_text"
+    else
+      echo "code: $input => $actual"
+      echo "stdout: $expected_stdout expected, but got $stdout_text"
+    fi
+  else
+    echo "$input => $expected_code expected, but got $actual"
+    exit 1
+  fi
+}
+
 assert 0 "0;"
 assert 42 "42;"
 assert 21 "5+20-4;"
@@ -51,5 +74,6 @@ assert 45 'b=0;for(a=0;a<10;a=a+1){b=b+a;}b;'
 assert 0 'b=0;for(a=0;a==1;a=a+1){b=1;}b;'
 assert 31 "a=0;b=32;while(b>0){b=b/2;a=a+b;}a;"
 assert 10 "a=0;do a=a+2; while(a<9);a;"
+assert_stdout 3 "testfunc1 called!" "testfunc1();"
 
 echo OK
