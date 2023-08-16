@@ -60,6 +60,25 @@ void gen(Node *node){
             }
             return;
         }
+        case ND_FOR: {
+            gen(node->lhs);
+            printf("  pop rax\n");
+            int label_for = ++cur_label;
+            printf(".L%d:\n", label_for);
+            gen(node->rhs);
+            printf("  pop rax\n");
+            printf("  test rax,rax\n");
+            int label = ++cur_label;
+            printf("  jz .L%d\n", label);
+            gen(node->for_stmt);
+            printf("  pop rax\n");
+            gen(node->for_update_expr);
+            printf("  pop rax\n");
+            printf("  jmp .L%d\n", label_for);
+            printf(".L%d:\n", label);
+            printf("  push rax\n");
+            return;
+        }
         case ND_COMPOUND:
             for(int i = 0; node->compound_stmt_list[i]; i++){
                 gen(node->compound_stmt_list[i]);
