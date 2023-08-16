@@ -26,7 +26,7 @@ char *node_kind(NodeKind kind){
         case ND_GREATER: return "ND_GREATER";
         case ND_GREATER_OR_EQUAL: return "ND_GREATER_OR_EQUAL";
         case ND_NUM: return "ND_NUM";
-        case ND_LVAR: return "ND_IDENT";
+        case ND_LVAR: return "ND_LVAR";
         case ND_RETURN: return "ND_RETURN";
         case ND_IF: return "ND_IF";
         case ND_WHILE: return "ND_WHILE";
@@ -292,13 +292,27 @@ int lvar_count(LVar *locals) {
 void dumpnodes_inner(Node *node, int level) {
     if(node == NULL) return;
     fprintf(stderr, "%*s%s\n", (level+1)*2, " ", node_kind(node->kind));
-    if(node->kind == ND_IF){
+
+    if(node->kind == ND_LVAR){
+        fprintf(stderr, "%*sname: ", (level+1)*2, " ");
+        fwrite(node->lvar->name, node->lvar->len, 1, stderr);
+        fprintf(stderr, "\n");
+    }else if(node->kind == ND_IF){
         fprintf(stderr, "%*s// if condition\n", (level+1)*2, " ");
         dumpnodes_inner(node->lhs, level + 1);
         fprintf(stderr, "%*s// if stmt\n", (level+1)*2, " ");
         dumpnodes_inner(node->rhs, level + 1);
         fprintf(stderr, "%*s// else\n", (level+1)*2, " ");
         dumpnodes_inner(node->else_stmt, level + 1);
+    }else if(node->kind == ND_FOR){
+        fprintf(stderr, "%*s// for init\n", (level+1)*2, " ");
+        dumpnodes_inner(node->lhs, level + 1);
+        fprintf(stderr, "%*s// for condition\n", (level+1)*2, " ");
+        dumpnodes_inner(node->rhs, level + 1);
+        fprintf(stderr, "%*s// for update\n", (level+1)*2, " ");
+        dumpnodes_inner(node->for_update_expr, level + 1);
+        fprintf(stderr, "%*s// for body\n", (level+1)*2, " ");
+        dumpnodes_inner(node->for_stmt, level + 1);
     }else if(node->kind == ND_COMPOUND){
         for(int i = 0; node->compound_stmt_list[i]; i++){
             dumpnodes_inner(node->compound_stmt_list[i], level + 1);
