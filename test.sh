@@ -43,5 +43,7 @@ assert 20 'a=10;a*2;'
 assert 30 'abc=10;abc*3;'
 assert 2 'abc=10;def=2*1;ghi=4+1;abc/ghi;'
 assert 5 'abc=10;def=2*1;return ghi=4+1;abc/ghi;'
+assert 20 'if(1){a=10;b=2;}else{a=1;b=9;}return a*b;'
+assert 9 'if(0){a=10;b=2;}else{a=1;b=9;}return a*b;'
 
 echo OK

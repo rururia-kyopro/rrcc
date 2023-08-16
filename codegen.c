@@ -4,6 +4,8 @@
 #include <string.h>
 #include "9cc.h"
 
+int cur_label = 0;
+
 void gen_lvar(Node *node) {
     if(node->kind != ND_LVAR)
         error("lhs of assignment is not a variable");
@@ -39,6 +41,31 @@ void gen(Node *node){
             printf("  mov rsp,rbp\n");
             printf("  pop rbp\n");
             printf("  ret\n");
+            return;
+        case ND_IF: {
+            gen(node->lhs);
+            printf("  pop rax\n");
+            printf("  test rax,rax\n");
+            int label = ++cur_label;
+            printf("  jz .L%d\n", label);
+            gen(node->rhs);
+            if (node->else_stmt) {
+                int label_skip_else = ++cur_label;
+                printf("  jmp .L%d\n", label_skip_else);
+                printf(".L%d:\n", label);
+                gen(node->else_stmt);
+                printf(".L%d:\n", label_skip_else);
+            }else{
+                printf(".L%d:\n", label);
+            }
+            return;
+        }
+        case ND_COMPOUND:
+            for(int i = 0; node->compound_stmt_list[i]; i++){
+                gen(node->compound_stmt_list[i]);
+                printf("  pop rax\n");
+            }
+            printf("  push rax\n");
             return;
     }
     gen(node->lhs);
