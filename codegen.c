@@ -79,6 +79,33 @@ void gen(Node *node){
             printf("  push rax\n");
             return;
         }
+        case ND_WHILE: {
+            int label_while = ++cur_label;
+            int label_while_end = ++cur_label;
+            printf(".L%d:\n", label_while);
+            gen(node->lhs);
+            printf("  pop rax\n");
+            printf("  test rax,rax\n");
+            printf("  jz .L%d\n", label_while_end);
+            gen(node->rhs);
+            printf("  pop rax\n");
+            printf("  jmp .L%d\n", label_while);
+            printf(".L%d:\n", label_while_end);
+            printf("  push rax\n");
+            return;
+        }
+        case ND_DO: {
+            int label_do = ++cur_label;
+            printf(".L%d:\n", label_do);
+            gen(node->lhs);
+            printf("  pop rax\n");
+            gen(node->rhs);
+            printf("  pop rax\n");
+            printf("  test rax,rax\n");
+            printf("  jnz .L%d\n", label_do);
+            printf("  push rax\n");
+            return;
+        }
         case ND_COMPOUND:
             for(int i = 0; node->compound_stmt_list[i]; i++){
                 gen(node->compound_stmt_list[i]);

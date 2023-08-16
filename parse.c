@@ -144,6 +144,7 @@ Node *stmt() {
         Node *do_expr = expr();
         expect(")");
         Node *node = new_node(ND_DO, do_stmt, do_expr);
+        expect(";");
         return node;
     }else if(consume_kind(TK_RETURN)) {
         Node *node = new_node(ND_RETURN, expr(), NULL);

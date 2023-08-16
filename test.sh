@@ -49,5 +49,7 @@ assert 20 'b=2;if(1)a=10;else{a=1;b=9;}return a*b;'
 assert 27 'b=2;if(b==1)a=10;else{a=1;b=9;if(a=9){b=3;}}return a*b;'
 assert 45 'b=0;for(a=0;a<10;a=a+1){b=b+a;}b;'
 assert 0 'b=0;for(a=0;a==1;a=a+1){b=1;}b;'
+assert 31 "a=0;b=32;while(b>0){b=b/2;a=a+b;}a;"
+assert 10 "a=0;do a=a+2; while(a<9);a;"
 
 echo OK
