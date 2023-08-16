@@ -103,6 +103,7 @@ Node *function_definition() {
     node->func_def_lvar = new_vector();
 
     expect_kind(TK_INT);
+    node->func_def_return_type = type_();
     expect_ident(&node->func_def_ident, &node->func_def_ident_len);
     expect("(");
 
@@ -110,6 +111,7 @@ Node *function_definition() {
         while(1){
             FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
             expect_kind(TK_INT);
+            arg->type = type_();
             expect_ident(&arg->ident, &arg->ident_len);
             
             vector_push(node->func_def_arg_vec, arg);
@@ -414,7 +416,7 @@ void dumpnodes_inner(Node *node, int level) {
             if(cur->ty == PTR) {
                 ptr_n++;
             }else{
-                fprintf(stderr, "%*s %s ", (level+1)*2, " ", "int", ptr_n, "*");
+                fprintf(stderr, "%*s %s ", (level+1)*2, " ", "int");
                 for(int i = 0; i < ptr_n; i++){
                     fprintf(stderr, "*");
                 }

@@ -89,6 +89,7 @@ struct FuncDefArg {
     char *ident;
     int ident_len;
     LVar *lvar;
+    Node *type;
 };
 
 struct Node {
@@ -116,6 +117,7 @@ struct Node {
             int func_def_ident_len;
             Vector *func_def_arg_vec;
             Vector *func_def_lvar;
+            Node *func_def_return_type;
         };
         struct {
             char *ident;
