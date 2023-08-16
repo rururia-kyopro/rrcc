@@ -65,18 +65,27 @@ typedef enum {
     ND_FOR,
     ND_DO,
     ND_COMPOUND,
+    ND_CALL,
 } NodeKind;
 
 struct Node {
     NodeKind kind;
     Node *lhs;
     Node *rhs;
-    int val;
-    LVar *lvar;
-    Node *else_stmt;
-    Node *for_update_expr;
-    Node *for_stmt;
-    Node **compound_stmt_list;
+    union {
+        int val;
+        LVar *lvar;
+        Node *else_stmt;
+        struct {
+            Node *for_update_expr;
+            Node *for_stmt;
+        };
+        Node **compound_stmt_list;
+        union {
+            char *call_ident;
+            int call_ident_len;
+        };
+    };
 };
 
 extern Node *code[100];

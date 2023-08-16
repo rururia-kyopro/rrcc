@@ -245,6 +245,9 @@ Node *unary() {
     return primary();
 }
 
+// primary = "(" expr ")"
+//         | ident ("(" ")")?
+//         | num
 Node *primary() {
     if(consume("(")){
         Node *node = expr();
@@ -254,12 +257,21 @@ Node *primary() {
     char *ident;
     int ident_len;
     if(consume_ident(&ident, &ident_len)){
-        LVar *lvar = find_lvar(ident, ident_len);
-        if(lvar == NULL){
-            lvar = new_lvar(ident, ident_len);
+        if(consume("(")){
+            Node *node = new_node(ND_CALL, NULL, NULL);
+
+            node->call_ident = ident;
+            node->call_ident_len = ident_len;
+            expect(")");
+            return node;
+        }else{
+            LVar *lvar = find_lvar(ident, ident_len);
+            if(lvar == NULL){
+                lvar = new_lvar(ident, ident_len);
+            }
+            Node *node = new_node_ident(lvar);
+            return node;
         }
-        Node *node = new_node_ident(lvar);
-        return node;
     }
     return new_node_num(expect_number());
 }
