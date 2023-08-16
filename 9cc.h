@@ -1,5 +1,6 @@
 
 void error(char *fmt, ...);
+void error_at(char *loc, char *fmt, ...);
 
 typedef struct Token Token;
 typedef struct Node Node;
@@ -27,6 +28,14 @@ struct Token {
 extern Token *token;
 
 extern char *user_input;
+
+bool consume(char* op);
+bool consume_kind(TokenKind kind);
+void expect(char *op);
+bool consume_ident(char **ident, int *ident_len);
+int expect_number();
+bool at_eof();
+Token *tokenize(char *p);
 
 /// Parse ///
 
