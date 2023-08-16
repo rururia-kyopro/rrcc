@@ -36,6 +36,12 @@ void expect(char *op){
     token = token->next;
 }
 
+void expect_kind(TokenKind kind) {
+    if(token->kind != kind)
+        error_at(token->str, "Not token kind %d", kind);
+    token = token->next;
+}
+
 bool consume_ident(char **ident, int *ident_len) {
     if(token->kind != TK_IDENT)
         return false;

@@ -28,6 +28,11 @@ char *node_kind(NodeKind kind){
         case ND_NUM: return "ND_NUM";
         case ND_LVAR: return "ND_IDENT";
         case ND_RETURN: return "ND_RETURN";
+        case ND_IF: return "ND_IF";
+        case ND_WHILE: return "ND_WHILE";
+        case ND_FOR: return "ND_FOR";
+        case ND_DO: return "ND_DO";
+        case ND_COMPOUND: return "ND_COMPOUND";
         default: assert(false);
     }
 }
@@ -89,11 +94,74 @@ void program() {
 //         | "if" "(" expr ")" stmt ("else" stmt)?
 //         | "while" "(" expr ")" stmt
 //         | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//         | "do" stmt "while" "(" expr ")" ";"
 //         | "return" expr ";"
+//         | "{" stmt* "}"
 Node *stmt() {
-    if(consume_kind(TK_RETURN)){
+    if(consume_kind(TK_IF)) {
+        expect("(");
+        Node *if_expr = expr();
+        expect(")");
+        Node *if_stmt = stmt();
+        Node *else_stmt = NULL;
+        if(consume_kind(TK_ELSE)){
+            else_stmt = stmt();
+        }
+        Node *node = new_node(ND_IF, if_expr, if_stmt);
+        node->else_stmt = else_stmt;
+        return node;
+    }else if(consume_kind(TK_WHILE)) {
+        expect("(");
+        Node *while_expr = expr();
+        expect(")");
+        Node *while_stmt = stmt();
+        return new_node(ND_WHILE, while_expr, while_stmt);
+    }else if(consume_kind(TK_FOR)) {
+        expect("(");
+        Node *for_init_expr = NULL;
+        Node *for_condition_expr = NULL;
+        Node *for_update_expr = NULL;
+        if(!consume(";")){
+            for_init_expr = expr();
+            expect(";");
+        }
+        if(!consume(";")){
+            for_condition_expr = expr();
+            expect(";");
+        }
+        if(!consume(")")){
+            for_update_expr = expr();
+            expect(")");
+        }
+        Node *node = new_node(ND_FOR, for_init_expr, for_condition_expr);
+        node->for_update_expr = for_update_expr;
+        node->for_stmt = stmt();
+        return node;
+    }else if(consume_kind(TK_DO)) {
+        Node *do_stmt = stmt();
+        expect_kind(TK_WHILE);
+        expect("(");
+        Node *do_expr = expr();
+        expect(")");
+        Node *node = new_node(ND_DO, do_stmt, do_expr);
+        return node;
+    }else if(consume_kind(TK_RETURN)) {
         Node *node = new_node(ND_RETURN, expr(), NULL);
         expect(";");
+        return node;
+    }else if(consume("{")) {
+        Node *node = new_node(ND_COMPOUND, NULL, NULL);
+        int max_compound_stmt = 100;
+        node->compound_stmt_list = calloc(max_compound_stmt, sizeof(Node*));
+
+        int i = 0;
+        while(!consume("}")){
+            node->compound_stmt_list[i] = stmt();
+            i++;
+            if(i >= max_compound_stmt){
+                error("Too large compound statement. max=%d", max_compound_stmt);
+            }
+        }
         return node;
     }
     Node *node = expr();

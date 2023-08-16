@@ -37,6 +37,7 @@ extern char *user_input;
 bool consume(char* op);
 bool consume_kind(TokenKind kind);
 void expect(char *op);
+void expect_kind(TokenKind kind);
 bool consume_ident(char **ident, int *ident_len);
 int expect_number();
 bool at_eof();
@@ -59,8 +60,12 @@ typedef enum {
     ND_NUM,
     ND_LVAR,
     ND_RETURN,
+    ND_IF,
+    ND_WHILE,
+    ND_FOR,
+    ND_DO,
+    ND_COMPOUND,
 } NodeKind;
-
 
 struct Node {
     NodeKind kind;
@@ -68,6 +73,10 @@ struct Node {
     Node *rhs;
     int val;
     LVar *lvar;
+    Node *else_stmt;
+    Node *for_update_expr;
+    Node *for_stmt;
+    Node **compound_stmt_list;
 };
 
 extern Node *code[100];
