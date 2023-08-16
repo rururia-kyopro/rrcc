@@ -8,6 +8,7 @@ typedef struct Node Node;
 typedef struct NodeList NodeList;
 typedef struct FuncDefArg FuncDefArg;
 typedef struct LVar LVar;
+typedef struct Type Type;
 
 /// Token ///
 
@@ -75,7 +76,8 @@ typedef enum {
     ND_FUNC_DEF,
     ND_ADDRESS_OF,
     ND_DEREF,
-    ND_DECL_VAR
+    ND_DECL_VAR,
+    ND_TYPE
 } NodeKind;
 
 struct NodeList {
@@ -97,6 +99,7 @@ struct Node {
         int val;
         LVar *lvar;
         LVar *decl_var_lvar;
+        Type *type;
         Node *else_stmt;
         struct {
             Node *for_update_expr;
@@ -135,6 +138,7 @@ Node *add();
 Node *primary();
 Node *mul();
 Node *unary();
+Node *type_();
 Node *ident_();
 
 /// LVar ///
@@ -150,6 +154,13 @@ extern Vector *locals;
 LVar *find_lvar(Vector *locals, char *ident, int ident_len);
 LVar *new_lvar(Vector *locals, char *ident, int ident_len);
 int lvar_count(Vector *locals);
+
+/// Type ///
+
+struct Type {
+    enum { INT, PTR } ty;
+    Type *ptr_to;
+};
 
 Token *tokenize(char *);
 void gen(Node *);

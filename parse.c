@@ -38,6 +38,7 @@ char *node_kind(NodeKind kind){
         case ND_ADDRESS_OF: return "ND_ADDRESS_OF";
         case ND_DEREF: return "ND_DEREF";
         case ND_DECL_VAR: return "ND_DECL_VAR";
+        case ND_TYPE: return "ND_TYPE";
         default: assert(false);
     }
 }
@@ -139,7 +140,7 @@ Node *function_definition() {
 //         | "do" stmt "while" "(" expr ")" ";"
 //         | "return" expr ";"
 //         | "{" stmt* "}"
-//         | "int" ident ";"
+//         | type ident ";"
 Node *stmt() {
     if(consume_kind(TK_IF)) {
         expect("(");
@@ -194,8 +195,9 @@ Node *stmt() {
         expect(";");
         return node;
     }else if(consume_kind(TK_INT)) {
+        Node *type_node = type_();
         Node *ident_node = ident_();
-        Node *node = new_node(ND_DECL_VAR, ident_node, NULL);
+        Node *node = new_node(ND_DECL_VAR, type_node, ident_node);
         if(find_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len) != NULL){
             error("variable with same name is already defined.");
         }
@@ -350,6 +352,22 @@ Node *primary() {
     return new_node_num(expect_number());
 }
 
+Type int_type = { INT, NULL };
+
+Node *type_() {
+    //expect_kind(TK_INT);
+    Type *cur = &int_type;
+    while(consume("*")){
+        Type *ty = calloc(1, sizeof(Type));
+        ty->ptr_to = cur;
+        ty->ty = PTR;
+        cur = ty;
+    }
+    Node *node = new_node(ND_TYPE, NULL, NULL);
+    node->type = cur;
+    return node;
+}
+
 Node *ident_() {
     Node *node = new_node(ND_IDENT, NULL, NULL);
     expect_ident(&node->ident.ident, &node->ident.ident_len);
@@ -390,6 +408,19 @@ void dumpnodes_inner(Node *node, int level) {
         fprintf(stderr, "%*sname: ", (level+1)*2, " ");
         fwrite(node->lvar->name, node->lvar->len, 1, stderr);
         fprintf(stderr, "\n");
+    }else if(node->kind == ND_TYPE){
+        int ptr_n = 0;
+        for(Type *cur = node->type; cur; cur = cur->ptr_to) {
+            if(cur->ty == PTR) {
+                ptr_n++;
+            }else{
+                fprintf(stderr, "%*s %s ", (level+1)*2, " ", "int", ptr_n, "*");
+                for(int i = 0; i < ptr_n; i++){
+                    fprintf(stderr, "*");
+                }
+                fprintf(stderr, "\n");
+            }
+        }
     }else if(node->kind == ND_IF){
         fprintf(stderr, "%*s// if condition\n", (level+1)*2, " ");
         dumpnodes_inner(node->lhs, level + 1);
