@@ -95,18 +95,20 @@ void translation_unit() {
     code[i] = NULL;
 }
 
-// function_definition = ident "(" (ident ",")* ident? ")" stmt
+// function_definition = "int" ident "(" ("int" ident ",")* ("int" ident)? ")" stmt
 Node *function_definition() {
     Node *node = new_node(ND_FUNC_DEF, NULL, NULL);
     node->func_def_arg_vec = new_vector();
     node->func_def_lvar = new_vector();
 
+    expect_kind(TK_INT);
     expect_ident(&node->func_def_ident, &node->func_def_ident_len);
     expect("(");
 
     if(!consume(")")){
         while(1){
             FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
+            expect_kind(TK_INT);
             expect_ident(&arg->ident, &arg->ident_len);
             
             vector_push(node->func_def_arg_vec, arg);
