@@ -94,5 +94,6 @@ assert 10 "a=0;do a=a+2; while(a<9);a;"
 assert_stdout 3 "testfunc1 called!" "testfunc1();"
 assert_stdout 16 "testfunc2,7,9 called!" "testfunc2(1+6,9);"
 assert_file 34 "tra(a){if(a==1){return 1;}if(a==2){return 2;}return tra(a-1)+tra(a-2);}main(){return tra(8);}"
+assert_file 3 "main(){a=2;b=&a;a=3;return *b;}"
 
 echo OK
