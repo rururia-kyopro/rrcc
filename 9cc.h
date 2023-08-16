@@ -71,6 +71,8 @@ typedef enum {
     ND_COMPOUND,
     ND_CALL,
     ND_FUNC_DEF,
+    ND_ADDRESS_OF,
+    ND_DEREF,
 } NodeKind;
 
 struct NodeList {

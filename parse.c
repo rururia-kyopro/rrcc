@@ -34,6 +34,8 @@ char *node_kind(NodeKind kind){
         case ND_COMPOUND: return "ND_COMPOUND";
         case ND_CALL: return "ND_CALL";
         case ND_FUNC_DEF: return "ND_FUNC_DEF";
+        case ND_ADDRESS_OF: return "ND_ADDRESS_OF";
+        case ND_DEREF: return "ND_DEREF";
         default: assert(false);
     }
 }
@@ -273,11 +275,20 @@ Node *mul() {
     }
 }
 
+// unary = "+" primary
+//       | "-" primary
+//       | "*" unary
+//       | "&" unary
+//       | primary
 Node *unary() {
     if(consume("+"))
         return primary();
     if(consume("-"))
         return new_node(ND_SUB, new_node_num(0), primary());
+    if(consume("&"))
+        return new_node(ND_ADDRESS_OF, unary(), NULL);
+    if(consume("*"))
+        return new_node(ND_DEREF, unary(), NULL);
     return primary();
 }
 
