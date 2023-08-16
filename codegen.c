@@ -113,10 +113,27 @@ void gen(Node *node){
             }
             printf("  push rax\n");
             return;
-        case ND_CALL:
+        case ND_CALL: {
+            NodeList *cur = node->call_arg_list.next;
+            const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+            int reg_count = sizeof(args_regs) / sizeof(args_regs[0]);
+            int i;
+            for(i = 0; cur; cur = cur->next, i++){
+                gen(cur->node);
+            }
+            cur = node->call_arg_list.next;
+            for(int j = i-1; j >= 0; j--){
+                printf("  pop rax\n");
+                if(j < reg_count){
+                    printf("  mov %s,rax\n", args_regs[j]);
+                }else{
+                    error("call argument >= %d is not supported.", reg_count);
+                }
+            }
             printf("  call %.*s\n", node->call_ident_len, node->call_ident);
             printf("  push rax\n");
             return;
+        }
     }
     gen(node->lhs);
     gen(node->rhs);

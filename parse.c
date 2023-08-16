@@ -261,9 +261,22 @@ Node *primary() {
         if(consume("(")){
             Node *node = new_node(ND_CALL, NULL, NULL);
 
+            NodeList *arg_tail = &node->call_arg_list;
+            if(!consume(")")){
+                while(1){
+                    NodeList *nodelist = calloc(1, sizeof(NodeList));
+                    nodelist->node = expr();
+                    arg_tail->next = nodelist;
+                    arg_tail = nodelist;
+                    if(!consume(",")){
+                        expect(")");
+                        break;
+                    }
+                }
+            }
+
             node->call_ident = ident;
             node->call_ident_len = ident_len;
-            expect(")");
             return node;
         }else{
             LVar *lvar = find_lvar(ident, ident_len);
@@ -330,6 +343,12 @@ void dumpnodes_inner(Node *node, int level) {
     }else if(node->kind == ND_COMPOUND){
         for(int i = 0; node->compound_stmt_list[i]; i++){
             dumpnodes_inner(node->compound_stmt_list[i], level + 1);
+        }
+    }else if(node->kind == ND_CALL){
+        NodeList *cur = node->call_arg_list.next;
+        for(; cur; cur = cur->next){
+            fprintf(stderr, "%*s// call arg\n", (level+1)*2, " ");
+            dumpnodes_inner(cur->node, level + 1);
         }
     }else{
         dumpnodes_inner(node->lhs, level + 1);

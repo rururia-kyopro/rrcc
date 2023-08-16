@@ -4,6 +4,7 @@ void error_at(char *loc, char *fmt, ...);
 
 typedef struct Token Token;
 typedef struct Node Node;
+typedef struct NodeList NodeList;
 typedef struct LVar LVar;
 
 /// Token ///
@@ -68,6 +69,11 @@ typedef enum {
     ND_CALL,
 } NodeKind;
 
+struct NodeList {
+    Node *node;
+    NodeList *next;
+};
+
 struct Node {
     NodeKind kind;
     Node *lhs;
@@ -84,6 +90,7 @@ struct Node {
         struct {
             char *call_ident;
             int call_ident_len;
+            NodeList call_arg_list;
         };
     };
 };

@@ -75,5 +75,6 @@ assert 0 'b=0;for(a=0;a==1;a=a+1){b=1;}b;'
 assert 31 "a=0;b=32;while(b>0){b=b/2;a=a+b;}a;"
 assert 10 "a=0;do a=a+2; while(a<9);a;"
 assert_stdout 3 "testfunc1 called!" "testfunc1();"
+assert_stdout 16 "testfunc2,7,9 called!" "testfunc2(1+6,9);"
 
 echo OK
