@@ -292,8 +292,21 @@ int lvar_count(LVar *locals) {
 void dumpnodes_inner(Node *node, int level) {
     if(node == NULL) return;
     fprintf(stderr, "%*s%s\n", (level+1)*2, " ", node_kind(node->kind));
-    dumpnodes_inner(node->lhs, level + 1);
-    dumpnodes_inner(node->rhs, level + 1);
+    if(node->kind == ND_IF){
+        fprintf(stderr, "%*s// if condition\n", (level+1)*2, " ");
+        dumpnodes_inner(node->lhs, level + 1);
+        fprintf(stderr, "%*s// if stmt\n", (level+1)*2, " ");
+        dumpnodes_inner(node->rhs, level + 1);
+        fprintf(stderr, "%*s// else\n", (level+1)*2, " ");
+        dumpnodes_inner(node->else_stmt, level + 1);
+    }else if(node->kind == ND_COMPOUND){
+        for(int i = 0; node->compound_stmt_list[i]; i++){
+            dumpnodes_inner(node->compound_stmt_list[i], level + 1);
+        }
+    }else{
+        dumpnodes_inner(node->lhs, level + 1);
+        dumpnodes_inner(node->rhs, level + 1);
+    }
 }
 
 void dumpnodes(Node *node) {
