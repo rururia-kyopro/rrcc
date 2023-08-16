@@ -51,6 +51,12 @@ bool consume_ident(char **ident, int *ident_len) {
     return true;
 }
 
+void expect_ident(char **ident, int *ident_len) {
+    if(!consume_ident(ident, ident_len)) {
+        error_at(token->str, "Not an identifier");
+    }
+}
+
 int expect_number() {
     if(token->kind != TK_NUM)
         error_at(token->str, "Not a number");

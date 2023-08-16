@@ -5,6 +5,7 @@
 #include "9cc.h"
 
 int cur_label = 0;
+static const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 void gen_lvar(Node *node) {
     if(node->kind != ND_LVAR)
@@ -39,21 +40,26 @@ void gen(Node *node){
             gen(node->lhs);
             printf("  pop rax\n");
             printf("  mov rsp,rbp\n");
+            printf("  pop r15\n");
             printf("  pop rbp\n");
             printf("  ret\n");
             return;
         case ND_IF: {
+            printf("  # if\n");
             gen(node->lhs);
             printf("  pop rax\n");
+            printf("  push rax\n");
             printf("  test rax,rax\n");
             int label = ++cur_label;
             printf("  jz .L%d\n", label);
             gen(node->rhs);
+            printf("  pop rax\n");
             if (node->else_stmt) {
                 int label_skip_else = ++cur_label;
                 printf("  jmp .L%d\n", label_skip_else);
                 printf(".L%d:\n", label);
                 gen(node->else_stmt);
+                printf("  pop rax\n");
                 printf(".L%d:\n", label_skip_else);
             }else{
                 printf(".L%d:\n", label);
@@ -115,7 +121,6 @@ void gen(Node *node){
             return;
         case ND_CALL: {
             NodeList *cur = node->call_arg_list.next;
-            const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
             int reg_count = sizeof(args_regs) / sizeof(args_regs[0]);
             int i;
             for(i = 0; cur; cur = cur->next, i++){
@@ -137,6 +142,26 @@ void gen(Node *node){
             printf("  push rax\n");
             return;
         }
+        case ND_FUNC_DEF:
+            printf(".globl %.*s\n", node->func_def_ident_len, node->func_def_ident);
+            printf("%.*s:\n", node->func_def_ident_len, node->func_def_ident);
+            int size = vector_size(node->func_def_arg_vec);
+            printf("  push rbp\n");
+            printf("  push r15\n");
+            printf("  mov rbp,rsp\n");
+            printf("  sub rsp,%d*8\n", lvar_count(node->func_def_lvar));
+            for(int i = 0; i < size; i++){
+                FuncDefArg *arg = vector_get(node->func_def_arg_vec, i);
+                printf("  mov [rbp-%d], %s\n", arg->lvar->offset, args_regs[i]);
+            }
+            gen(node->lhs);
+            printf("  pop rax\n");
+            printf("  mov rsp,rbp\n");
+            printf("  pop r15\n");
+            printf("  pop rbp\n");
+            printf("  ret\n");
+            return;
+
     }
     gen(node->lhs);
     gen(node->rhs);

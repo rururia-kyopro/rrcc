@@ -9,8 +9,7 @@
 
 Node *code[100];
 
-LVar *locals;
-int local_count = 0;
+Vector *locals;
 
 char *node_kind(NodeKind kind){
     switch(kind){
@@ -34,6 +33,7 @@ char *node_kind(NodeKind kind){
         case ND_DO: return "ND_DO";
         case ND_COMPOUND: return "ND_COMPOUND";
         case ND_CALL: return "ND_CALL";
+        case ND_FUNC_DEF: return "ND_FUNC_DEF";
         default: assert(false);
     }
 }
@@ -82,13 +82,48 @@ Node *new_node_ident(LVar *lvar) {
     return node;
 }
 
-// program = stmt*
-void program() {
+// translation_unit = function_definition*
+void translation_unit() {
     int i = 0;
     while(!at_eof()){
-        code[i++] = stmt();
+        code[i++] = function_definition();
     }
     code[i] = NULL;
+}
+
+// function_definition = ident "(" (ident ",")* ident? ")" stmt
+Node *function_definition() {
+    Node *node = new_node(ND_FUNC_DEF, NULL, NULL);
+    node->func_def_arg_vec = new_vector();
+    node->func_def_lvar = new_vector();
+
+    expect_ident(&node->func_def_ident, &node->func_def_ident_len);
+    expect("(");
+
+    if(!consume(")")){
+        while(1){
+            FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
+            expect_ident(&arg->ident, &arg->ident_len);
+            
+            vector_push(node->func_def_arg_vec, arg);
+            if(find_lvar(node->func_def_lvar, arg->ident, arg->ident_len)) {
+                error_at(token->str, "Arguments with same name are defined");
+            }
+            arg->lvar = new_lvar(node->func_def_lvar, arg->ident, arg->ident_len);
+            if(!consume(",")){
+                expect(")");
+                break;
+            }
+        }
+    }
+
+    locals = node->func_def_lvar;
+    node->lhs = stmt();
+    if(node->lhs->kind != ND_COMPOUND) {
+        error_at(token->str, "Statement of function definition shall be a compound statement.");
+    }
+
+    return node;
 }
 
 // stmt    = expr ";"
@@ -279,9 +314,9 @@ Node *primary() {
             node->call_ident_len = ident_len;
             return node;
         }else{
-            LVar *lvar = find_lvar(ident, ident_len);
+            LVar *lvar = find_lvar(locals, ident, ident_len);
             if(lvar == NULL){
-                lvar = new_lvar(ident, ident_len);
+                lvar = new_lvar(locals, ident, ident_len);
             }
             Node *node = new_node_ident(lvar);
             return node;
@@ -292,8 +327,9 @@ Node *primary() {
 
 /// LVar ///
 
-LVar *find_lvar(char *ident, int ident_len) {
-    for(LVar *var = locals; var; var = var->next) {
+LVar *find_lvar(Vector *locals, char *ident, int ident_len) {
+    for(int i = 0; i < lvar_count(locals); i++){
+        LVar *var = vector_get(locals, i);
         if(var->len == ident_len && !memcmp(ident, var->name, var->len)) {
             return var;
         }
@@ -301,19 +337,18 @@ LVar *find_lvar(char *ident, int ident_len) {
     return NULL;
 }
 
-LVar *new_lvar(char *ident, int ident_len) {
+LVar *new_lvar(Vector *locals, char *ident, int ident_len) {
     LVar *lvar = calloc(1, sizeof(LVar));
     lvar->name = ident;
     lvar->len = ident_len;
-    local_count++;
-    lvar->offset = 8*local_count;
-    lvar->next = locals;
-    locals = lvar;
+    lvar->offset = 8*(lvar_count(locals) + 1);
+    vector_push(locals, lvar);
+
     return lvar;
 }
 
-int lvar_count(LVar *locals) {
-    return local_count;
+int lvar_count(Vector *locals) {
+    return vector_size(locals);
 }
 
 void dumpnodes_inner(Node *node, int level) {

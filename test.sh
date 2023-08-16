@@ -3,6 +3,23 @@ assert() {
   expected="$1"
   input="$2"
 
+  ./9cc "main(){$input}" > tmp.s
+  cc -o tmp tmp.s
+  ./tmp
+  actual="$?"
+
+  if [ "$actual" = "$expected" ]; then
+    echo "$input => $actual"
+  else
+    echo "$input => $expected expected, but got $actual"
+    exit 1
+  fi
+}
+
+assert_file() {
+  expected="$1"
+  input="$2"
+
   ./9cc "$input" > tmp.s
   cc -o tmp tmp.s
   ./tmp
@@ -21,7 +38,7 @@ assert_stdout() {
   expected_stdout="$2"
   input="$3"
 
-  ./9cc "$input" > tmp.s
+  ./9cc "main(){$input}" > tmp.s
   cc -o tmp tmp.s calltest.c
   stdout_text=$(./tmp)
   actual="$?"
@@ -76,5 +93,6 @@ assert 31 "a=0;b=32;while(b>0){b=b/2;a=a+b;}a;"
 assert 10 "a=0;do a=a+2; while(a<9);a;"
 assert_stdout 3 "testfunc1 called!" "testfunc1();"
 assert_stdout 16 "testfunc2,7,9 called!" "testfunc2(1+6,9);"
+assert_file 34 "tra(a){if(a==1){return 1;}if(a==2){return 2;}return tra(a-1)+tra(a-2);}main(){return tra(8);}"
 
 echo OK

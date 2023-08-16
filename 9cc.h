@@ -1,3 +1,4 @@
+#include "vector.h"
 
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
@@ -5,6 +6,7 @@ void error_at(char *loc, char *fmt, ...);
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct NodeList NodeList;
+typedef struct FuncDefArg FuncDefArg;
 typedef struct LVar LVar;
 
 /// Token ///
@@ -40,6 +42,7 @@ bool consume_kind(TokenKind kind);
 void expect(char *op);
 void expect_kind(TokenKind kind);
 bool consume_ident(char **ident, int *ident_len);
+void expect_ident(char **ident, int *ident_len);
 int expect_number();
 bool at_eof();
 Token *tokenize(char *p);
@@ -67,11 +70,18 @@ typedef enum {
     ND_DO,
     ND_COMPOUND,
     ND_CALL,
+    ND_FUNC_DEF,
 } NodeKind;
 
 struct NodeList {
     Node *node;
     NodeList *next;
+};
+
+struct FuncDefArg {
+    char *ident;
+    int ident_len;
+    LVar *lvar;
 };
 
 struct Node {
@@ -92,12 +102,19 @@ struct Node {
             int call_ident_len;
             NodeList call_arg_list;
         };
+        struct {
+            char *func_def_ident;
+            int func_def_ident_len;
+            Vector *func_def_arg_vec;
+            Vector *func_def_lvar;
+        };
     };
 };
 
 extern Node *code[100];
 
-void program();
+void translation_unit();
+Node *function_definition();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -111,18 +128,16 @@ Node *unary();
 /// LVar ///
 
 struct LVar {
-    LVar *next;
     char *name;
     int len;
     int offset;
 };
 
-extern LVar *locals;
-extern int local_count;
+extern Vector *locals;
 
-LVar *find_lvar(char *ident, int ident_len);
-LVar *new_lvar(char *ident, int ident_len);
-int lvar_count(LVar *locals);
+LVar *find_lvar(Vector *locals, char *ident, int ident_len);
+LVar *new_lvar(Vector *locals, char *ident, int ident_len);
+int lvar_count(Vector *locals);
 
 Token *tokenize(char *);
 void gen(Node *);
