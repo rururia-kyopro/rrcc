@@ -116,19 +116,25 @@ Token *tokenize(char *p){
         }
         if(*p == '_' || isalpha(*p)){
             int len = read_ident(p);
-            if (is_keyword("return", p, len)){
-                cur = new_token(TK_RETURN, cur, p, len);
-            }else if (is_keyword("if", p, len)){
-                cur = new_token(TK_IF, cur, p, len);
-            }else if (is_keyword("else", p, len)){
-                cur = new_token(TK_ELSE, cur, p, len);
-            }else if (is_keyword("while", p, len)){
-                cur = new_token(TK_WHILE, cur, p, len);
-            }else if (is_keyword("for", p, len)){
-                cur = new_token(TK_FOR, cur, p, len);
-            }else if (is_keyword("do", p, len)){
-                cur = new_token(TK_DO, cur, p, len);
-            }else{
+            struct Keyword { char *name; TokenKind kind; };
+            const struct Keyword keywords[] = {
+                { "int", TK_INT },
+                { "return", TK_RETURN },
+                { "if", TK_IF },
+                { "else", TK_ELSE },
+                { "while", TK_WHILE },
+                { "for", TK_FOR },
+                { "do", TK_DO },
+            };
+            bool found = false;
+            for(int i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++){
+                if(is_keyword(keywords[i].name, p, len)) {
+                    cur = new_token(keywords[i].kind, cur, p, len);
+                    found = true;
+                    break;
+                }
+            }
+            if(!found) {
                 cur = new_token(TK_IDENT, cur, p, len);
             }
             p += len;

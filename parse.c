@@ -26,6 +26,7 @@ char *node_kind(NodeKind kind){
         case ND_GREATER_OR_EQUAL: return "ND_GREATER_OR_EQUAL";
         case ND_NUM: return "ND_NUM";
         case ND_LVAR: return "ND_LVAR";
+        case ND_IDENT: return "ND_IDENT";
         case ND_RETURN: return "ND_RETURN";
         case ND_IF: return "ND_IF";
         case ND_WHILE: return "ND_WHILE";
@@ -36,6 +37,7 @@ char *node_kind(NodeKind kind){
         case ND_FUNC_DEF: return "ND_FUNC_DEF";
         case ND_ADDRESS_OF: return "ND_ADDRESS_OF";
         case ND_DEREF: return "ND_DEREF";
+        case ND_DECL_VAR: return "ND_DECL_VAR";
         default: assert(false);
     }
 }
@@ -77,7 +79,7 @@ Node *new_node_num(int val) {
     return node;
 }
 
-Node *new_node_ident(LVar *lvar) {
+Node *new_node_lvar(LVar *lvar) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
     node->lvar = lvar;
@@ -135,6 +137,7 @@ Node *function_definition() {
 //         | "do" stmt "while" "(" expr ")" ";"
 //         | "return" expr ";"
 //         | "{" stmt* "}"
+//         | "int" ident ";"
 Node *stmt() {
     if(consume_kind(TK_IF)) {
         expect("(");
@@ -186,6 +189,15 @@ Node *stmt() {
         return node;
     }else if(consume_kind(TK_RETURN)) {
         Node *node = new_node(ND_RETURN, expr(), NULL);
+        expect(";");
+        return node;
+    }else if(consume_kind(TK_INT)) {
+        Node *ident_node = ident_();
+        Node *node = new_node(ND_DECL_VAR, ident_node, NULL);
+        if(find_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len) != NULL){
+            error("variable with same name is already defined.");
+        }
+        node->decl_var_lvar = new_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len);
         expect(";");
         return node;
     }else if(consume("{")) {
@@ -327,13 +339,19 @@ Node *primary() {
         }else{
             LVar *lvar = find_lvar(locals, ident, ident_len);
             if(lvar == NULL){
-                lvar = new_lvar(locals, ident, ident_len);
+                error_at(ident, "identifier is not defined");
             }
-            Node *node = new_node_ident(lvar);
+            Node *node = new_node_lvar(lvar);
             return node;
         }
     }
     return new_node_num(expect_number());
+}
+
+Node *ident_() {
+    Node *node = new_node(ND_IDENT, NULL, NULL);
+    expect_ident(&node->ident.ident, &node->ident.ident_len);
+    return node;
 }
 
 /// LVar ///

@@ -14,6 +14,7 @@ typedef struct LVar LVar;
 // トークンの種類
 typedef enum {
     TK_RESERVED,
+    TK_INT,
     TK_RETURN,
     TK_IF,
     TK_ELSE,
@@ -63,6 +64,7 @@ typedef enum {
     ND_GREATER_OR_EQUAL,
     ND_NUM,
     ND_LVAR,
+    ND_IDENT,
     ND_RETURN,
     ND_IF,
     ND_WHILE,
@@ -73,6 +75,7 @@ typedef enum {
     ND_FUNC_DEF,
     ND_ADDRESS_OF,
     ND_DEREF,
+    ND_DECL_VAR
 } NodeKind;
 
 struct NodeList {
@@ -93,6 +96,7 @@ struct Node {
     union {
         int val;
         LVar *lvar;
+        LVar *decl_var_lvar;
         Node *else_stmt;
         struct {
             Node *for_update_expr;
@@ -110,6 +114,11 @@ struct Node {
             Vector *func_def_arg_vec;
             Vector *func_def_lvar;
         };
+        struct {
+            char *ident;
+            int ident_len;
+            LVar *lvar;
+        } ident;
     };
 };
 
@@ -126,6 +135,7 @@ Node *add();
 Node *primary();
 Node *mul();
 Node *unary();
+Node *ident_();
 
 /// LVar ///
 

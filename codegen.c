@@ -170,7 +170,11 @@ void gen(Node *node){
             printf("  pop rbp\n");
             printf("  ret\n");
             return;
-
+        case ND_DECL_VAR:
+            // Dummy element
+            printf("  mov rax,0\n");
+            printf("  push rax\n");
+            return;
     }
     gen(node->lhs);
     gen(node->rhs);
