@@ -130,7 +130,10 @@ void gen(Node *node){
                     error("call argument >= %d is not supported.", reg_count);
                 }
             }
+            printf("  mov r15,rsp\n");
+            printf("  and rsp,~0xf\n");
             printf("  call %.*s\n", node->call_ident_len, node->call_ident);
+            printf("  mov rsp,r15\n");
             printf("  push rax\n");
             return;
         }
