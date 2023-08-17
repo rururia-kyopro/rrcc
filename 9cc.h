@@ -10,6 +10,7 @@ typedef struct NodeList NodeList;
 typedef struct FuncDefArg FuncDefArg;
 typedef struct LVar LVar;
 typedef struct Type Type;
+typedef struct GVar GVar;
 
 /// Token ///
 
@@ -80,7 +81,8 @@ typedef enum {
     ND_DEREF,
     ND_SIZEOF,
     ND_DECL_VAR,
-    ND_TYPE
+    ND_TYPE,
+    ND_GLOBAL_VAR
 } NodeKind;
 
 struct NodeList {
@@ -128,13 +130,18 @@ struct Node {
             int ident_len;
             LVar *lvar;
         } ident;
+        struct {
+            GVar *gvar;
+        } global;
     };
 };
 
 extern Node *code[100];
 
 void translation_unit();
-Node *function_definition();
+Node *declarator();
+Node *function_definition(Node *type_prefix, char *ident, int ident_len);
+Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len);
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -163,6 +170,20 @@ LVar *find_lvar(Vector *locals, char *ident, int ident_len);
 LVar *new_lvar(Vector *locals, char *ident, int ident_len);
 int lvar_count(Vector *locals);
 int lvar_stack_size(Vector *locals);
+
+/// GVar ///
+
+struct GVar {
+    char *name;
+    int len;
+    Type *type;
+};
+
+extern Vector *globals;
+extern int global_size;
+
+GVar *find_gvar(Vector *locals, char *ident, int ident_len);
+GVar *new_gvar(Vector *locals, char *ident, int ident_len, Type *type);
 
 /// Type ///
 

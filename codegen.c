@@ -233,6 +233,11 @@ void gen(Node *node){
             printf("  mov rax,0\n");
             printf("  push rax\n");
             return;
+        case ND_GLOBAL_VAR:
+            printf(".globl %.*s\n", node->global.gvar->len, node->global.gvar->name);
+            printf("%.*s:\n", node->global.gvar->len, node->global.gvar->name);
+            printf("  .zero %d\n", type_sizeof(node->global.gvar->type));
+            return;
     }
     gen(node->lhs);
     gen(node->rhs);

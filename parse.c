@@ -11,6 +11,8 @@ Node *code[100];
 
 Vector *locals;
 int locals_stack_size;
+Vector *globals;
+int global_size;
 
 Type int_type = { INT, NULL };
 
@@ -43,6 +45,7 @@ char *node_kind(NodeKind kind){
         case ND_SIZEOF: return "ND_SIZEOF";
         case ND_DECL_VAR: return "ND_DECL_VAR";
         case ND_TYPE: return "ND_TYPE";
+        case ND_GLOBAL_VAR: return "ND_GLOBAL_VAR";
         default: assert(false);
     }
 }
@@ -135,23 +138,41 @@ Node *new_node_lvar(LVar *lvar) {
 
 // translation_unit = function_definition*
 void translation_unit() {
+    globals = new_vector();
+    global_size = 0;
+
     int i = 0;
     while(!at_eof()){
-        code[i++] = function_definition();
+        code[i++] = declarator();
     }
     code[i] = NULL;
 }
 
+// declarator = function_definition
+//            | global_variable_definition
+Node *declarator() {
+    expect_kind(TK_INT);
+    Node *type_prefix = type_();
+    char *ident;
+    int ident_len;
+    expect_ident(&ident, &ident_len);
+
+    if(consume("(")) {
+        return function_definition(type_prefix, ident, ident_len);
+    } else {
+        return global_variable_definition(type_prefix, ident, ident_len);
+    }
+}
+
 // function_definition = "int" ident "(" ("int" ident ",")* ("int" ident)? ")" stmt
-Node *function_definition() {
+Node *function_definition(Node *type_prefix, char *ident, int ident_len) {
     Node *node = new_node(ND_FUNC_DEF, NULL, NULL);
     node->func_def_arg_vec = new_vector();
     node->func_def_lvar = new_vector();
 
-    expect_kind(TK_INT);
-    node->func_def_return_type = type_();
-    expect_ident(&node->func_def_ident, &node->func_def_ident_len);
-    expect("(");
+    node->func_def_return_type = type_prefix;
+    node->func_def_ident = ident;
+    node->func_def_ident_len = ident_len;
 
     locals_stack_size = 0;
 
@@ -182,6 +203,32 @@ Node *function_definition() {
         error_at(token->str, "Statement of function definition shall be a compound statement.");
     }
 
+    return node;
+}
+
+Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len) {
+    Node *node = new_node(ND_GLOBAL_VAR, NULL, NULL);
+    Type *type = type_prefix->type;
+    if(consume("[")) {
+        Type *array_type = calloc(1, sizeof(Type));
+        int array_size = expect_number();
+        array_type->ty = ARRAY;
+        array_type->array_size = array_size;
+        array_type->ptr_to = type;
+
+        type = array_type;
+
+        expect("]");
+    }
+    expect(";");
+
+    GVar *gvar = find_gvar(globals, ident, ident_len);
+    if(gvar != NULL) {
+        error_at(ident, "A global variable with same name is already defined");
+    }
+
+    gvar = new_gvar(globals, ident, ident_len, type);
+    node->global.gvar = gvar;
     return node;
 }
 
@@ -518,6 +565,28 @@ int lvar_stack_size(Vector *locals) {
         ret += type_sizeof(var->type);
     }
     return ret;
+}
+
+/// GVar ///
+
+GVar *find_gvar(Vector *globals, char *ident, int ident_len) {
+    for(int i = 0; i < vector_size(globals); i++){
+        GVar *var = vector_get(globals, i);
+        if(var->len == ident_len && !memcmp(ident, var->name, var->len)) {
+            return var;
+        }
+    }
+    return NULL;
+}
+
+GVar *new_gvar(Vector *globals, char *ident, int ident_len, Type *type) {
+    GVar *gvar = calloc(1, sizeof(GVar));
+    gvar->name = ident;
+    gvar->len = ident_len;
+    gvar->type = type;
+    vector_push(globals, gvar);
+
+    return gvar;
 }
 
 /// Type ///
