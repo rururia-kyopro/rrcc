@@ -168,6 +168,12 @@ struct Type {
     Type *ptr_to;
 };
 
+extern Type int_type;
+
+int type_sizeof(Type *type);
+Type *type_arithmetic(Type *type_r, Type *type_l);
+Type *type_comparator(Type *type_r, Type *type_l);
+
 Token *tokenize(char *);
 void gen(Node *);
 

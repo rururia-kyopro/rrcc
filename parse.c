@@ -11,6 +11,8 @@ Node *code[100];
 
 Vector *locals;
 
+Type int_type = { INT, NULL };
+
 char *node_kind(NodeKind kind){
     switch(kind){
         case ND_ADD: return "ND_ADD";
@@ -74,10 +76,29 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs){
     return node;
 }
 
+Node *new_node_arithmetic(NodeKind kind, Node *lhs, Node *rhs){
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = kind;
+    node->lhs = lhs;
+    node->rhs = rhs;
+    node->expr_type = type_arithmetic(lhs->expr_type, rhs->expr_type);
+    return node;
+}
+
+Node *new_node_compare(NodeKind kind, Node *lhs, Node *rhs){
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = kind;
+    node->lhs = lhs;
+    node->rhs = rhs;
+    node->expr_type = type_comparator(lhs->expr_type, rhs->expr_type);
+    return node;
+}
+
 Node *new_node_num(int val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
+    node->expr_type = &int_type;
     return node;
 }
 
@@ -235,8 +256,10 @@ Node *expr() {
 
 Node *assign() {
     Node *node = equality();
-    if(consume("="))
+    if(consume("=")) {
         node = new_node(ND_ASSIGN, node, assign());
+        node->expr_type = node->lhs->expr_type;
+    }
     return node;
 }
 
@@ -245,9 +268,9 @@ Node *equality() {
 
     for(;;){
         if(consume("=="))
-            node = new_node(ND_EQUAL, node, relational());
+            node = new_node_compare(ND_EQUAL, node, relational());
         else if(consume("!="))
-            node = new_node(ND_NOT_EQUAL, node, relational());
+            node = new_node_compare(ND_NOT_EQUAL, node, relational());
         else
             return node;
     }
@@ -258,13 +281,13 @@ Node *relational() {
 
     for(;;){
         if(consume("<"))
-            node = new_node(ND_LESS, node, add());
+            node = new_node_compare(ND_LESS, node, add());
         else if(consume("<="))
-            node = new_node(ND_LESS_OR_EQUAL, node, add());
+            node = new_node_compare(ND_LESS_OR_EQUAL, node, add());
         else if(consume(">"))
-            node = new_node(ND_GREATER, node, add());
+            node = new_node_compare(ND_GREATER, node, add());
         else if(consume(">="))
-            node = new_node(ND_GREATER_OR_EQUAL, node, add());
+            node = new_node_compare(ND_GREATER_OR_EQUAL, node, add());
         else
             return node;
     }
@@ -274,10 +297,45 @@ Node *add() {
     Node *node = mul();
 
     for(;;){
-        if(consume("+"))
+        if(consume("+")) {
             node = new_node(ND_ADD, node, mul());
-        else if(consume("-"))
+            if(node->lhs->expr_type->ty == INT){
+                if(node->rhs->expr_type->ty == INT) {
+                    // int + int
+                    node->expr_type = type_arithmetic(node->rhs->expr_type, node->lhs->expr_type);
+                }else {
+                    // int + ptr -> ptr
+                    node->expr_type = node->rhs->expr_type;
+                }
+            }else{
+                if(node->rhs->expr_type->ty == INT) {
+                    // ptr + int -> ptr
+                    node->expr_type = node->lhs->expr_type;
+                }else {
+                    // ptr + ptr -> error
+                    error_at(token->str, "Add pointer to pointer");
+                }
+            }
+        } else if(consume("-")) {
             node = new_node(ND_SUB, node, mul());
+            if(node->lhs->expr_type->ty == INT){
+                if(node->rhs->expr_type->ty == INT) {
+                    // int - int
+                    node->expr_type = type_arithmetic(node->rhs->expr_type, node->lhs->expr_type);
+                }else {
+                    // int - ptr -> error
+                    error_at(token->str, "Sub pointer from int");
+                }
+            }else{
+                if(node->rhs->expr_type->ty == INT) {
+                    // ptr - int -> ptr
+                    node->expr_type = node->lhs->expr_type;
+                }else {
+                    // ptr - ptr -> int
+                    node->expr_type = &int_type;
+                }
+            }
+        }
         else
             return node;
     }
@@ -288,9 +346,9 @@ Node *mul() {
 
     for(;;){
         if(consume("*"))
-            node = new_node(ND_MUL, node, unary());
+            node = new_node_arithmetic(ND_MUL, node, unary());
         else if(consume("/"))
-            node = new_node(ND_DIV, node, unary());
+            node = new_node_arithmetic(ND_DIV, node, unary());
         else
             return node;
     }
@@ -306,13 +364,24 @@ Node *unary() {
     if(consume("+"))
         return primary();
     if(consume("-"))
-        return new_node(ND_SUB, new_node_num(0), primary());
-    if(consume("&"))
-        return new_node(ND_ADDRESS_OF, unary(), NULL);
-    if(consume("*"))
-        return new_node(ND_DEREF, unary(), NULL);
+        return new_node_arithmetic(ND_SUB, new_node_num(0), primary());
+    if(consume("&")) {
+        Node *node = new_node(ND_ADDRESS_OF, unary(), NULL);
+        node->expr_type = calloc(1, sizeof(Type));
+        node->expr_type->ty = PTR;
+        node->expr_type->ptr_to = node->lhs->expr_type;
+        return node;
+    }
+    if(consume("*")) {
+        Node *node = new_node(ND_DEREF, unary(), NULL);
+        if(node->lhs->expr_type->ty != PTR) {
+            error_at(token->str, "Dereference non pointer type");
+        }
+        node->expr_type = node->lhs->expr_type->ptr_to;
+        return node;
+    }
     if(consume_kind(TK_SIZEOF))
-        return new_node(ND_SIZEOF, unary(), NULL);
+        return new_node_num(type_sizeof(unary()->expr_type));
     return primary();
 }
 
@@ -330,6 +399,7 @@ Node *primary() {
     if(consume_ident(&ident, &ident_len)){
         if(consume("(")){
             Node *node = new_node(ND_CALL, NULL, NULL);
+            node->expr_type = &int_type;
 
             NodeList *arg_tail = &node->call_arg_list;
             if(!consume(")")){
@@ -360,8 +430,6 @@ Node *primary() {
     }
     return new_node_num(expect_number());
 }
-
-Type int_type = { INT, NULL };
 
 Node *type_() {
     //expect_kind(TK_INT);
@@ -407,6 +475,32 @@ LVar *new_lvar(Vector *locals, char *ident, int ident_len) {
 
 int lvar_count(Vector *locals) {
     return vector_size(locals);
+}
+
+/// Type ///
+
+int type_sizeof(Type *type) {
+    if(type->ty == INT) {
+        return 4;
+    }
+    return 8;
+}
+
+Type *type_arithmetic(Type *type_r, Type *type_l) {
+    if(type_r->ty == PTR || type_r->ty == PTR){
+        error_at(token->str, "Invalid arithmetic operand with ptr type");
+        return NULL;
+    }
+    return &int_type;
+}
+
+Type *type_comparator(Type *type_r, Type *type_l) {
+    if(type_r->ty == PTR && type_l->ty != PTR ||
+            type_l->ty == PTR && type_r->ty != PTR){
+        error_at(token->str, "Invalid comparison between ptr and non-ptr");
+        return NULL;
+    }
+    return &int_type;
 }
 
 void dumpnodes_inner(Node *node, int level) {
