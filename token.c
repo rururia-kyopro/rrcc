@@ -30,6 +30,15 @@ bool consume_kind(TokenKind kind) {
     return true;
 }
 
+bool consume_type_keyword(TokenKind *kind) {
+    if(token->kind != TK_INT && token->kind != TK_CHAR)
+        return false;
+
+    *kind = token->kind;
+    token = token->next;
+    return true;
+}
+
 void expect(char *op){
     if(token->kind != TK_RESERVED || !is_prefix(op, token->str, token->len))
         error_at(token->str, "Not '%s'", op);
@@ -40,6 +49,14 @@ void expect_kind(TokenKind kind) {
     if(token->kind != kind)
         error_at(token->str, "Not token kind %d", kind);
     token = token->next;
+}
+
+TokenKind expect_type_keyword() {
+    TokenKind kind;
+    if(!consume_type_keyword(&kind)) {
+        error_at(token->str, "Not a type kind");
+    }
+    return kind;
 }
 
 bool consume_ident(char **ident, int *ident_len) {
@@ -119,6 +136,7 @@ Token *tokenize(char *p){
             struct Keyword { char *name; TokenKind kind; };
             const struct Keyword keywords[] = {
                 { "int", TK_INT },
+                { "char", TK_CHAR },
                 { "return", TK_RETURN },
                 { "if", TK_IF },
                 { "else", TK_ELSE },

@@ -113,5 +113,10 @@ assert_file 3 "int main(){int a[2];*a=1;*(a+1)=2;return *a+*(a+1);}"
 assert_file 1 "int main(){int a[2];*a=1;int c;c=a[0];}"
 assert_file 3 "int main(){int a[2];*a=1;*(a+1)=3;int c;c=a[1];}"
 assert_file 4 "int a;int b[10];int main(){a=1;b[0]=a;b[1]=b[0]+3;b[1];}"
+assert_file 2 "char a;int main(){char b;b=2;a=b;a;}"
+assert_file 2 "char a;char b;int main(){a=2;b=3;a;}"
+assert_file 4 "char foo(char a){return a+1;}int main(){char a;a=2;return foo(a+1);}"
+assert_file 1 "int main(){char a;return sizeof(a);}"
+assert_file 4 "int main(){char a;return sizeof(a+1);}"
 
 echo OK

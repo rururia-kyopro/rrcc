@@ -15,6 +15,7 @@ Vector *globals;
 int global_size;
 
 Type int_type = { INT, NULL };
+Type char_type = { CHAR, NULL };
 
 char *node_kind(NodeKind kind){
     switch(kind){
@@ -83,8 +84,8 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs){
 
 Node *new_node_add(Node *lhs, Node *rhs) {
     Node *node = new_node(ND_ADD, lhs, rhs);
-    if(node->lhs->expr_type->ty == INT){
-        if(node->rhs->expr_type->ty == INT) {
+    if(type_is_int(node->lhs->expr_type)){
+        if(type_is_int(node->rhs->expr_type)) {
             // int + int
             node->expr_type = type_arithmetic(node->rhs->expr_type, node->lhs->expr_type);
         }else {
@@ -92,7 +93,7 @@ Node *new_node_add(Node *lhs, Node *rhs) {
             node->expr_type = node->rhs->expr_type;
         }
     }else{
-        if(node->rhs->expr_type->ty == INT) {
+        if(type_is_int(node->rhs->expr_type)) {
             // ptr + int -> ptr
             node->expr_type = node->lhs->expr_type;
         }else {
@@ -152,8 +153,7 @@ void translation_unit() {
 // declarator = function_definition
 //            | global_variable_definition
 Node *declarator() {
-    expect_kind(TK_INT);
-    Node *type_prefix = type_();
+    Node *type_prefix = type_(expect_type_keyword());
     char *ident;
     int ident_len;
     expect_ident(&ident, &ident_len);
@@ -180,8 +180,7 @@ Node *function_definition(Node *type_prefix, char *ident, int ident_len) {
     if(!consume(")")){
         while(1){
             FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
-            expect_kind(TK_INT);
-            arg->type = type_();
+            arg->type = type_(expect_type_keyword());
             expect_ident(&arg->ident, &arg->ident_len);
             
             vector_push(node->func_def_arg_vec, arg);
@@ -242,6 +241,7 @@ Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len) 
 //         | "{" stmt* "}"
 //         | type ident ("[" num "]")? ";"
 Node *stmt() {
+    TokenKind kind;
     if(consume_kind(TK_IF)) {
         expect("(");
         Node *if_expr = expr();
@@ -294,8 +294,8 @@ Node *stmt() {
         Node *node = new_node(ND_RETURN, expr(), NULL);
         expect(";");
         return node;
-    }else if(consume_kind(TK_INT)) {
-        Node *type_node = type_();
+    }else if(consume_type_keyword(&kind)) {
+        Node *type_node = type_(kind);
         Node *ident_node = ident_();
         Node *node = new_node(ND_DECL_VAR, type_node, ident_node);
         if(find_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len) != NULL){
@@ -512,9 +512,13 @@ Node *primary() {
     return new_node_num(expect_number());
 }
 
-Node *type_() {
-    //expect_kind(TK_INT);
-    Type *cur = &int_type;
+Node *type_(TokenKind kind) {
+    Type *cur;
+    if(kind == TK_CHAR) {
+        cur = &char_type;
+    }else{
+        cur = &int_type;
+    }
     while(consume("*")){
         Type *ty = calloc(1, sizeof(Type));
         ty->ptr_to = cur;
@@ -610,6 +614,9 @@ int type_sizeof(Type *type) {
     if(type->ty == ARRAY) {
         return type->array_size * type_sizeof(type->ptr_to);
     }
+    if(type->ty == CHAR) {
+        return 1;
+    }
     if(type->ty == INT) {
         return 4;
     }
@@ -635,6 +642,10 @@ Type *type_comparator(Type *type_r, Type *type_l) {
 
 bool type_implicit_ptr(Type *type) {
     return type->ty == ARRAY || type->ty == PTR;
+}
+
+bool type_is_int(Type *type) {
+    return type->ty == INT || type->ty == CHAR;
 }
 
 void dumpnodes_inner(Node *node, int level) {

@@ -18,6 +18,7 @@ typedef struct GVar GVar;
 typedef enum {
     TK_RESERVED,
     TK_INT,
+    TK_CHAR,
     TK_RETURN,
     TK_IF,
     TK_ELSE,
@@ -44,8 +45,10 @@ extern char *user_input;
 
 bool consume(char* op);
 bool consume_kind(TokenKind kind);
+bool consume_type_keyword(TokenKind *kind);
 void expect(char *op);
 void expect_kind(TokenKind kind);
+TokenKind expect_type_keyword();
 bool consume_ident(char **ident, int *ident_len);
 void expect_ident(char **ident, int *ident_len);
 int expect_number();
@@ -155,7 +158,7 @@ Node *add();
 Node *primary();
 Node *mul();
 Node *unary();
-Node *type_();
+Node *type_(TokenKind kind);
 Node *ident_();
 
 /// LVar ///
@@ -193,7 +196,7 @@ Node *find_symbol(Vector *globals, Vector *locals, char *ident, int ident_len);
 /// Type ///
 
 struct Type {
-    enum { INT, PTR, ARRAY } ty;
+    enum { CHAR, INT, PTR, ARRAY } ty;
     Type *ptr_to;
     size_t array_size;
 };
@@ -204,6 +207,7 @@ int type_sizeof(Type *type);
 Type *type_arithmetic(Type *type_r, Type *type_l);
 Type *type_comparator(Type *type_r, Type *type_l);
 bool type_implicit_ptr(Type *type);
+bool type_is_int(Type *type);
 
 Token *tokenize(char *);
 void gen(Node *);
