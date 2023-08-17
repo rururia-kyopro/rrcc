@@ -49,6 +49,7 @@ assert_stdout() {
     else
       echo "code: $input => $actual"
       echo "stdout: $expected_stdout expected, but got $stdout_text"
+      exit 1
     fi
   else
     echo "$input => $expected_code expected, but got $actual"
@@ -95,5 +96,7 @@ assert_stdout 3 "testfunc1 called!" "testfunc1();"
 assert_stdout 16 "testfunc2,7,9 called!" "testfunc2(1+6,9);"
 assert_file 34 "int tra(int a){if(a==1){return 1;}if(a==2){return 2;}return tra(a-1)+tra(a-2);}int main(){return tra(8);}"
 assert_file 3 "int main(){int a;int b;a=2;b=&a;a=3;return *b;}"
+assert_stdout 14 "testfunc3,10,4 called!" "int *c;c=malloc(30);*c=10;*(c+1)=4;testfunc3(c);"
+assert_stdout 7 "$(echo -e "testfunc3,1,2 called!\ntestfunc3,3,4 called!")" "int **c;c=malloc(30);int *a;a=malloc(16);int *b;b=malloc(16);*c=a;*(c+1)=b;**c=1;*(a+1)=2;**(c+1)=3;*(b+1)=4;testfunc3(a);testfunc3(b);"
 
 echo OK

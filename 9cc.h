@@ -96,6 +96,7 @@ struct Node {
     NodeKind kind;
     Node *lhs;
     Node *rhs;
+    Type *expr_type;
     union {
         int val;
         LVar *lvar;
@@ -149,6 +150,7 @@ struct LVar {
     char *name;
     int len;
     int offset;
+    Type *type;
 };
 
 extern Vector *locals;

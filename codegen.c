@@ -183,7 +183,21 @@ void gen(Node *node){
     printf("  pop rax\n");
     switch(node->kind){
         case ND_ADD:
-            printf("  add rax,rsi\n");
+            printf("  // add has_type:%d has_type:%d\n", node->lhs->expr_type != NULL, node->rhs->expr_type != NULL);
+            if (node->lhs->expr_type && node->lhs->expr_type->ty == PTR) {
+                int size;
+                if(node->lhs->expr_type->ptr_to->ty == INT) {
+                    size = 4;
+                }else{
+                    size = 8;
+                }
+                printf("  mov rcx,rax\n");
+                printf("  mov rax,%d\n", size);
+                printf("  mul rsi\n");
+                printf("  add rax,rcx\n");
+            } else {
+                printf("  add rax,rsi\n");
+            }
             break;
         case ND_SUB:
             printf("  sub rax,rsi\n");

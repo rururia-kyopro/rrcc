@@ -119,6 +119,7 @@ Node *function_definition() {
                 error_at(token->str, "Arguments with same name are defined");
             }
             arg->lvar = new_lvar(node->func_def_lvar, arg->ident, arg->ident_len);
+            arg->lvar->type = arg->type->type;
             if(!consume(",")){
                 expect(")");
                 break;
@@ -204,6 +205,7 @@ Node *stmt() {
             error("variable with same name is already defined.");
         }
         node->decl_var_lvar = new_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len);
+        node->decl_var_lvar->type = type_node->type;
         expect(";");
         return node;
     }else if(consume("{")) {
@@ -348,6 +350,7 @@ Node *primary() {
                 error_at(ident, "identifier is not defined");
             }
             Node *node = new_node_lvar(lvar);
+            node->expr_type = lvar->type;
             return node;
         }
     }
