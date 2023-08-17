@@ -145,7 +145,7 @@ Node *function_definition() {
             }
             arg->lvar = new_lvar(node->func_def_lvar, arg->ident, arg->ident_len);
             arg->lvar->type = arg->type->type;
-            locals_stack_size += type_sizeof(node->decl_var_lvar->type);
+            locals_stack_size += type_sizeof(arg->lvar->type);
             if(!consume(",")){
                 expect(")");
                 break;
@@ -550,6 +550,8 @@ void dumpnodes_inner(Node *node, int level) {
                 fprintf(stderr, "\n");
             }
         }
+    }else if(node->kind == ND_NUM){
+        fprintf(stderr, "%*svalue: %d\n", (level+1)*2, " ", node->val);
     }else if(node->kind == ND_IF){
         fprintf(stderr, "%*s// if condition\n", (level+1)*2, " ");
         dumpnodes_inner(node->lhs, level + 1);

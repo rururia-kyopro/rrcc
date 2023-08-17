@@ -7,14 +7,79 @@
 int cur_label = 0;
 static const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
+char *access_size(int size) {
+    if(size == 1) return "byte ptr";
+    if(size == 2) return "word ptr";
+    if(size == 4) return "dword ptr";
+    if(size == 8) return "qword ptr";
+    return "unknown";
+}
+
+// lvar->offset indicates storage size in byte which the variables above this variable occupy.
+// When we use rbp - (sub offset) to access this variable, we must add the size of this variable.
+int get_stack_sub_offset(LVar *lvar) {
+    return lvar->offset + type_sizeof(lvar->type);
+}
+
 void gen_lvar(Node *node) {
     if(node->kind == ND_LVAR) {
         printf("  mov rax, rbp\n");
-        printf("  sub rax,%d\n", node->lvar->offset);
+        printf("  sub rax,%d\n", get_stack_sub_offset(node->lvar));
         printf("  push rax\n");
     } else if(node->kind == ND_DEREF) {
         gen(node->lhs);
     }
+}
+
+void load(int size) {
+    printf("  pop rax\n");
+    switch(size) {
+        case 1:
+            printf("  mov al, %s[rax]\n", access_size(size));
+            printf("  movsx rax, al\n");
+            break;
+        case 2:
+            printf("  mov ax, %s[rax]\n", access_size(size));
+            printf("  movsx rax, ax\n");
+            break;
+        case 4:
+            printf("  mov eax, %s[rax]\n", access_size(size));
+            printf("  movsx rax, eax\n");
+            break;
+        case 8:
+            printf("  mov rax, %s[rax]\n", access_size(size));
+            break;
+    }
+    printf("  push rax\n");
+}
+
+void store(int size) {
+    printf("  pop rbx\n");
+    printf("  pop rax\n");
+    switch(size) {
+        case 1:
+            printf("  mov %s [rax], bl\n", access_size(size));
+            break;
+        case 2:
+            printf("  mov %s [rax], bx\n", access_size(size));
+            break;
+        case 4:
+            printf("  mov %s [rax], ebx\n", access_size(size));
+            break;
+        case 8:
+            printf("  mov %s [rax], rbx\n", access_size(size));
+            break;
+    }
+    printf("  push rbx\n");
+}
+
+void gen_return() {
+    printf("  pop rax\n");
+    printf("  mov rsp,rbp\n");
+    printf("  pop rbx\n");
+    printf("  pop r15\n");
+    printf("  pop rbp\n");
+    printf("  ret\n");
 }
 
 void gen(Node *node){
@@ -24,35 +89,24 @@ void gen(Node *node){
             return;
         case ND_LVAR:
             gen_lvar(node);
-            printf("  pop rax\n");
-            printf("  mov rax, [rax]\n");
-            printf("  push rax\n");
+            load(type_sizeof(node->expr_type));
             return;
         case ND_ADDRESS_OF:
             gen_lvar(node->lhs);
             return;
         case ND_DEREF:
             gen(node->lhs);
-            printf("  pop rax\n");
-            printf("  mov rax, [rax]\n");
-            printf("  push rax\n");
+            load(type_sizeof(node->expr_type));
             return;
         case ND_ASSIGN:
             gen_lvar(node->lhs);
             gen(node->rhs);
 
-            printf("  pop rdi\n");
-            printf("  pop rax\n");
-            printf("  mov [rax], rdi\n");
-            printf("  push rdi\n");
+            store(type_sizeof(node->lhs->expr_type));
             return;
         case ND_RETURN:
             gen(node->lhs);
-            printf("  pop rax\n");
-            printf("  mov rsp,rbp\n");
-            printf("  pop r15\n");
-            printf("  pop rbp\n");
-            printf("  ret\n");
+            gen_return();
             return;
         case ND_IF: {
             printf("  # if\n");
@@ -151,25 +205,26 @@ void gen(Node *node){
             printf("  mov rsp,r15\n");
             printf("  push rax\n");
             return;
-        }
+        }    
         case ND_FUNC_DEF:
             printf(".globl %.*s\n", node->func_def_ident_len, node->func_def_ident);
             printf("%.*s:\n", node->func_def_ident_len, node->func_def_ident);
             int size = vector_size(node->func_def_arg_vec);
             printf("  push rbp\n");
             printf("  push r15\n");
+            printf("  push rbx\n");
             printf("  mov rbp,rsp\n");
-            printf("  sub rsp,%d\n", lvar_stack_size(node->func_def_lvar));
+            printf("  sub rsp,%d\n", (lvar_stack_size(node->func_def_lvar)+7)/8*8);
             for(int i = 0; i < size; i++){
                 FuncDefArg *arg = vector_get(node->func_def_arg_vec, i);
-                printf("  mov [rbp-%d], %s\n", arg->lvar->offset, args_regs[i]);
+                printf("  lea rax, [rbp-%d]\n", get_stack_sub_offset(arg->lvar));
+                printf("  push rax\n");
+                printf("  push %s\n", args_regs[i]);
+                store(type_sizeof(arg->type->type));
+                printf("  pop rax\n");
             }
             gen(node->lhs);
-            printf("  pop rax\n");
-            printf("  mov rsp,rbp\n");
-            printf("  pop r15\n");
-            printf("  pop rbp\n");
-            printf("  ret\n");
+            gen_return();
             return;
         case ND_DECL_VAR:
             // Dummy element

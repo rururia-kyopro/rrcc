@@ -104,5 +104,6 @@ assert_file 9 "int main(){int *a; 1+sizeof (a+1);}"
 assert_file 9 "int main(){int *a; 1+sizeof (a-1);}"
 assert_file 5 "int main(){int *a; 1+sizeof (*a-1);}"
 assert_file 5 "int main(){int *a;int *b; 1+sizeof (a-b);}"
+assert_file 36 "int main(){int a[9];sizeof(a);}"
 
 echo OK
