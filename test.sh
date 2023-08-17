@@ -3,7 +3,8 @@ assert() {
   expected="$1"
   input="$2"
 
-  ./9cc "int main(){$input}" > tmp.s
+  echo "int main(){$input}" > tmp.c
+  ./9cc tmp.c > tmp.s
   cc -o tmp tmp.s
   ./tmp
   actual="$?"
@@ -20,7 +21,8 @@ assert_file() {
   expected="$1"
   input="$2"
 
-  ./9cc "$input" > tmp.s
+  echo "$input" > tmp.c
+  ./9cc tmp.c > tmp.s
   cc -o tmp tmp.s
   ./tmp
   actual="$?"
@@ -38,7 +40,8 @@ assert_stdout() {
   expected_stdout="$2"
   input="$3"
 
-  ./9cc "int main(){$input}" > tmp.s
+  echo "int main(){$input}" > tmp.c
+  ./9cc tmp.c > tmp.s
   cc -o tmp tmp.s calltest.c
   stdout_text=$(./tmp)
   actual="$?"

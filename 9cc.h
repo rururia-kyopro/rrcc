@@ -45,6 +45,7 @@ extern Token *token;
 extern Token *prev_token;
 
 extern char *user_input;
+extern char *filename;
 
 bool consume(char* op);
 bool consume_kind(TokenKind kind);
