@@ -37,6 +37,7 @@ char *node_kind(NodeKind kind){
         case ND_FUNC_DEF: return "ND_FUNC_DEF";
         case ND_ADDRESS_OF: return "ND_ADDRESS_OF";
         case ND_DEREF: return "ND_DEREF";
+        case ND_SIZEOF: return "ND_SIZEOF";
         case ND_DECL_VAR: return "ND_DECL_VAR";
         case ND_TYPE: return "ND_TYPE";
         default: assert(false);
@@ -299,6 +300,7 @@ Node *mul() {
 //       | "-" primary
 //       | "*" unary
 //       | "&" unary
+//       | "sizeof" unary
 //       | primary
 Node *unary() {
     if(consume("+"))
@@ -309,6 +311,8 @@ Node *unary() {
         return new_node(ND_ADDRESS_OF, unary(), NULL);
     if(consume("*"))
         return new_node(ND_DEREF, unary(), NULL);
+    if(consume_kind(TK_SIZEOF))
+        return new_node(ND_SIZEOF, unary(), NULL);
     return primary();
 }
 

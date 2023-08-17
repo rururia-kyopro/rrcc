@@ -22,6 +22,7 @@ typedef enum {
     TK_WHILE,
     TK_FOR,
     TK_DO,
+    TK_SIZEOF,
     TK_IDENT,
     TK_NUM,
     TK_EOF,
@@ -76,6 +77,7 @@ typedef enum {
     ND_FUNC_DEF,
     ND_ADDRESS_OF,
     ND_DEREF,
+    ND_SIZEOF,
     ND_DECL_VAR,
     ND_TYPE
 } NodeKind;

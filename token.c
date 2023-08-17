@@ -125,6 +125,7 @@ Token *tokenize(char *p){
                 { "while", TK_WHILE },
                 { "for", TK_FOR },
                 { "do", TK_DO },
+                { "sizeof", TK_SIZEOF },
             };
             bool found = false;
             for(int i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++){
