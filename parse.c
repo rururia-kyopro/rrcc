@@ -10,6 +10,7 @@
 Node *code[100];
 
 Vector *locals;
+int locals_stack_size;
 
 Type int_type = { INT, NULL };
 
@@ -129,6 +130,8 @@ Node *function_definition() {
     expect_ident(&node->func_def_ident, &node->func_def_ident_len);
     expect("(");
 
+    locals_stack_size = 0;
+
     if(!consume(")")){
         while(1){
             FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
@@ -142,6 +145,7 @@ Node *function_definition() {
             }
             arg->lvar = new_lvar(node->func_def_lvar, arg->ident, arg->ident_len);
             arg->lvar->type = arg->type->type;
+            locals_stack_size += type_sizeof(node->decl_var_lvar->type);
             if(!consume(",")){
                 expect(")");
                 break;
@@ -165,7 +169,7 @@ Node *function_definition() {
 //         | "do" stmt "while" "(" expr ")" ";"
 //         | "return" expr ";"
 //         | "{" stmt* "}"
-//         | type ident ";"
+//         | type ident ("[" num "]")? ";"
 Node *stmt() {
     if(consume_kind(TK_IF)) {
         expect("(");
@@ -228,6 +232,16 @@ Node *stmt() {
         }
         node->decl_var_lvar = new_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len);
         node->decl_var_lvar->type = type_node->type;
+        if(consume("[")){
+            int array_size = expect_number();
+            expect("]");
+            Type *array_type = calloc(1, sizeof(Type));
+            array_type->ptr_to = node->decl_var_lvar->type;
+            array_type->array_size = array_size;
+            array_type->ty = ARRAY;
+            node->decl_var_lvar->type = array_type;
+        }
+        locals_stack_size += type_sizeof(node->decl_var_lvar->type);
         expect(";");
         return node;
     }else if(consume("{")) {
@@ -467,7 +481,7 @@ LVar *new_lvar(Vector *locals, char *ident, int ident_len) {
     LVar *lvar = calloc(1, sizeof(LVar));
     lvar->name = ident;
     lvar->len = ident_len;
-    lvar->offset = 8*(lvar_count(locals) + 1);
+    lvar->offset = locals_stack_size;
     vector_push(locals, lvar);
 
     return lvar;
@@ -477,9 +491,21 @@ int lvar_count(Vector *locals) {
     return vector_size(locals);
 }
 
+int lvar_stack_size(Vector *locals) {
+    int ret = 0;
+    for(int i = 0; i < lvar_count(locals); i++){
+        LVar *var = vector_get(locals, i);
+        ret += type_sizeof(var->type);
+    }
+    return ret;
+}
+
 /// Type ///
 
 int type_sizeof(Type *type) {
+    if(type->ty == ARRAY) {
+        return type->array_size * type_sizeof(type->ptr_to);
+    }
     if(type->ty == INT) {
         return 4;
     }

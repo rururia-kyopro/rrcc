@@ -1,4 +1,5 @@
 #include "vector.h"
+#include <stddef.h>
 
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
@@ -156,16 +157,19 @@ struct LVar {
 };
 
 extern Vector *locals;
+extern int locals_stack_size;
 
 LVar *find_lvar(Vector *locals, char *ident, int ident_len);
 LVar *new_lvar(Vector *locals, char *ident, int ident_len);
 int lvar_count(Vector *locals);
+int lvar_stack_size(Vector *locals);
 
 /// Type ///
 
 struct Type {
-    enum { INT, PTR } ty;
+    enum { INT, PTR, ARRAY } ty;
     Type *ptr_to;
+    size_t array_size;
 };
 
 extern Type int_type;

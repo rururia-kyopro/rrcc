@@ -159,7 +159,7 @@ void gen(Node *node){
             printf("  push rbp\n");
             printf("  push r15\n");
             printf("  mov rbp,rsp\n");
-            printf("  sub rsp,%d*8\n", lvar_count(node->func_def_lvar));
+            printf("  sub rsp,%d\n", lvar_stack_size(node->func_def_lvar));
             for(int i = 0; i < size; i++){
                 FuncDefArg *arg = vector_get(node->func_def_arg_vec, i);
                 printf("  mov [rbp-%d], %s\n", arg->lvar->offset, args_regs[i]);
