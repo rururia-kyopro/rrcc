@@ -219,6 +219,8 @@ void gen(Node *node){
             }
             printf("  mov r15,rsp\n");
             printf("  and rsp,~0xf\n");
+            // Number of floating point argument
+            printf("  mov al,0\n");
             printf("  call %.*s\n", node->call_ident_len, node->call_ident);
             printf("  mov rsp,r15\n");
             printf("  push rax\n");
