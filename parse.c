@@ -69,6 +69,7 @@ void error(char *fmt, ...) {
 // foo.c:10: x = y + + 5;
 //                   ^ 式ではありません
 void error_at(char *loc, char *fmt, ...) {
+    if(*loc == '\0')loc--;
     // locが含まれている行の開始地点と終了地点を取得
     char *line = loc;
     while (user_input < line && line[-1] != '\n')

@@ -128,6 +128,23 @@ Token *tokenize(char *p){
             continue;
         }
 
+        if(strncmp(p, "//", 2) == 0) {
+            p += 2;
+            while(*p != '\n' && *p){
+                p++;
+            }
+            continue;
+        }
+
+        if(strncmp(p, "/*", 2) == 0) {
+            char *q = strstr(p + 2, "*/");
+            if(!q) {
+                error_at(p, "Comment is not closed");
+            }
+            p = q + 2;
+            continue;
+        }
+
         if(*p == '"') {
             p++;
             char *literal = p;

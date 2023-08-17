@@ -125,5 +125,7 @@ assert_file 7 "int main(){char a[7];return sizeof(a);}"
 assert_file 99 "int main(){char *a;a=\"abc\";a[2];}"
 assert_file 100 "int main(){char *b;char *a;a=\"abc\";b=\"def\";b[0];}"
 assert_stdout 12 "Hello world!" "printf(\"Hello world!\");"
+assert_file 2 "int main(){int a;a=1/*bb b */+1;return a;}"
+assert_file 2 "$(echo -e "int main(){// test comment\nint a;a=1\n///*bb b */\n+1;return a;}")"
 
 echo OK
