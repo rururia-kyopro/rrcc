@@ -31,6 +31,7 @@ char *node_kind(NodeKind kind){
         case ND_GREATER_OR_EQUAL: return "ND_GREATER_OR_EQUAL";
         case ND_NUM: return "ND_NUM";
         case ND_LVAR: return "ND_LVAR";
+        case ND_GVAR: return "ND_GVAR";
         case ND_IDENT: return "ND_IDENT";
         case ND_RETURN: return "ND_RETURN";
         case ND_IF: return "ND_IF";
@@ -45,7 +46,7 @@ char *node_kind(NodeKind kind){
         case ND_SIZEOF: return "ND_SIZEOF";
         case ND_DECL_VAR: return "ND_DECL_VAR";
         case ND_TYPE: return "ND_TYPE";
-        case ND_GLOBAL_VAR: return "ND_GLOBAL_VAR";
+        case ND_GVAR_DEF: return "ND_GLOBAL_VAR";
         default: assert(false);
     }
 }
@@ -207,7 +208,7 @@ Node *function_definition(Node *type_prefix, char *ident, int ident_len) {
 }
 
 Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len) {
-    Node *node = new_node(ND_GLOBAL_VAR, NULL, NULL);
+    Node *node = new_node(ND_GVAR_DEF, NULL, NULL);
     Type *type = type_prefix->type;
     if(consume("[")) {
         Type *array_type = calloc(1, sizeof(Type));
@@ -490,22 +491,21 @@ Node *primary() {
             Node *expr_node = expr();
             expect("]");
 
-            LVar *lvar = find_lvar(locals, ident, ident_len);
-            if(lvar == NULL){
+            Node *var_node = find_symbol(globals, locals, ident, ident_len);
+            if(var_node == NULL) {
                 error_at(ident, "identifier is not defined");
             }
 
-            Node *added = new_node_add(new_node_lvar(lvar), expr_node);
+            Node *added = new_node_add(var_node, expr_node);
 
             Node *node = new_node(ND_DEREF, added, NULL);
             node->expr_type = added->expr_type->ptr_to;
             return node;
         }else{
-            LVar *lvar = find_lvar(locals, ident, ident_len);
-            if(lvar == NULL){
+            Node *node = find_symbol(globals, locals, ident, ident_len);
+            if(node == NULL) {
                 error_at(ident, "identifier is not defined");
             }
-            Node *node = new_node_lvar(lvar);
             return node;
         }
     }
@@ -587,6 +587,21 @@ GVar *new_gvar(Vector *globals, char *ident, int ident_len, Type *type) {
     vector_push(globals, gvar);
 
     return gvar;
+}
+
+Node *find_symbol(Vector *globals, Vector *locals, char *ident, int ident_len) {
+    LVar *lvar = find_lvar(locals, ident, ident_len);
+    if(lvar == NULL){
+        GVar *gvar = find_gvar(globals, ident, ident_len);
+        if(gvar == NULL) {
+            return NULL;
+        }
+        Node *node = new_node(ND_GVAR, NULL, NULL);
+        node->gvar.gvar = gvar;
+        node->expr_type = gvar->type;
+        return node;
+    }
+    return new_node_lvar(lvar);
 }
 
 /// Type ///

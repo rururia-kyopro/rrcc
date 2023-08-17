@@ -26,6 +26,9 @@ void gen_lvar(Node *node) {
         printf("  mov rax, rbp\n");
         printf("  sub rax,%d\n", get_stack_sub_offset(node->lvar));
         printf("  push rax\n");
+    }else if(node->kind == ND_GVAR) {
+        printf("  lea rax, [rip + %.*s]\n", node->gvar.gvar->len, node->gvar.gvar->name);
+        printf("  push rax\n");
     } else if(node->kind == ND_DEREF) {
         gen(node->lhs);
     }
@@ -87,7 +90,8 @@ void gen(Node *node){
         case ND_NUM:
             printf("  push %d\n", node->val);
             return;
-        case ND_LVAR:
+        case ND_LVAR: // fall through
+        case ND_GVAR:
             gen_lvar(node);
             if(node->expr_type->ty != ARRAY) {
                 load(type_sizeof(node->expr_type));
@@ -209,6 +213,7 @@ void gen(Node *node){
             return;
         }    
         case ND_FUNC_DEF:
+            printf(".text\n");
             printf(".globl %.*s\n", node->func_def_ident_len, node->func_def_ident);
             printf("%.*s:\n", node->func_def_ident_len, node->func_def_ident);
             int size = vector_size(node->func_def_arg_vec);
@@ -233,7 +238,8 @@ void gen(Node *node){
             printf("  mov rax,0\n");
             printf("  push rax\n");
             return;
-        case ND_GLOBAL_VAR:
+        case ND_GVAR_DEF:
+            printf(".data\n");
             printf(".globl %.*s\n", node->global.gvar->len, node->global.gvar->name);
             printf("%.*s:\n", node->global.gvar->len, node->global.gvar->name);
             printf("  .zero %d\n", type_sizeof(node->global.gvar->type));

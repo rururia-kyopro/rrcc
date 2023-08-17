@@ -68,6 +68,7 @@ typedef enum {
     ND_GREATER_OR_EQUAL,
     ND_NUM,
     ND_LVAR,
+    ND_GVAR,
     ND_IDENT,
     ND_RETURN,
     ND_IF,
@@ -82,7 +83,7 @@ typedef enum {
     ND_SIZEOF,
     ND_DECL_VAR,
     ND_TYPE,
-    ND_GLOBAL_VAR
+    ND_GVAR_DEF
 } NodeKind;
 
 struct NodeList {
@@ -133,6 +134,9 @@ struct Node {
         struct {
             GVar *gvar;
         } global;
+        struct {
+            GVar *gvar;
+        } gvar;
     };
 };
 
@@ -184,6 +188,7 @@ extern int global_size;
 
 GVar *find_gvar(Vector *locals, char *ident, int ident_len);
 GVar *new_gvar(Vector *locals, char *ident, int ident_len, Type *type);
+Node *find_symbol(Vector *globals, Vector *locals, char *ident, int ident_len);
 
 /// Type ///
 
