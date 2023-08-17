@@ -13,6 +13,7 @@ Vector *locals;
 int locals_stack_size;
 Vector *globals;
 int global_size;
+Vector *global_string_literals;
 
 Type int_type = { INT, NULL };
 Type char_type = { CHAR, NULL };
@@ -31,6 +32,7 @@ char *node_kind(NodeKind kind){
         case ND_GREATER: return "ND_GREATER";
         case ND_GREATER_OR_EQUAL: return "ND_GREATER_OR_EQUAL";
         case ND_NUM: return "ND_NUM";
+        case ND_STRING_LITERAL: return "ND_STRING_LITERAL";
         case ND_LVAR: return "ND_LVAR";
         case ND_GVAR: return "ND_GVAR";
         case ND_IDENT: return "ND_IDENT";
@@ -142,6 +144,7 @@ Node *new_node_lvar(LVar *lvar) {
 void translation_unit() {
     globals = new_vector();
     global_size = 0;
+    global_string_literals = new_vector();
 
     int i = 0;
     while(!at_eof()){
@@ -457,6 +460,7 @@ Node *unary() {
 //         | ident ("(" ( (expr ",")* expr )? ")")?
 //         | ident "[" expr "]"
 //         | num
+//         | string_literal
 Node *primary() {
     if(consume("(")){
         Node *node = expr();
@@ -508,6 +512,16 @@ Node *primary() {
             }
             return node;
         }
+    }else if(consume_kind(TK_STRING_LITERAL)) {
+        StringLiteral *literal = calloc(1, sizeof(StringLiteral));
+        literal->str = prev_token->str;
+        literal->len = prev_token->len;
+        literal->index = vector_size(global_string_literals);
+        vector_push(global_string_literals, literal);
+
+        Node *node = new_node(ND_STRING_LITERAL, NULL, NULL);
+        node->string_literal.literal = literal;
+        return node;
     }
     return new_node_num(expect_number());
 }

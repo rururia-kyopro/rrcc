@@ -11,6 +11,7 @@ typedef struct FuncDefArg FuncDefArg;
 typedef struct LVar LVar;
 typedef struct Type Type;
 typedef struct GVar GVar;
+typedef struct StringLiteral StringLiteral;
 
 /// Token ///
 
@@ -41,6 +42,7 @@ struct Token {
 };
 
 extern Token *token;
+extern Token *prev_token;
 
 extern char *user_input;
 
@@ -71,6 +73,7 @@ typedef enum {
     ND_GREATER,
     ND_GREATER_OR_EQUAL,
     ND_NUM,
+    ND_STRING_LITERAL,
     ND_LVAR,
     ND_GVAR,
     ND_IDENT,
@@ -141,6 +144,9 @@ struct Node {
         struct {
             GVar *gvar;
         } gvar;
+        struct {
+            StringLiteral *literal;
+        } string_literal;
     };
 };
 
@@ -193,6 +199,13 @@ extern int global_size;
 GVar *find_gvar(Vector *locals, char *ident, int ident_len);
 GVar *new_gvar(Vector *locals, char *ident, int ident_len, Type *type);
 Node *find_symbol(Vector *globals, Vector *locals, char *ident, int ident_len);
+
+/// String Literal ///
+struct StringLiteral {
+    char *str;
+    int len;
+    int index;
+};
 
 /// Type ///
 

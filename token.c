@@ -6,8 +6,14 @@
 #include "9cc.h"
 
 Token *token;
+Token *prev_token;
 
 char *user_input;
+
+void next_token() {
+    prev_token = token;
+    token = token->next;
+}
 
 static bool is_prefix(char *prefix, char *str, int len) {
     if(len < strlen(prefix)){
@@ -19,14 +25,14 @@ static bool is_prefix(char *prefix, char *str, int len) {
 bool consume(char* op){
     if(token->kind != TK_RESERVED || !is_prefix(op, token->str, token->len))
         return false;
-    token = token->next;
+    next_token();
     return true;
 }
 
 bool consume_kind(TokenKind kind) {
     if(token->kind != kind)
         return false;
-    token = token->next;
+    next_token();
     return true;
 }
 
@@ -35,20 +41,20 @@ bool consume_type_keyword(TokenKind *kind) {
         return false;
 
     *kind = token->kind;
-    token = token->next;
+    next_token();
     return true;
 }
 
 void expect(char *op){
     if(token->kind != TK_RESERVED || !is_prefix(op, token->str, token->len))
         error_at(token->str, "Not '%s'", op);
-    token = token->next;
+    next_token();
 }
 
 void expect_kind(TokenKind kind) {
     if(token->kind != kind)
         error_at(token->str, "Not token kind %d", kind);
-    token = token->next;
+    next_token();
 }
 
 TokenKind expect_type_keyword() {
@@ -64,7 +70,7 @@ bool consume_ident(char **ident, int *ident_len) {
         return false;
     *ident = token->str;
     *ident_len = token->len;
-    token = token->next;
+    next_token();
     return true;
 }
 
@@ -78,7 +84,7 @@ int expect_number() {
     if(token->kind != TK_NUM)
         error_at(token->str, "Not a number");
     int val = token->val;
-    token = token->next;
+    next_token();
     return val;
 }
 
