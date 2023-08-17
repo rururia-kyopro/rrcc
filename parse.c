@@ -388,7 +388,7 @@ Node *unary() {
     }
     if(consume("*")) {
         Node *node = new_node(ND_DEREF, unary(), NULL);
-        if(node->lhs->expr_type->ty != PTR) {
+        if(node->lhs->expr_type->ty != PTR && node->lhs->expr_type->ty != ARRAY) {
             error_at(token->str, "Dereference non pointer type");
         }
         node->expr_type = node->lhs->expr_type->ptr_to;
