@@ -28,6 +28,7 @@ typedef enum {
     TK_SIZEOF,
     TK_IDENT,
     TK_NUM,
+    TK_STRING_LITERAL,
     TK_EOF,
 } TokenKind;
 

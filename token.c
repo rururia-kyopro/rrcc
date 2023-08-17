@@ -122,6 +122,22 @@ Token *tokenize(char *p){
             continue;
         }
 
+        if(*p == '"') {
+            p++;
+            char *literal = p;
+            while(*p != '"' && *p) {
+                p++;
+            }
+            int len = p - literal;
+            if(*p == '"') {
+                p++;
+                cur = new_token(TK_STRING_LITERAL, cur, literal, len);
+                continue;
+            } else {
+                error_at(p, "expect \" (double quote)");
+            }
+        }
+
         if(strncmp(p, "==", 2) == 0 || strncmp(p, "!=", 2) == 0 || strncmp(p, "<=", 2) == 0 || strncmp(p, ">=", 2) == 0){
             cur = new_token(TK_RESERVED, cur, p, 2);
             p += 2;
