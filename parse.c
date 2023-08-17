@@ -685,6 +685,8 @@ void dumpnodes_inner(Node *node, int level) {
         }
     }else if(node->kind == ND_NUM){
         fprintf(stderr, "%*svalue: %d\n", (level+1)*2, " ", node->val);
+    }else if(node->kind == ND_STRING_LITERAL){
+        fprintf(stderr, "%*svalue: %.*s\n", (level+1)*2, " ", node->string_literal.literal->len, node->string_literal.literal->str);
     }else if(node->kind == ND_IF){
         fprintf(stderr, "%*s// if condition\n", (level+1)*2, " ");
         dumpnodes_inner(node->lhs, level + 1);

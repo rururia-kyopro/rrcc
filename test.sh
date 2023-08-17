@@ -119,5 +119,8 @@ assert_file 4 "char foo(char a){return a+1;}int main(){char a;a=2;return foo(a+1
 assert_file 1 "int main(){char a;return sizeof(a);}"
 assert_file 4 "int main(){char a;return sizeof(a+1);}"
 assert_file 7 "int main(){char a[7];return sizeof(a);}"
+assert_file 99 "int main(){char *a;a=\"abc\";a[2];}"
+assert_file 100 "int main(){char *b;char *a;a=\"abc\";b=\"def\";b[0];}"
+assert_stdout 12 "Hello world!" "printf(\"Hello world!\");"
 
 echo OK

@@ -207,6 +207,8 @@ struct StringLiteral {
     int index;
 };
 
+extern Vector *global_string_literals;
+
 /// Type ///
 
 struct Type {
@@ -224,6 +226,7 @@ bool type_implicit_ptr(Type *type);
 bool type_is_int(Type *type);
 
 Token *tokenize(char *);
+void gen_string_literals();
 void gen(Node *);
 
 void dumpnodes(Node *node);

@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
 
   printf(".intel_syntax noprefix\n");
 
+  gen_string_literals();
   for(int i = 0; code[i]; i++){
       gen(code[i]);
   }

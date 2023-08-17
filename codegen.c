@@ -85,10 +85,22 @@ void gen_return() {
     printf("  ret\n");
 }
 
+void gen_string_literals() {
+    for(int i = 0; i < vector_size(global_string_literals); i++) {
+        StringLiteral *literal = vector_get(global_string_literals, i);
+        printf(".L_S_%d:\n", literal->index);
+        printf("  .string \"%.*s\"\n", literal->len, literal->str);
+    }
+}
+
 void gen(Node *node){
     switch(node->kind){
         case ND_NUM:
             printf("  push %d\n", node->val);
+            return;
+        case ND_STRING_LITERAL:
+            printf("  lea rax, .L_S_%d[rip]\n", node->string_literal.literal->index);
+            printf("  push rax\n");
             return;
         case ND_LVAR: // fall through
         case ND_GVAR:
