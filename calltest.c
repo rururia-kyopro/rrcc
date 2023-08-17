@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 
 int testfunc1() {
     printf("testfunc1 called!\n");
@@ -11,4 +12,7 @@ int testfunc2(int a, int b) {
 int testfunc3(int *a) {
     printf("testfunc3,%d,%d called!\n", a[0], a[1]);
     return a[0]+a[1];
+}
+int natural_sub(intptr_t a, intptr_t b) {
+    return a-b;
 }

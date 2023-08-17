@@ -238,14 +238,10 @@ void gen(Node *node){
     printf("  pop rax\n");
     switch(node->kind){
         case ND_ADD:
-            printf("  // add has_type:%d has_type:%d\n", node->lhs->expr_type != NULL, node->rhs->expr_type != NULL);
-            if (node->lhs->expr_type && node->lhs->expr_type->ty == PTR) {
-                int size;
-                if(node->lhs->expr_type->ptr_to->ty == INT) {
-                    size = 4;
-                }else{
-                    size = 8;
-                }
+            printf("  // add\n");
+            if (node->lhs->expr_type->ty == PTR) {
+                // ptr + int
+                int size = type_sizeof(node->lhs->expr_type->ptr_to);
                 printf("  mov rcx,rax\n");
                 printf("  mov rax,%d\n", size);
                 printf("  mul rsi\n");
@@ -255,7 +251,28 @@ void gen(Node *node){
             }
             break;
         case ND_SUB:
-            printf("  sub rax,rsi\n");
+            printf("  // sub\n");
+            if (node->lhs->expr_type->ty == PTR) {
+                if(node->rhs->expr_type->ty == PTR) {
+                    // ptr - ptr
+                    int size = type_sizeof(node->lhs->expr_type->ptr_to);
+                    printf("  sub rax,rsi\n");
+                    printf("  cqto\n");
+                    printf("  mov rcx,%d\n", size);
+                    printf("  div rcx\n");
+                } else {
+                    // ptr - int
+                    int size = type_sizeof(node->lhs->expr_type->ptr_to);
+                    printf("  mov rcx,rax\n");
+                    printf("  mov rax,%d\n", size);
+                    printf("  mul rsi\n");
+                    printf("  sub rcx,rax\n");
+                    printf("  mov rax,rcx\n");
+                }
+            } else {
+                // int - int
+                printf("  sub rax,rsi\n");
+            }
             break;
         case ND_MUL:
             printf("  cqto\n");
