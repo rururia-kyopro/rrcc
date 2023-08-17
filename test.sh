@@ -118,5 +118,6 @@ assert_file 2 "char a;char b;int main(){a=2;b=3;a;}"
 assert_file 4 "char foo(char a){return a+1;}int main(){char a;a=2;return foo(a+1);}"
 assert_file 1 "int main(){char a;return sizeof(a);}"
 assert_file 4 "int main(){char a;return sizeof(a+1);}"
+assert_file 7 "int main(){char a[7];return sizeof(a);}"
 
 echo OK
