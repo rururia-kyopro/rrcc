@@ -89,7 +89,9 @@ void gen(Node *node){
             return;
         case ND_LVAR:
             gen_lvar(node);
-            load(type_sizeof(node->expr_type));
+            if(node->expr_type->ty != ARRAY) {
+                load(type_sizeof(node->expr_type));
+            }
             return;
         case ND_ADDRESS_OF:
             gen_lvar(node->lhs);
