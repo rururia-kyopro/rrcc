@@ -2,19 +2,19 @@ CFLAGS=-std=c11 -g -static
 SRCS=main.c parse.c codegen.c token.c vector.c
 OBJS=$(SRCS:.c=.o)
 
-9cc: $(OBJS)
-	$(CC) -o 9cc $(OBJS) $(LDFLAGS)
+rrcc: $(OBJS)
+	$(CC) -o rrcc $(OBJS) $(LDFLAGS)
 
-$(OBJS): 9cc.h
+$(OBJS): rrcc.h
 
-tester: 9cc tester.c
-	./9cc tester.c > tester.s
+tester: rrcc tester.c
+	./rrcc tester.c > tester.s
 	cc tester.s -o tester
 
-test: 9cc tester
+test: rrcc tester
 	./tester
 
 clean:
-	rm -f 9cc *.o *~ tmp*
+	rm -f rrcc *.o *~ tmp*
 
 .PHONY: test clean

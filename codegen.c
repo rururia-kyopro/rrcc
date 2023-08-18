@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include "9cc.h"
+#include "rrcc.h"
 
 int cur_label = 0;
 static const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};

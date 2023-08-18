@@ -5,7 +5,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <assert.h>
-#include "9cc.h"
+#include "rrcc.h"
 
 Vector *locals;
 int locals_stack_size;

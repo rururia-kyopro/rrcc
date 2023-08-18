@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include "9cc.h"
+#include "rrcc.h"
 
 Token *token;
 Token *prev_token;
