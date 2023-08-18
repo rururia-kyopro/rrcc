@@ -439,7 +439,7 @@ Node *stmt() {
             if(node->decl_var.init_expr->kind == ND_INIT) {
                 Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
                 int n = vector_size(node->decl_var.init_expr->init.init_expr);
-                init_code_node->compound_stmt_list = calloc(n+1, sizeof(Node*));
+                init_code_node->compound_stmt_list = new_vector();
                 for(int i = 0; i < n; i++){
                     Node *expr = vector_get(node->decl_var.init_expr->init.init_expr, i);
                     Node *lvar_node = new_node_lvar(node->decl_var.lvar);
@@ -448,7 +448,7 @@ Node *stmt() {
                     deref_node->expr_type = deref_node->lhs->expr_type->ptr_to;
                     Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
 
-                    init_code_node->compound_stmt_list[i] = assign_node;
+                    vector_push(init_code_node->compound_stmt_list, assign_node);
                 }
                 node->lhs = init_code_node;
             }else {
@@ -463,16 +463,11 @@ Node *stmt() {
         return node;
     }else if(consume("{")) {
         Node *node = new_node(ND_COMPOUND, NULL, NULL);
-        int max_compound_stmt = 100;
-        node->compound_stmt_list = calloc(max_compound_stmt, sizeof(Node*));
+        node->compound_stmt_list = new_vector();
 
         int i = 0;
         while(!consume("}")){
-            node->compound_stmt_list[i] = stmt();
-            i++;
-            if(i >= max_compound_stmt){
-                error("Too large compound statement. max=%d", max_compound_stmt);
-            }
+            vector_push(node->compound_stmt_list, stmt());
         }
         return node;
     }
@@ -870,8 +865,8 @@ void dumpnodes_inner(Node *node, int level) {
         fprintf(stderr, "%*s// for body\n", (level+1)*2, " ");
         dumpnodes_inner(node->for_stmt, level + 1);
     }else if(node->kind == ND_COMPOUND){
-        for(int i = 0; node->compound_stmt_list[i]; i++){
-            dumpnodes_inner(node->compound_stmt_list[i], level + 1);
+        for(int i = 0; i < vector_size(node->compound_stmt_list); i++){
+            dumpnodes_inner(vector_get(node->compound_stmt_list, i), level + 1);
         }
     }else if(node->kind == ND_CALL){
         NodeList *cur = node->call_arg_list.next;

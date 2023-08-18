@@ -209,8 +209,8 @@ void gen(Node *node){
             return;
         }
         case ND_COMPOUND:
-            for(int i = 0; node->compound_stmt_list[i]; i++){
-                gen(node->compound_stmt_list[i]);
+            for(int i = 0; i < vector_size(node->compound_stmt_list); i++){
+                gen(vector_get(node->compound_stmt_list, i));
                 printf("  pop rax\n");
             }
             printf("  push rax\n");

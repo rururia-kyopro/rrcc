@@ -126,7 +126,7 @@ struct Node {
             Node *for_update_expr;
             Node *for_stmt;
         };
-        Node **compound_stmt_list;
+        Vector *compound_stmt_list;
         struct {
             char *call_ident;
             int call_ident_len;
