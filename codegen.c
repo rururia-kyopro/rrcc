@@ -254,9 +254,9 @@ void gen(Node *node){
             return;
         case ND_GVAR_DEF:
             printf(".data\n");
-            printf(".globl %.*s\n", node->global.gvar->len, node->global.gvar->name);
-            printf("%.*s:\n", node->global.gvar->len, node->global.gvar->name);
-            printf("  .zero %d\n", type_sizeof(node->global.gvar->type));
+            printf(".globl %.*s\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
+            printf("%.*s:\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
+            printf("  .zero %d\n", type_sizeof(node->gvar_def.gvar->type));
             return;
     }
     gen(node->lhs);

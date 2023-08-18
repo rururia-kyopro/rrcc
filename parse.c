@@ -49,6 +49,7 @@ char *node_kind(NodeKind kind){
         case ND_SIZEOF: return "ND_SIZEOF";
         case ND_DECL_VAR: return "ND_DECL_VAR";
         case ND_TYPE: return "ND_TYPE";
+        case ND_INIT: return "ND_INIT";
         case ND_GVAR_DEF: return "ND_GLOBAL_VAR";
         default: assert(false);
     }
@@ -157,6 +158,14 @@ Node *new_node_num(int val) {
     return node;
 }
 
+Node *new_node_char(int val) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_NUM;
+    node->val = val;
+    node->expr_type = &char_type;
+    return node;
+}
+
 Node *new_node_lvar(LVar *lvar) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
@@ -193,7 +202,7 @@ Node *declarator() {
     }
 }
 
-// function_definition = "int" ident "(" ("int" ident ",")* ("int" ident)? ")" stmt
+// function_definition = type ident "(" ( type ident "," )* ( type ident )? ")" stmt
 Node *function_definition(Node *type_prefix, char *ident, int ident_len) {
     Node *node = new_node(ND_FUNC_DEF, NULL, NULL);
     node->func_def_arg_vec = new_vector();
@@ -234,30 +243,106 @@ Node *function_definition(Node *type_prefix, char *ident, int ident_len) {
     return node;
 }
 
-Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len) {
-    Node *node = new_node(ND_GVAR_DEF, NULL, NULL);
+Node *variable_definition(bool is_global, Node *type_prefix) {
+    Node *node = new_node(is_global ? ND_GVAR_DEF : ND_DECL_VAR, NULL, NULL);
     Type *type = type_prefix->type;
+
+    bool empty_num = false;
     if(consume("[")) {
         Type *array_type = calloc(1, sizeof(Type));
-        int array_size = expect_number();
         array_type->ty = ARRAY;
-        array_type->array_size = array_size;
         array_type->ptr_to = type;
-
-        type = array_type;
-
-        expect("]");
+        array_type->array_size = 0;
+        if(!consume("]")){
+            int array_size = expect_number();
+            array_type->array_size = array_size;
+            if(array_size < 0) {
+                error_at(token->str, "Negative size array");
+            }
+            expect("]");
+        } else {
+            empty_num = true;
+        }
+        type_prefix->type = type = array_type;
+    }
+    Node *init_expr = NULL;
+    if(consume("=")) {
+        init_expr = initializer();
+        if((init_expr->kind == ND_INIT) != (type->ty == ARRAY)) {
+            error_at(token->str, "Initializer type does not match");
+        }
     }
     expect(";");
+
+    if(is_global) {
+        node->gvar_def.init_expr = init_expr;
+    }else {
+        node->decl_var.init_expr = init_expr;
+    }
+
+    if(empty_num && init_expr == NULL) {
+        error_at(token->str, "Variable with empty array size must has initializer");
+    }
+    if(init_expr->kind == ND_INIT) {
+        Vector *vec = init_expr->init.init_expr;
+        if(empty_num) {
+            type->array_size = vector_size(vec);
+        }
+        if(vector_size(vec) > type->array_size) {
+            error_at(token->str, "Too many initializer for array size %d", type->array_size);
+        }
+        for(int i = 0; i < vector_size(vec); i++) {
+            Node *elem_node = vector_get(vec, i);
+            if(!type_is_same(elem_node->expr_type, type->ptr_to)) {
+                error_at(token->str, "Not compatible type");
+            }
+        }
+    }
+
+    return node;
+}
+
+// global_variable_definition = type ident ("[" num "]")? ("=" initializer)? ";"
+Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len) {
+    Node *node = variable_definition(true, type_prefix);
 
     GVar *gvar = find_gvar(globals, ident, ident_len);
     if(gvar != NULL) {
         error_at(ident, "A global variable with same name is already defined");
     }
 
-    gvar = new_gvar(globals, ident, ident_len, type);
-    node->global.gvar = gvar;
+    gvar = new_gvar(globals, ident, ident_len, type_prefix->type);
+    node->gvar_def.gvar = gvar;
     return node;
+}
+
+// initializer = expr
+//             | "{" (( expr "," )* expr )? "}"
+Node *initializer() {
+    if(consume("{")) {
+        Node *node = new_node(ND_INIT, NULL, NULL);
+        node->init.init_expr = new_vector();
+        if(!consume("}")) {
+            while(1) {
+                vector_push(node->init.init_expr, expr());
+
+                if(consume("}")) {
+                    break;
+                }
+                expect(",");
+            }
+        }
+        return node;
+    } else if(consume_kind(TK_STRING_LITERAL)) {
+        Node *node = new_node(ND_INIT, NULL, NULL);
+        node->init.init_expr = new_vector();
+        for(int i = 0; i < prev_token->len; i++) {
+            vector_push(node->init.init_expr, new_node_char(prev_token->str[i]));
+        }
+        vector_push(node->init.init_expr, new_node_char(0));
+        return node;
+    }
+    return expr();
 }
 
 // stmt    = expr ";"
@@ -267,7 +352,7 @@ Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len) 
 //         | "do" stmt "while" "(" expr ")" ";"
 //         | "return" expr ";"
 //         | "{" stmt* "}"
-//         | type ident ("[" num "]")? ";"
+//         | type ident ( "[" num "]" )? ( "=" initializer )? ";"
 Node *stmt() {
     TokenKind kind;
     if(consume_kind(TK_IF)) {
@@ -323,25 +408,16 @@ Node *stmt() {
         expect(";");
         return node;
     }else if(consume_type_keyword(&kind)) {
-        Node *type_node = type_(kind);
+        Node *type_prefix = type_(kind);
         Node *ident_node = ident_();
-        Node *node = new_node(ND_DECL_VAR, type_node, ident_node);
+        Node *node = variable_definition(false, type_prefix);
+
         if(find_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len) != NULL){
             error("variable with same name is already defined.");
         }
-        node->decl_var_lvar = new_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len);
-        node->decl_var_lvar->type = type_node->type;
-        if(consume("[")){
-            int array_size = expect_number();
-            expect("]");
-            Type *array_type = calloc(1, sizeof(Type));
-            array_type->ptr_to = node->decl_var_lvar->type;
-            array_type->array_size = array_size;
-            array_type->ty = ARRAY;
-            node->decl_var_lvar->type = array_type;
-        }
-        locals_stack_size += type_sizeof(node->decl_var_lvar->type);
-        expect(";");
+        node->decl_var.lvar = new_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len);
+        node->decl_var.lvar->type = type_prefix->type;
+        locals_stack_size += type_sizeof(node->decl_var.lvar->type);
         return node;
     }else if(consume("{")) {
         Node *node = new_node(ND_COMPOUND, NULL, NULL);
@@ -545,6 +621,9 @@ Node *primary() {
         vector_push(global_string_literals, literal);
 
         Node *node = new_node(ND_STRING_LITERAL, NULL, NULL);
+        node->expr_type = calloc(1, sizeof(Type));
+        node->expr_type->ptr_to = &char_type;
+        node->expr_type->ty = PTR;
         node->string_literal.literal = literal;
         return node;
     }
@@ -685,6 +764,26 @@ bool type_implicit_ptr(Type *type) {
 
 bool type_is_int(Type *type) {
     return type->ty == INT || type->ty == CHAR;
+}
+
+bool type_is_basic(Type *type) {
+    return type->ty == INT || type->ty == CHAR;
+}
+
+bool type_is_same(Type *type_a, Type *type_b) {
+    while(1) {
+        if(type_is_int(type_a) && type_is_int(type_b)) {
+            return true;
+        }
+        if(type_a->ty != type_b->ty) {
+            return false;
+        }
+        if(type_is_basic(type_a) || type_is_basic(type_b)) {
+            return false;
+        }
+        type_a = type_a->ptr_to;
+        type_b = type_b->ptr_to;
+    }
 }
 
 void dumpnodes_inner(Node *node, int level) {

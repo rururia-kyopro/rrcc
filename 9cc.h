@@ -91,6 +91,7 @@ typedef enum {
     ND_SIZEOF,
     ND_DECL_VAR,
     ND_TYPE,
+    ND_INIT,
     ND_GVAR_DEF
 } NodeKind;
 
@@ -114,7 +115,10 @@ struct Node {
     union {
         int val;
         LVar *lvar;
-        LVar *decl_var_lvar;
+        struct {
+            LVar *lvar;
+            Node *init_expr;
+        } decl_var;
         Type *type;
         Node *else_stmt;
         struct {
@@ -141,13 +145,17 @@ struct Node {
         } ident;
         struct {
             GVar *gvar;
-        } global;
+            Node *init_expr;
+        } gvar_def;
         struct {
             GVar *gvar;
         } gvar;
         struct {
             StringLiteral *literal;
         } string_literal;
+        struct {
+            Vector *init_expr;
+        } init;
     };
 };
 
@@ -157,6 +165,7 @@ void translation_unit();
 Node *declarator();
 Node *function_definition(Node *type_prefix, char *ident, int ident_len);
 Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len);
+Node *initializer();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -225,6 +234,7 @@ Type *type_arithmetic(Type *type_r, Type *type_l);
 Type *type_comparator(Type *type_r, Type *type_l);
 bool type_implicit_ptr(Type *type);
 bool type_is_int(Type *type);
+bool type_is_same(Type *type_a, Type *type_b);
 
 Token *tokenize(char *);
 void gen_string_literals();
