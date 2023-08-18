@@ -436,20 +436,28 @@ Node *stmt() {
         locals_stack_size += type_sizeof(node->decl_var.lvar->type);
 
         if(node->decl_var.init_expr) {
-            Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
-            int n = vector_size(node->decl_var.init_expr->init.init_expr);
-            init_code_node->compound_stmt_list = calloc(n, sizeof(Node*));
-            for(int i = 0; i < n; i++){
-                Node *expr = vector_get(node->decl_var.init_expr->init.init_expr, i);
+            if(node->decl_var.init_expr->kind == ND_INIT) {
+                Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
+                int n = vector_size(node->decl_var.init_expr->init.init_expr);
+                init_code_node->compound_stmt_list = calloc(n+1, sizeof(Node*));
+                for(int i = 0; i < n; i++){
+                    Node *expr = vector_get(node->decl_var.init_expr->init.init_expr, i);
+                    Node *lvar_node = new_node_lvar(node->decl_var.lvar);
+
+                    Node *deref_node = new_node(ND_DEREF, new_node_add(lvar_node, new_node_num(i)), NULL);
+                    deref_node->expr_type = deref_node->lhs->expr_type->ptr_to;
+                    Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
+
+                    init_code_node->compound_stmt_list[i] = assign_node;
+                }
+                node->lhs = init_code_node;
+            }else {
+                Node *expr = node->decl_var.init_expr;
                 Node *lvar_node = new_node_lvar(node->decl_var.lvar);
 
-                Node *deref_node = new_node(ND_DEREF, new_node_add(lvar_node, new_node_num(i)), NULL);
-                deref_node->expr_type = deref_node->lhs->expr_type->ptr_to;
-                Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
-
-                init_code_node->compound_stmt_list[i] = assign_node;
+                Node *assign_node = new_node(ND_ASSIGN, lvar_node, expr);
+                node->lhs = assign_node;
             }
-            node->lhs = init_code_node;
         }
 
         return node;
