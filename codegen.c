@@ -263,15 +263,11 @@ void gen(Node *node){
             return;
         case ND_DECL_VAR: {
             // Dummy element
-            printf("  mov rax,0\n");
-            printf("  push rax\n");
-            if(node->decl_var.init_expr) {
-                int size = type_sizeof(node->decl_var.lvar->type->ptr_to);
-                int len = vector_size(node->decl_var.init_expr->init.init_expr);
-                char *buf = dump_initializer(size, node->decl_var.init_expr->init.init_expr);
-                for(int i = 0; i < size*len; i++){
-                    printf("  mov byte ptr[rbp-%d], %d\n", get_stack_sub_offset(node->decl_var.lvar) - i, (unsigned char)buf[i]);
-                }
+            if(node->lhs) {
+                gen(node->lhs);
+            } else {
+                printf("  mov rax,0\n");
+                printf("  push rax\n");
             }
 
             return;

@@ -162,6 +162,7 @@ int main() {
     assert_file(2, "int main(){// test comment\nint a;a=1\n///*bb b */\n+1;return a;}");
     assert_file(97, "char a[2]=\x22/\x22;int main(){char b[4]=\x22g23\x22;a[0]+b[1];}");
     assert_file(20, "int a[2]={10,20};int main(){return a[1];}");
+    assert_file(8, "int fun(){return 4;}int main(){int a[2]={fun(),fun()};return a[0]+a[1];}");
     printf("OK\n");
     return 0;
 }
