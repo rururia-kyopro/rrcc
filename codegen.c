@@ -280,6 +280,7 @@ void gen(Node *node){
             printf(".data\n");
             printf(".globl %.*s\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
             printf("%.*s:\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
+            int zero_size = type_sizeof(node->gvar_def.gvar->type);
             if(node->gvar_def.init_expr) {
                 int size = type_sizeof(node->gvar_def.gvar->type->ptr_to);
                 int len = vector_size(node->gvar_def.init_expr->init.init_expr);
@@ -287,8 +288,10 @@ void gen(Node *node){
                 for(int i = 0; i < size*len; i++){
                     printf("  .byte %d\n", (unsigned char)buf[i]);
                 }
-            } else {
-                printf("  .zero %d\n", type_sizeof(node->gvar_def.gvar->type));
+                zero_size -= size * len;
+            }
+            if(zero_size) {
+                printf("  .zero %d\n", zero_size);
             }
             return;
         case ND_CONVERT:
