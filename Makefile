@@ -15,6 +15,6 @@ test: rrcc tester
 	./tester
 
 clean:
-	rm -f rrcc *.o *~ tmp*
+	rm -f rrcc *.o *~ tmp.c tmp.s tmp.o tmp tester
 
 .PHONY: test clean
