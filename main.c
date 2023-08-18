@@ -47,17 +47,17 @@ int main(int argc, char **argv) {
   filename = argv[1];
   user_input = read_file(argv[1]);
   token = tokenize(user_input);
-  translation_unit();
+  Node *node_trans_unit = translation_unit();
 
-  for(int i = 0; code[i]; i++){
-      dumpnodes(code[i]);
+  for(int i = 0; i < vector_size(node_trans_unit->trans_unit.decl); i++){
+      dumpnodes(vector_get(node_trans_unit->trans_unit.decl, i));
   }
 
   printf(".intel_syntax noprefix\n");
 
   gen_string_literals();
-  for(int i = 0; code[i]; i++){
-      gen(code[i]);
+  for(int i = 0; i < vector_size(node_trans_unit->trans_unit.decl); i++){
+      gen(vector_get(node_trans_unit->trans_unit.decl, i));
   }
 
   return 0;

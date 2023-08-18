@@ -62,6 +62,7 @@ Token *tokenize(char *p);
 /// Parse ///
 
 typedef enum {
+    ND_TRANS_UNIT,
     ND_ADD,
     ND_SUB,
     ND_MUL,
@@ -117,6 +118,9 @@ struct Node {
         int val;
         LVar *lvar;
         struct {
+            Vector *decl;
+        } trans_unit;
+        struct {
             LVar *lvar;
             Node *init_expr;
         } decl_var;
@@ -162,7 +166,7 @@ struct Node {
 
 extern Node *code[100];
 
-void translation_unit();
+Node *translation_unit();
 Node *declarator();
 Node *function_definition(Node *type_prefix, char *ident, int ident_len);
 Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len);

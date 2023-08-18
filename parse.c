@@ -7,8 +7,6 @@
 #include <assert.h>
 #include "9cc.h"
 
-Node *code[100];
-
 Vector *locals;
 int locals_stack_size;
 Vector *globals;
@@ -20,6 +18,7 @@ Type char_type = { CHAR, NULL };
 
 char *node_kind(NodeKind kind){
     switch(kind){
+        case ND_TRANS_UNIT: return "ND_TRANS_UNIT";
         case ND_ADD: return "ND_ADD";
         case ND_SUB: return "ND_SUB";
         case ND_MUL: return "ND_MUL";
@@ -191,16 +190,18 @@ Node *new_node_lvar(LVar *lvar) {
 }
 
 // translation_unit = function_definition*
-void translation_unit() {
+Node *translation_unit() {
     globals = new_vector();
     global_size = 0;
     global_string_literals = new_vector();
 
-    int i = 0;
+    Node *node = new_node(ND_TRANS_UNIT, NULL, NULL);
+    node->trans_unit.decl = new_vector();
+
     while(!at_eof()){
-        code[i++] = declarator();
+        vector_push(node->trans_unit.decl, declarator());
     }
-    code[i] = NULL;
+    return node;
 }
 
 // declarator = function_definition
