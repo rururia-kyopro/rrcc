@@ -15,6 +15,20 @@ char *access_size(int size) {
     return "unknown";
 }
 
+char *dump_initializer(int size, Vector *init_expr) {
+    char *buf = calloc(1, size * vector_size(init_expr));
+    char *p = buf;
+    for(int i = 0; i < vector_size(init_expr); i++){
+        Node *expr = vector_get(init_expr, i);
+        if(type_is_int(expr->expr_type)) {
+            long long val = expr->val;
+            memcpy(p, &val, size);
+            p += size;
+        }
+    }
+    return buf;
+}
+
 // lvar->offset indicates storage size in byte which the variables above this variable occupy.
 // When we use rbp - (sub offset) to access this variable, we must add the size of this variable.
 int get_stack_sub_offset(LVar *lvar) {
@@ -247,16 +261,42 @@ void gen(Node *node){
             gen(node->lhs);
             gen_return();
             return;
-        case ND_DECL_VAR:
+        case ND_DECL_VAR: {
             // Dummy element
             printf("  mov rax,0\n");
             printf("  push rax\n");
+            if(node->decl_var.init_expr) {
+                int size = type_sizeof(node->decl_var.lvar->type->ptr_to);
+                int len = vector_size(node->decl_var.init_expr->init.init_expr);
+                char *buf = dump_initializer(size, node->decl_var.init_expr->init.init_expr);
+                for(int i = 0; i < size*len; i++){
+                    printf("  mov byte ptr[rbp-%d], %d\n", get_stack_sub_offset(node->decl_var.lvar) - i, (unsigned char)buf[i]);
+                }
+            }
+
             return;
+        }
         case ND_GVAR_DEF:
             printf(".data\n");
             printf(".globl %.*s\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
             printf("%.*s:\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
-            printf("  .zero %d\n", type_sizeof(node->gvar_def.gvar->type));
+            if(node->gvar_def.init_expr) {
+                int size = type_sizeof(node->gvar_def.gvar->type->ptr_to);
+                int len = vector_size(node->gvar_def.init_expr->init.init_expr);
+                char *buf = dump_initializer(size, node->gvar_def.init_expr->init.init_expr);
+                for(int i = 0; i < size*len; i++){
+                    printf("  .byte %d\n", (unsigned char)buf[i]);
+                }
+            } else {
+                printf("  .zero %d\n", type_sizeof(node->gvar_def.gvar->type));
+            }
+            return;
+        case ND_CONVERT:
+            if(node->lhs->expr_type->ty == ARRAY && node->expr_type->ty == PTR) {
+                gen(node->lhs);
+            } else {
+                error("Conversion unsupported for type %d and %d", node->lhs->expr_type->ty, node->expr_type->ty);
+            }
             return;
     }
     gen(node->lhs);
@@ -265,7 +305,7 @@ void gen(Node *node){
     printf("  pop rax\n");
     switch(node->kind){
         case ND_ADD:
-            printf("  // add\n");
+            printf("  // add type:%d\n", node->lhs->expr_type->ty);
             if (node->lhs->expr_type->ty == PTR) {
                 // ptr + int
                 int size = type_sizeof(node->lhs->expr_type->ptr_to);

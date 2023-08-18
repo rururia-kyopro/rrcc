@@ -92,6 +92,7 @@ typedef enum {
     ND_DECL_VAR,
     ND_TYPE,
     ND_INIT,
+    ND_CONVERT,
     ND_GVAR_DEF
 } NodeKind;
 

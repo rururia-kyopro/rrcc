@@ -50,6 +50,7 @@ char *node_kind(NodeKind kind){
         case ND_DECL_VAR: return "ND_DECL_VAR";
         case ND_TYPE: return "ND_TYPE";
         case ND_INIT: return "ND_INIT";
+        case ND_CONVERT: return "ND_CONVERT";
         case ND_GVAR_DEF: return "ND_GLOBAL_VAR";
         default: assert(false);
     }
@@ -116,14 +117,29 @@ Node *new_node_add(Node *lhs, Node *rhs) {
         if(type_is_int(node->rhs->expr_type)) {
             // int + int
             node->expr_type = type_arithmetic(node->rhs->expr_type, node->lhs->expr_type);
-        }else {
+        }else if(node->rhs->expr_type->ty == ARRAY) {
+            // int + array -> ptr. array will be implicitly converted to ptr.
+            node->expr_type = calloc(1, sizeof(Type));
+            node->expr_type->ty = PTR;
+            node->expr_type->ptr_to = node->rhs->expr_type->ptr_to;
+            node->rhs = new_node(ND_CONVERT, node->rhs, NULL);
+            node->rhs->expr_type = node->expr_type;
+        }else{
             // int + ptr -> ptr
             node->expr_type = node->rhs->expr_type;
         }
     }else{
         if(type_is_int(node->rhs->expr_type)) {
             // ptr + int -> ptr
-            node->expr_type = node->lhs->expr_type;
+            if(node->lhs->expr_type->ty == ARRAY) {
+                node->expr_type = calloc(1, sizeof(Type));
+                node->expr_type->ty = PTR;
+                node->expr_type->ptr_to = node->lhs->expr_type->ptr_to;
+                node->lhs = new_node(ND_CONVERT, node->lhs, NULL);
+                node->lhs->expr_type = node->expr_type;
+            }else{
+                node->expr_type = node->lhs->expr_type;
+            }
         }else {
             // ptr + ptr -> error
             error_at(token->str, "Add pointer to pointer");
@@ -283,7 +299,7 @@ Node *variable_definition(bool is_global, Node *type_prefix) {
     if(empty_num && init_expr == NULL) {
         error_at(token->str, "Variable with empty array size must has initializer");
     }
-    if(init_expr->kind == ND_INIT) {
+    if(init_expr && init_expr->kind == ND_INIT) {
         Vector *vec = init_expr->init.init_expr;
         if(empty_num) {
             type->array_size = vector_size(vec);
