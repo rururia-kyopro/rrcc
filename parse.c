@@ -51,6 +51,9 @@ char *node_kind(NodeKind kind){
         case ND_INIT: return "ND_INIT";
         case ND_CONVERT: return "ND_CONVERT";
         case ND_GVAR_DEF: return "ND_GLOBAL_VAR";
+        case ND_TYPE_FUNC: return "ND_TYPE_FUNC";
+        case ND_TYPE_POINTER: return "ND_TYPE_POINTER";
+        case ND_TYPE_ARRAY: return "ND_TYPE_ARRAY";
         default: assert(false);
     }
 }
@@ -62,6 +65,14 @@ void error(char *fmt, ...) {
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
     exit(1);
+}
+
+void debug_log(char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
 }
 
 // エラーの起きた場所を報告するための関数
@@ -204,19 +215,20 @@ Node *translation_unit() {
     return node;
 }
 
+// TODO: function prototype?
+// TODO: extern variable?
 // declarator = function_definition
 //            | global_variable_definition
+//
 Node *declarator() {
-    Node *type_prefix = type_(expect_type_keyword());
-    char *ident;
-    int ident_len;
-    expect_ident(&ident, &ident_len);
+    expect_type_keyword();
+    unget_token();
+    Node *type_node = type_(true);
+    // fprintf(stderr, "// type call end\n");
+    // dumpnodes(type_node);
+    // fprintf(stderr, "// type node end\n");
 
-    if(consume("(")) {
-        return function_definition(type_prefix, ident, ident_len);
-    } else {
-        return global_variable_definition(type_prefix, ident, ident_len);
-    }
+    return variable_definition(true, type_node);
 }
 
 // function_definition = type ident "(" ( type ident "," )* ( type ident )? ")" stmt
@@ -234,7 +246,9 @@ Node *function_definition(Node *type_prefix, char *ident, int ident_len) {
     if(!consume(")")){
         while(1){
             FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
-            arg->type = type_(expect_type_keyword());
+            expect_type_keyword();
+            unget_token();
+            arg->type = type_(false);
             expect_ident(&arg->ident, &arg->ident_len);
             
             vector_push(node->func_def_arg_vec, arg);
@@ -242,7 +256,7 @@ Node *function_definition(Node *type_prefix, char *ident, int ident_len) {
                 error_at(token->str, "Arguments with same name are defined");
             }
             arg->lvar = new_lvar(node->func_def_lvar, arg->ident, arg->ident_len);
-            arg->lvar->type = arg->type->type;
+            arg->lvar->type = arg->type->type.type;
             locals_stack_size += type_sizeof(arg->lvar->type);
             if(!consume(",")){
                 expect(")");
@@ -260,28 +274,15 @@ Node *function_definition(Node *type_prefix, char *ident, int ident_len) {
     return node;
 }
 
-Node *variable_definition(bool is_global, Node *type_prefix) {
-    Node *node = new_node(is_global ? ND_GVAR_DEF : ND_DECL_VAR, NULL, NULL);
-    Type *type = type_prefix->type;
+Node *variable_definition(bool is_global, Node *type_node) {
+    Type *type = type_node->type.type;
+    NodeKind kind = is_global ? ND_GVAR_DEF : ND_DECL_VAR;
+    if(type->ty == FUNC) {
+        kind = ND_FUNC_DEF;
+    }
+    Node *node = new_node(is_global ? ND_GVAR_DEF : ND_DECL_VAR, type_node, NULL);
 
     bool empty_num = false;
-    if(consume("[")) {
-        Type *array_type = calloc(1, sizeof(Type));
-        array_type->ty = ARRAY;
-        array_type->ptr_to = type;
-        array_type->array_size = 0;
-        if(!consume("]")){
-            int array_size = expect_number();
-            array_type->array_size = array_size;
-            if(array_size < 0) {
-                error_at(token->str, "Negative size array");
-            }
-            expect("]");
-        } else {
-            empty_num = true;
-        }
-        type_prefix->type = type = array_type;
-    }
     Node *init_expr = NULL;
     if(consume("=")) {
         init_expr = initializer();
@@ -293,6 +294,19 @@ Node *variable_definition(bool is_global, Node *type_prefix) {
 
     if(is_global) {
         node->gvar_def.init_expr = init_expr;
+        Node *cur = node;
+        // debug_log("global node.");
+        bool found = false;
+        for(; cur != NULL; cur = cur->lhs) {
+            if(cur->kind == ND_IDENT) {
+                found = true;
+                global_variable_definition(node, cur->ident.ident, cur->ident.ident_len);
+                break;
+            }
+        }
+        if (!found) {
+            error_at(token->str, "No identifier found for global variable definition");
+        }
     }else {
         node->decl_var.init_expr = init_expr;
     }
@@ -319,16 +333,15 @@ Node *variable_definition(bool is_global, Node *type_prefix) {
     return node;
 }
 
-// global_variable_definition = type ident ("[" num "]")? ("=" initializer)? ";"
-Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len) {
-    Node *node = variable_definition(true, type_prefix);
-
+// global_variable_definition = type ("=" initializer)? ";"
+Node *global_variable_definition(Node *node, char *ident, int ident_len) {
     GVar *gvar = find_gvar(globals, ident, ident_len);
     if(gvar != NULL) {
         error_at(ident, "A global variable with same name is already defined");
     }
+    // debug_log("global def: %p", node->lhs->type.type);
 
-    gvar = new_gvar(globals, ident, ident_len, type_prefix->type);
+    gvar = new_gvar(globals, ident, ident_len, node->lhs->type.type);
     node->gvar_def.gvar = gvar;
     return node;
 }
@@ -351,11 +364,13 @@ Node *initializer() {
         }
         return node;
     } else if(consume_kind(TK_STRING_LITERAL)) {
+        unget_token();
         Node *node = new_node(ND_INIT, NULL, NULL);
         node->init.init_expr = new_vector();
-        for(int i = 0; i < prev_token->len; i++) {
-            vector_push(node->init.init_expr, new_node_char(prev_token->str[i]));
+        for(int i = 0; i < token->len; i++) {
+            vector_push(node->init.init_expr, new_node_char(token->str[i]));
         }
+        next_token();
         vector_push(node->init.init_expr, new_node_char(0));
         return node;
     }
@@ -425,43 +440,45 @@ Node *stmt() {
         expect(";");
         return node;
     }else if(consume_type_keyword(&kind)) {
-        Node *type_prefix = type_(kind);
-        Node *ident_node = ident_();
-        Node *node = variable_definition(false, type_prefix);
+        unget_token();
+        Node *type_node = type_(true);
+        dumpnodes(type_node);
+        return type_node;
+        //Node *node = variable_definition(false, type_prefix);
 
-        if(find_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len) != NULL){
-            error("variable with same name is already defined.");
-        }
-        node->decl_var.lvar = new_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len);
-        node->decl_var.lvar->type = type_prefix->type;
-        locals_stack_size += type_sizeof(node->decl_var.lvar->type);
+        //if(find_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len) != NULL){
+        //    error("variable with same name is already defined.");
+        //}
+//        node->decl_var.lvar = new_lvar(locals, ident_node->ident.ident, ident_node->ident.ident_len);
+//        node->decl_var.lvar->type = type_prefix->type;
+//        locals_stack_size += type_sizeof(node->decl_var.lvar->type);
+//
+//        if(node->decl_var.init_expr) {
+//            if(node->decl_var.init_expr->kind == ND_INIT) {
+//                Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
+//                int n = vector_size(node->decl_var.init_expr->init.init_expr);
+//                init_code_node->compound_stmt_list = new_vector();
+//                for(int i = 0; i < n; i++){
+//                    Node *expr = vector_get(node->decl_var.init_expr->init.init_expr, i);
+//                    Node *lvar_node = new_node_lvar(node->decl_var.lvar);
+//
+//                    Node *deref_node = new_node(ND_DEREF, new_node_add(lvar_node, new_node_num(i)), NULL);
+//                    deref_node->expr_type = deref_node->lhs->expr_type->ptr_to;
+//                    Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
+//
+//                    vector_push(init_code_node->compound_stmt_list, assign_node);
+//                }
+//                node->lhs = init_code_node;
+//            }else {
+//                Node *expr = node->decl_var.init_expr;
+//                Node *lvar_node = new_node_lvar(node->decl_var.lvar);
+//
+//                Node *assign_node = new_node(ND_ASSIGN, lvar_node, expr);
+//                node->lhs = assign_node;
+//            }
+//        }
 
-        if(node->decl_var.init_expr) {
-            if(node->decl_var.init_expr->kind == ND_INIT) {
-                Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
-                int n = vector_size(node->decl_var.init_expr->init.init_expr);
-                init_code_node->compound_stmt_list = new_vector();
-                for(int i = 0; i < n; i++){
-                    Node *expr = vector_get(node->decl_var.init_expr->init.init_expr, i);
-                    Node *lvar_node = new_node_lvar(node->decl_var.lvar);
-
-                    Node *deref_node = new_node(ND_DEREF, new_node_add(lvar_node, new_node_num(i)), NULL);
-                    deref_node->expr_type = deref_node->lhs->expr_type->ptr_to;
-                    Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
-
-                    vector_push(init_code_node->compound_stmt_list, assign_node);
-                }
-                node->lhs = init_code_node;
-            }else {
-                Node *expr = node->decl_var.init_expr;
-                Node *lvar_node = new_node_lvar(node->decl_var.lvar);
-
-                Node *assign_node = new_node(ND_ASSIGN, lvar_node, expr);
-                node->lhs = assign_node;
-            }
-        }
-
-        return node;
+//        return node;
     }else if(consume("{")) {
         Node *node = new_node(ND_COMPOUND, NULL, NULL);
         node->compound_stmt_list = new_vector();
@@ -481,6 +498,7 @@ Node *expr() {
     return assign();
 }
 
+// assign = equality ( "=" assign )?
 Node *assign() {
     Node *node = equality();
     if(consume("=")) {
@@ -490,6 +508,7 @@ Node *assign() {
     return node;
 }
 
+// equality = relational ( "==" relational | "!=" relational )*
 Node *equality() {
     Node *node = relational();
 
@@ -503,6 +522,7 @@ Node *equality() {
     }
 }
 
+// relational = add ( "<" add | "<=" add | ">" add | ">=" add )*
 Node *relational() {
     Node *node = add();
 
@@ -520,6 +540,7 @@ Node *relational() {
     }
 }
 
+// add = mul ( "+" mul | "-" mul )*
 Node *add() {
     Node *node = mul();
 
@@ -551,6 +572,7 @@ Node *add() {
     }
 }
 
+// mul = unary ( "*" unary | "/" unary )*
 Node *mul() {
     Node *node = unary();
 
@@ -652,11 +674,13 @@ Node *primary() {
             return node;
         }
     }else if(consume_kind(TK_STRING_LITERAL)) {
+        unget_token();
         StringLiteral *literal = calloc(1, sizeof(StringLiteral));
-        literal->str = prev_token->str;
-        literal->len = prev_token->len;
+        literal->str = token->str;
+        literal->len = token->len;
         literal->index = vector_size(global_string_literals);
         vector_push(global_string_literals, literal);
+        next_token();
 
         Node *node = new_node(ND_STRING_LITERAL, NULL, NULL);
         node->expr_type = calloc(1, sizeof(Type));
@@ -668,28 +692,184 @@ Node *primary() {
     return new_node_num(expect_number());
 }
 
-Node *type_(TokenKind kind) {
+// Parse type specifier like followings.
+// Right rows are golang-like representation of type.
+// int a               int
+// int *a              * int
+// int **a             * * int
+// int *a[]            [] * int
+// int a[3][]          [3] [] int
+// int (*a)[2]         * [2] int
+// int *(*a)[2]        * [2] * int
+//   -> read 'int' -> read '*' -> read '(...)' and memorize it on somewhere -> read '[...]' then create "[2] * int", then restore '(...)'
+// int a()             func() int
+// int a(int)          func(int) int
+// int a(int b)        func(int) int
+// int *a(int b)       func(int) * int
+// int (*a[5])(int b)  [] * func(int) int
+// int (*a[5])()[]()   [] * func() [] func() (an array to a function is invalid, but BNF should(?) accept it)
+// int (*a())[]        func() * [] int
+//
+// type = ("char" | "int") type_pointer
+//
+// type_pointer = "*" type_pointer
+//              | type_array
+//
+// type_array = type_ident type_array_suffix
+//
+// type_array_suffix = ( "[" expr? "]" | "(" function_arguments ")" ) type_array_suffix
+//
+// type_ident   = ident?
+//              | "(" type_pointer ")"
+//
+// function_arguments = ( ( type_opt_ident "," )* type_opt_ident )?
+//
+Node *type_(bool need_ident) {
+    TokenKind kind = expect_type_keyword();
+
     Type *cur;
     if(kind == TK_CHAR) {
         cur = &char_type;
     }else{
         cur = &int_type;
     }
-    while(consume("*")){
-        Type *ty = calloc(1, sizeof(Type));
-        ty->ptr_to = cur;
-        ty->ty = PTR;
-        cur = ty;
+    Node *node = new_node(ND_TYPE, type_pointer(need_ident), NULL);
+    Node *node_cur = node;
+    for(; node_cur; node_cur = node_cur->lhs) {
+        if(node_cur->kind == ND_IDENT) {
+            break;
+        } else if(node_cur->kind == ND_TYPE_POINTER) {
+            cur = type_new_ptr(cur);
+        } else if(node_cur->kind == ND_TYPE_ARRAY) {
+            cur = type_new_array(cur, node_cur->type.array.has_size, node_cur->type.array.size);
+        } else if(node_cur->kind == ND_TYPE_FUNC) {
+            cur = type_new_func(cur, node_cur->type.func_args.args);
+        }
+        node_cur->type.type = cur;
     }
-    Node *node = new_node(ND_TYPE, NULL, NULL);
-    node->type = cur;
+    node->type.type = cur;
     return node;
+}
+
+Node *type_pointer(bool need_ident) {
+    if(consume("*")) {
+        return new_node(ND_TYPE_POINTER, type_pointer(need_ident), NULL);
+    }
+    return type_array(need_ident);
+}
+
+Node *type_array(bool need_ident) {
+    // Peek 2 tokens to check whether inner (paren) type or function arg.
+    // ((, (*, (ident are sign of inner type.
+    if(consume("(")) {
+        char *ident;
+        int ident_len;
+        if(consume("(") || consume("*") || consume_ident(&ident, &ident_len)) {
+            unget_token();
+            unget_token();
+            Node *ident_node = type_ident(need_ident);
+
+            Vector *array_suffix_vector = new_vector();
+            type_array_suffix(array_suffix_vector);
+            int suffix_len = vector_size(array_suffix_vector);
+            if(suffix_len) {
+                Node *tail = ident_node;
+                for(int i = 0; i < suffix_len; i++) {
+                    Node *node = vector_get(array_suffix_vector, i);
+                    node->lhs = tail;
+                    tail = node;
+                }
+                return tail;
+            }else{
+                return ident_node;
+            }
+        }
+        unget_token();
+    }
+    Node *ident_node = type_ident(need_ident);
+
+    Vector *array_suffix_vector = new_vector();
+    type_array_suffix(array_suffix_vector);
+    int suffix_len = vector_size(array_suffix_vector);
+    if(suffix_len) {
+        Node *tail = ident_node;
+        for(int i = 0; i < suffix_len; i++) {
+            Node *node = vector_get(array_suffix_vector, i);
+            node->lhs = tail;
+            tail = node;
+        }
+        return tail;
+    }else{
+        return ident_node;
+    }
+}
+
+void type_array_suffix(Vector *array_suffix_vector) {
+    if(consume("(")) {
+        Vector *args = function_arguments();
+        expect(")");
+        Node *func_node = new_node(ND_TYPE_FUNC, NULL, NULL);
+        func_node->type.func_args.args = args;
+        func_node->lhs = func_node;
+        vector_push(array_suffix_vector, func_node);
+        return type_array_suffix(array_suffix_vector);
+    } else if(consume("[")) {
+        Node *array = new_node(ND_TYPE_ARRAY, NULL, NULL);
+        if(!consume("]")) {
+            Node *expr_node = expr();
+            array->rhs = expr_node;
+            if(expr_node->kind == ND_NUM) {
+                array->type.array.size = expr_node->val;
+                array->type.array.has_size = true;
+            } else {
+                error_at(token->str, "Expression with non literal number in array size is not supported");
+            }
+            expect("]");
+        }
+        vector_push(array_suffix_vector, array);
+        return type_array_suffix(array_suffix_vector);
+    }
+}
+
+Node *type_ident(bool need_ident) {
+    if(consume("(")) {
+        Node *node = type_pointer(need_ident);
+        expect(")");
+        return node;
+    }
+    if(need_ident) {
+        return ident_();
+    } else {
+        char *ident;
+        int ident_len;
+        if(consume_ident(&ident, &ident_len)) {
+        }
+        return NULL;
+    }
 }
 
 Node *ident_() {
     Node *node = new_node(ND_IDENT, NULL, NULL);
     expect_ident(&node->ident.ident, &node->ident.ident_len);
     return node;
+}
+
+Vector *function_arguments() {
+    Vector *args = new_vector();
+    if(!consume(")")) {
+        while(1) {
+            expect_type_keyword();
+            unget_token();
+            Node *type = type_(false);
+            vector_push(args, type);
+
+            if(consume(")")) {
+                break;
+            }
+            expect(",");
+        }
+    }
+    return args;
 }
 
 /// LVar ///
@@ -824,45 +1004,98 @@ bool type_is_same(Type *type_a, Type *type_b) {
     }
 }
 
+Type *type_new_ptr(Type *type) {
+    Type *ptr_type = calloc(1, sizeof(Type));
+    ptr_type->ty = PTR;
+    ptr_type->ptr_to = type;
+    return ptr_type;
+}
+
+Type *type_new_array(Type *type, bool has_size, int size) {
+    Type *array_type = calloc(1, sizeof(Type));
+    array_type->ty = ARRAY;
+    array_type->ptr_to = type;
+    array_type->array_size = size;
+    array_type->has_array_size = has_size;
+    return array_type;
+}
+
+Type *type_new_func(Type *type, Vector *args) {
+    Type *func_type = calloc(1, sizeof(Type));
+    func_type->ty = FUNC;
+    func_type->args = args;
+    func_type->ptr_to = type;
+    return func_type;
+}
+
+void print_indent(int level, const char *fmt, ...) {
+    for(int i = 0; i < level; i++) {
+        fprintf(stderr, "  ");
+    }
+    va_list ap;
+    va_start(ap, fmt);
+
+    vfprintf(stderr, fmt, ap);
+
+    va_end(ap);
+}
+
 void dumpnodes_inner(Node *node, int level) {
     if(node == NULL) return;
-    fprintf(stderr, "%*s%s\n", (level+1)*2, " ", node_kind(node->kind));
+    print_indent(level, "%s\n", node_kind(node->kind));
 
     if(node->kind == ND_LVAR){
-        fprintf(stderr, "%*sname: ", (level+1)*2, " ");
+        print_indent(level, "name: ");
         fwrite(node->lvar->name, node->lvar->len, 1, stderr);
         fprintf(stderr, "\n");
     }else if(node->kind == ND_TYPE){
-        int ptr_n = 0;
-        for(Type *cur = node->type; cur; cur = cur->ptr_to) {
+        for(Type *cur = node->type.type; cur; cur = cur->ptr_to) {
             if(cur->ty == PTR) {
-                ptr_n++;
-            }else{
-                fprintf(stderr, "%*s %s ", (level+1)*2, " ", "int");
-                for(int i = 0; i < ptr_n; i++){
-                    fprintf(stderr, "*");
+                fprintf(stderr, "* ");
+            }else if(cur->ty == FUNC) {
+                fprintf(stderr, "() ");
+            }else if(cur->ty == ARRAY) {
+                if(cur->has_array_size) {
+                    fprintf(stderr, "[%ld] ", cur->array_size);
+                }else{
+                    fprintf(stderr, "[] ");
                 }
-                fprintf(stderr, "\n");
+            }else{
+                if(cur->ty == CHAR) {
+                    fprintf(stderr, "char");
+                }else{
+                    fprintf(stderr, "int");
+                }
             }
         }
-    }else if(node->kind == ND_NUM){
-        fprintf(stderr, "%*svalue: %d\n", (level+1)*2, " ", node->val);
-    }else if(node->kind == ND_STRING_LITERAL){
-        fprintf(stderr, "%*svalue: %.*s\n", (level+1)*2, " ", node->string_literal.literal->len, node->string_literal.literal->str);
-    }else if(node->kind == ND_IF){
-        fprintf(stderr, "%*s// if condition\n", (level+1)*2, " ");
+        fprintf(stderr, "\n");
+    }else if(node->kind == ND_TYPE_ARRAY){
+        if(node->type.array.has_size) {
+            print_indent(level, " size: %ld\n", node->type.array.size);
+        } else {
+            print_indent(level, " size: unspecified\n");
+        }
         dumpnodes_inner(node->lhs, level + 1);
-        fprintf(stderr, "%*s// if stmt\n", (level+1)*2, " ");
         dumpnodes_inner(node->rhs, level + 1);
-        fprintf(stderr, "%*s// else\n", (level+1)*2, " ");
+    }else if(node->kind == ND_NUM){
+        print_indent(level, " value: %d\n", node->val);
+    }else if(node->kind == ND_STRING_LITERAL){
+        print_indent(level, " value: %.*s\n", node->string_literal.literal->len, node->string_literal.literal->str);
+    }else if(node->kind == ND_IF){
+        print_indent(level, " // if condition\n");
+        dumpnodes_inner(node->lhs, level + 1);
+        print_indent(level, " // if stmt\n");
+        dumpnodes_inner(node->rhs, level + 1);
+        print_indent(level, " // else\n");
         dumpnodes_inner(node->else_stmt, level + 1);
     }else if(node->kind == ND_FOR){
-        fprintf(stderr, "%*s// for init\n", (level+1)*2, " ");
+        print_indent(level, " // for init\n");
         dumpnodes_inner(node->lhs, level + 1);
-        fprintf(stderr, "%*s// for condition\n", (level+1)*2, " ");
+        print_indent(level, " // for condition\n");
         dumpnodes_inner(node->rhs, level + 1);
-        fprintf(stderr, "%*s// for update\n", (level+1)*2, " ");
+        print_indent(level, " // for update\n");
         dumpnodes_inner(node->for_update_expr, level + 1);
+        print_indent(level, " // for body\n");
         fprintf(stderr, "%*s// for body\n", (level+1)*2, " ");
         dumpnodes_inner(node->for_stmt, level + 1);
     }else if(node->kind == ND_COMPOUND){
@@ -872,7 +1105,7 @@ void dumpnodes_inner(Node *node, int level) {
     }else if(node->kind == ND_CALL){
         NodeList *cur = node->call_arg_list.next;
         for(; cur; cur = cur->next){
-            fprintf(stderr, "%*s// call arg\n", (level+1)*2, " ");
+            print_indent(level, " // call arg\n");
             dumpnodes_inner(cur->node, level + 1);
         }
     }else{

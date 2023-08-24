@@ -4,6 +4,8 @@
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 
+void debug_log(char *fmt, ...);
+
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct NodeList NodeList;
@@ -35,6 +37,7 @@ typedef enum {
 
 struct Token {
     TokenKind kind;
+    Token *prev;
     Token *next;
     int val;
     char *str;
@@ -42,11 +45,12 @@ struct Token {
 };
 
 extern Token *token;
-extern Token *prev_token;
 
 extern char *user_input;
 extern char *filename;
 
+void next_token();
+void unget_token();
 bool consume(char* op);
 bool consume_kind(TokenKind kind);
 bool consume_type_keyword(TokenKind *kind);
@@ -94,7 +98,10 @@ typedef enum {
     ND_TYPE,
     ND_INIT,
     ND_CONVERT,
-    ND_GVAR_DEF
+    ND_GVAR_DEF,
+    ND_TYPE_POINTER,
+    ND_TYPE_ARRAY,
+    ND_TYPE_FUNC,
 } NodeKind;
 
 struct NodeList {
@@ -124,7 +131,18 @@ struct Node {
             LVar *lvar;
             Node *init_expr;
         } decl_var;
-        Type *type;
+        struct {
+            Type *type;
+            union {
+                struct {
+                    Vector *args;
+                } func_args;
+                struct {
+                    size_t size;
+                    bool has_size;
+                } array;
+            };
+        } type;
         Node *else_stmt;
         struct {
             Node *for_update_expr;
@@ -170,6 +188,7 @@ Node *translation_unit();
 Node *declarator();
 Node *function_definition(Node *type_prefix, char *ident, int ident_len);
 Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len);
+Node *variable_definition(bool is_global, Node *type_node);
 Node *initializer();
 Node *stmt();
 Node *expr();
@@ -180,8 +199,13 @@ Node *add();
 Node *primary();
 Node *mul();
 Node *unary();
-Node *type_(TokenKind kind);
+Node *type_(bool need_ident);
+Node *type_pointer(bool need_ident);
+Node *type_array(bool need_ident);
+void type_array_suffix(Vector *array_suffix_vector);
+Node *type_ident(bool need_ident);
 Node *ident_();
+Vector *function_arguments();
 
 /// LVar ///
 
@@ -227,9 +251,11 @@ extern Vector *global_string_literals;
 /// Type ///
 
 struct Type {
-    enum { CHAR, INT, PTR, ARRAY } ty;
+    enum { CHAR, INT, PTR, ARRAY, FUNC } ty;
     Type *ptr_to;
     size_t array_size;
+    Vector *args;
+    bool has_array_size;
 };
 
 extern Type int_type;
@@ -240,6 +266,9 @@ Type *type_comparator(Type *type_r, Type *type_l);
 bool type_implicit_ptr(Type *type);
 bool type_is_int(Type *type);
 bool type_is_same(Type *type_a, Type *type_b);
+Type *type_new_ptr(Type *type);
+Type *type_new_array(Type *type, bool has_size, int size);
+Type *type_new_func(Type *type, Vector *args);
 
 Token *tokenize(char *);
 void gen_string_literals();

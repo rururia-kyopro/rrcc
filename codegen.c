@@ -255,7 +255,7 @@ void gen(Node *node){
                 printf("  lea rax, [rbp-%d]\n", get_stack_sub_offset(arg->lvar));
                 printf("  push rax\n");
                 printf("  push %s\n", args_regs[i]);
-                store(type_sizeof(arg->type->type));
+                store(type_sizeof(arg->type->type.type));
                 printf("  pop rax\n");
             }
             gen(node->lhs);

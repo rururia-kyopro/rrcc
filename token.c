@@ -6,13 +6,18 @@
 #include "rrcc.h"
 
 Token *token;
-Token *prev_token;
 
 char *user_input;
 
 void next_token() {
-    prev_token = token;
     token = token->next;
+}
+
+void unget_token() {
+    if(token->prev == NULL){
+        error("Tried to unget at the beginning.");
+    }
+    token = token->prev;
 }
 
 static bool is_prefix(char *prefix, char *str, int len) {
@@ -97,6 +102,7 @@ static Token *new_token(TokenKind kind, Token *cur, char *str, int len){
     tok->kind = kind;
     tok->str = str;
     tok->len = len;
+    tok->prev = cur;
     cur->next = tok;
     return tok;
 }
@@ -119,6 +125,7 @@ static bool is_keyword(char *keyword, char *str, int len) {
 
 Token *tokenize(char *p){
     Token head;
+    head.prev = NULL;
     head.next = NULL;
     Token *cur = &head;
 
