@@ -113,7 +113,7 @@ struct FuncDefArg {
     char *ident;
     int ident_len;
     LVar *lvar;
-    Node *type;
+    Type *type;
 };
 
 struct Node {
@@ -155,12 +155,12 @@ struct Node {
             NodeList call_arg_list;
         };
         struct {
-            char *func_def_ident;
-            int func_def_ident_len;
-            Vector *func_def_arg_vec;
-            Vector *func_def_lvar;
-            Node *func_def_return_type;
-        };
+            char *ident;
+            int ident_len;
+            Vector *arg_vec;
+            Vector *lvar_vec;
+            Type *type;
+        } func_def;
         struct {
             char *ident;
             int ident_len;
@@ -186,7 +186,7 @@ extern Node *code[100];
 
 Node *translation_unit();
 Node *declarator();
-Node *function_definition(Node *type_prefix, char *ident, int ident_len);
+Node *function_definition(Node *type_node);
 Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len);
 Node *variable_definition(bool is_global, Node *type_node);
 Node *initializer();
@@ -269,6 +269,7 @@ bool type_is_same(Type *type_a, Type *type_b);
 Type *type_new_ptr(Type *type);
 Type *type_new_array(Type *type, bool has_size, int size);
 Type *type_new_func(Type *type, Vector *args);
+bool type_find_ident(Node *node, char **ident, int *ident_len);
 
 Token *tokenize(char *);
 void gen_string_literals();

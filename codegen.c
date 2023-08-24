@@ -242,20 +242,20 @@ void gen(Node *node){
         }    
         case ND_FUNC_DEF:
             printf(".text\n");
-            printf(".globl %.*s\n", node->func_def_ident_len, node->func_def_ident);
-            printf("%.*s:\n", node->func_def_ident_len, node->func_def_ident);
-            int size = vector_size(node->func_def_arg_vec);
+            printf(".globl %.*s\n", node->func_def.ident_len, node->func_def.ident);
+            printf("%.*s:\n", node->func_def.ident_len, node->func_def.ident);
+            int size = vector_size(node->func_def.arg_vec);
             printf("  push rbp\n");
             printf("  push r15\n");
             printf("  push rbx\n");
             printf("  mov rbp,rsp\n");
-            printf("  sub rsp,%d\n", (lvar_stack_size(node->func_def_lvar)+7)/8*8);
+            printf("  sub rsp,%d\n", (lvar_stack_size(node->func_def.lvar_vec)+7)/8*8);
             for(int i = 0; i < size; i++){
-                FuncDefArg *arg = vector_get(node->func_def_arg_vec, i);
+                FuncDefArg *arg = vector_get(node->func_def.arg_vec, i);
                 printf("  lea rax, [rbp-%d]\n", get_stack_sub_offset(arg->lvar));
                 printf("  push rax\n");
                 printf("  push %s\n", args_regs[i]);
-                store(type_sizeof(arg->type->type.type));
+                store(type_sizeof(arg->type));
                 printf("  pop rax\n");
             }
             gen(node->lhs);

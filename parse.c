@@ -210,6 +210,7 @@ Node *translation_unit() {
     node->trans_unit.decl = new_vector();
 
     while(!at_eof()){
+        //debug_log("next: %d %s\n", token->kind, token->str);
         vector_push(node->trans_unit.decl, declarator());
     }
     return node;
@@ -224,48 +225,47 @@ Node *declarator() {
     expect_type_keyword();
     unget_token();
     Node *type_node = type_(true);
-    // fprintf(stderr, "// type call end\n");
-    // dumpnodes(type_node);
-    // fprintf(stderr, "// type node end\n");
+    fprintf(stderr, "// type call end\n");
+    dumpnodes(type_node);
+    fprintf(stderr, "// type node end\n");
 
+    if(type_node->type.type->ty == FUNC) {
+        return function_definition(type_node);
+    }
     return variable_definition(true, type_node);
 }
 
 // function_definition = type ident "(" ( type ident "," )* ( type ident )? ")" stmt
-Node *function_definition(Node *type_prefix, char *ident, int ident_len) {
+Node *function_definition(Node *type_node) {
     Node *node = new_node(ND_FUNC_DEF, NULL, NULL);
-    node->func_def_arg_vec = new_vector();
-    node->func_def_lvar = new_vector();
+    node->func_def.arg_vec = new_vector();
+    node->func_def.lvar_vec = new_vector();
 
-    node->func_def_return_type = type_prefix;
-    node->func_def_ident = ident;
-    node->func_def_ident_len = ident_len;
+    Type *type = node->func_def.type = type_node->type.type;
+    if(!type_find_ident(type_node, &node->func_def.ident, &node->func_def.ident_len)) {
+        error_at(token->str, "Function definition must have identifier");
+    }
 
     locals_stack_size = 0;
 
-    if(!consume(")")){
-        while(1){
-            FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
-            expect_type_keyword();
-            unget_token();
-            arg->type = type_(false);
-            expect_ident(&arg->ident, &arg->ident_len);
-            
-            vector_push(node->func_def_arg_vec, arg);
-            if(find_lvar(node->func_def_lvar, arg->ident, arg->ident_len)) {
-                error_at(token->str, "Arguments with same name are defined");
-            }
-            arg->lvar = new_lvar(node->func_def_lvar, arg->ident, arg->ident_len);
-            arg->lvar->type = arg->type->type.type;
-            locals_stack_size += type_sizeof(arg->lvar->type);
-            if(!consume(",")){
-                expect(")");
-                break;
-            }
+    for(int i = 0; i < vector_size(type->args); i++) {
+        Type *arg_type = vector_get(type->args, i);
+        FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
+        arg->type = arg_type;
+        if(!type_find_ident(type_node, &arg->ident, &arg->ident_len)) {
+            error_at(token->str, "Function argument must have identifier");
         }
+
+        vector_push(node->func_def.arg_vec, arg);
+        if(find_lvar(node->func_def.lvar_vec, arg->ident, arg->ident_len)) {
+            error_at(token->str, "Arguments with same name are defined");
+        }
+        arg->lvar = new_lvar(node->func_def.lvar_vec, arg->ident, arg->ident_len);
+        arg->lvar->type = arg->type;
+        locals_stack_size += type_sizeof(arg->lvar->type);
     }
 
-    locals = node->func_def_lvar;
+    locals = node->func_def.lvar_vec;
     node->lhs = stmt();
     if(node->lhs->kind != ND_COMPOUND) {
         error_at(token->str, "Statement of function definition shall be a compound statement.");
@@ -787,6 +787,7 @@ Node *type_array(bool need_ident) {
         unget_token();
     }
     Node *ident_node = type_ident(need_ident);
+    debug_log("id: %s\n", ident_node->ident.ident);
 
     Vector *array_suffix_vector = new_vector();
     type_array_suffix(array_suffix_vector);
@@ -807,7 +808,6 @@ Node *type_array(bool need_ident) {
 void type_array_suffix(Vector *array_suffix_vector) {
     if(consume("(")) {
         Vector *args = function_arguments();
-        expect(")");
         Node *func_node = new_node(ND_TYPE_FUNC, NULL, NULL);
         func_node->type.func_args.args = args;
         func_node->lhs = func_node;
@@ -1026,6 +1026,18 @@ Type *type_new_func(Type *type, Vector *args) {
     func_type->args = args;
     func_type->ptr_to = type;
     return func_type;
+}
+
+bool type_find_ident(Node *node, char **ident, int *ident_len) {
+    Node *cur = node;
+    for(; cur != NULL; cur = cur->lhs) {
+        if(cur->kind == ND_IDENT) {
+            *ident = cur->ident.ident;
+            *ident_len = cur->ident.ident_len;
+            return true;
+        }
+    }
+    return false;
 }
 
 void print_indent(int level, const char *fmt, ...) {
