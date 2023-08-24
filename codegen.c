@@ -263,8 +263,8 @@ void gen(Node *node){
             return;
         case ND_DECL_VAR: {
             // Dummy element
-            if(node->lhs) {
-                gen(node->lhs);
+            if(node->rhs) {
+                gen(node->rhs);
             } else {
                 printf("  mov rax,0\n");
                 printf("  push rax\n");
