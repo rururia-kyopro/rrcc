@@ -249,16 +249,17 @@ Node *function_definition(Node *type_node) {
     locals_stack_size = 0;
 
     for(int i = 0; i < vector_size(type->args); i++) {
-        Type *arg_type = vector_get(type->args, i);
+        Node *arg_type_node = vector_get(type->args, i);
+        Type *arg_type = arg_type_node->type.type;
         FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
         arg->type = arg_type;
-        if(!type_find_ident(type_node, &arg->ident, &arg->ident_len)) {
+        if(!type_find_ident(arg_type_node, &arg->ident, &arg->ident_len)) {
             error_at(token->str, "Function argument must have identifier");
         }
 
         vector_push(node->func_def.arg_vec, arg);
         if(find_lvar(node->func_def.lvar_vec, arg->ident, arg->ident_len)) {
-            error_at(token->str, "Arguments with same name are defined");
+            error_at(token->str, "Arguments with same name are defined: %.*s", arg->ident_len, arg->ident);
         }
         arg->lvar = new_lvar(node->func_def.lvar_vec, arg->ident, arg->ident_len);
         arg->lvar->type = arg->type;
@@ -787,7 +788,6 @@ Node *type_array(bool need_ident) {
         unget_token();
     }
     Node *ident_node = type_ident(need_ident);
-    debug_log("id: %s\n", ident_node->ident.ident);
 
     Vector *array_suffix_vector = new_vector();
     type_array_suffix(array_suffix_vector);
