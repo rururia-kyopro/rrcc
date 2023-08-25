@@ -18,6 +18,7 @@ typedef struct StructMember StructMember;
 typedef struct StructRegistryEntry StructRegistryEntry;
 typedef struct EnumMember EnumMember;
 typedef struct EnumRegistryEntry EnumRegistryEntry;
+typedef struct TypedefRegistryEntry TypedefRegistryEntry;
 
 /// Token ///
 
@@ -28,6 +29,7 @@ typedef enum {
     TK_CHAR,
     TK_STRUCT,
     TK_ENUM,
+    TK_TYPEDEF,
     TK_RETURN,
     TK_IF,
     TK_ELSE,
@@ -59,15 +61,14 @@ void next_token();
 void unget_token();
 bool consume(char* op);
 bool consume_kind(TokenKind kind);
-bool consume_type_keyword(TokenKind *kind);
 void expect(char *op);
 void expect_kind(TokenKind kind);
-TokenKind expect_type_keyword();
 bool consume_ident(char **ident, int *ident_len);
 void expect_ident(char **ident, int *ident_len);
 int expect_number();
 bool peek(char* op);
 bool peek_kind(TokenKind kind);
+bool peek_ident(char **ident, int *ident_len);
 bool at_eof();
 Token *tokenize(char *p);
 
@@ -113,6 +114,7 @@ typedef enum {
     ND_TYPE_FUNC,
     ND_TYPE_STRUCT,
     ND_TYPE_ENUM,
+    ND_TYPE_TYPEDEF,
 } NodeKind;
 
 struct NodeList {
@@ -223,6 +225,9 @@ Node *struct_declaration();
 Vector *struct_members(size_t *size);
 Node *enum_declaration();
 Vector *enum_members();
+Node *typedef_declaration();
+bool consume_type_prefix(TokenKind *kind);
+TokenKind expect_type_prefix();
 bool peek_type_prefix();
 
 /// LVar ///
@@ -330,6 +335,16 @@ struct EnumRegistryEntry {
 };
 
 extern Vector *enum_registry;
+
+/// Typedef Registry Entry ///
+
+struct TypedefRegistryEntry {
+    Type *type;
+    char *ident;
+    int ident_len;
+};
+
+extern Vector *typedef_registry;
 
 bool compare_ident(char *ident_a, int ident_a_len, char *ident_b, int ident_b_len);
 

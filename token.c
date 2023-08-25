@@ -41,15 +41,6 @@ bool consume_kind(TokenKind kind) {
     return true;
 }
 
-bool consume_type_keyword(TokenKind *kind) {
-    if(token->kind != TK_INT && token->kind != TK_CHAR && token->kind != TK_STRUCT && token->kind != TK_ENUM)
-        return false;
-
-    *kind = token->kind;
-    next_token();
-    return true;
-}
-
 void expect(char *op){
     if(token->kind != TK_RESERVED || !is_prefix(op, token->str, token->len))
         error_at(token->str, "Not '%s'", op);
@@ -60,14 +51,6 @@ void expect_kind(TokenKind kind) {
     if(token->kind != kind)
         error_at(token->str, "Not token kind %d", kind);
     next_token();
-}
-
-TokenKind expect_type_keyword() {
-    TokenKind kind;
-    if(!consume_type_keyword(&kind)) {
-        error_at(token->str, "Not a type kind");
-    }
-    return kind;
 }
 
 bool consume_ident(char **ident, int *ident_len) {
@@ -99,6 +82,15 @@ bool peek(char* op) {
 
 bool peek_kind(TokenKind kind) {
     return token->kind == kind;
+}
+
+bool peek_ident(char **ident, int *ident_len) {
+    if(token->kind == TK_IDENT) {
+        *ident = token->str;
+        *ident_len = token->len;
+        return true;
+    }
+    return false;
 }
 
 bool at_eof() {
@@ -193,6 +185,7 @@ Token *tokenize(char *p){
                 { "char", TK_CHAR },
                 { "struct", TK_STRUCT },
                 { "enum", TK_ENUM },
+                { "typedef", TK_TYPEDEF },
                 { "return", TK_RETURN },
                 { "if", TK_IF },
                 { "else", TK_ELSE },

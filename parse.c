@@ -14,6 +14,7 @@ int global_size;
 Vector *global_string_literals;
 Vector *struct_registry;
 Vector *enum_registry;
+Vector *typedef_registry;
 
 Type int_type = { INT, NULL };
 Type char_type = { CHAR, NULL };
@@ -59,6 +60,7 @@ char *node_kind(NodeKind kind){
         case ND_TYPE_ARRAY: return "ND_TYPE_ARRAY";
         case ND_TYPE_STRUCT: return "ND_TYPE_STRUCT";
         case ND_TYPE_ENUM: return "ND_ENUM";
+        case ND_TYPE_TYPEDEF: return "ND_TYPE_TYPEDEF";
         default: assert(false);
     }
 }
@@ -212,6 +214,7 @@ Node *translation_unit() {
     global_string_literals = new_vector();
     struct_registry = new_vector();
     enum_registry = new_vector();
+    typedef_registry = new_vector();
 
     Node *node = new_node(ND_TRANS_UNIT, NULL, NULL);
     node->trans_unit.decl = new_vector();
@@ -229,7 +232,8 @@ Node *translation_unit() {
 //            | global_variable_definition
 //
 Node *declarator() {
-    expect_type_keyword();
+    peek_type_prefix();
+    expect_type_prefix();
     unget_token();
     Node *type_node = type_(true);
     fprintf(stderr, "// type call end\n");
@@ -463,7 +467,7 @@ Node *stmt() {
         Node *node = new_node(ND_RETURN, expr(), NULL);
         expect(";");
         return node;
-    }else if(consume_type_keyword(&kind)) {
+    }else if(consume_type_prefix(&kind)) {
         unget_token();
         Node *type_node = type_(true);
         dumpnodes(type_node);
@@ -797,8 +801,12 @@ Node *primary() {
 // function_arguments = ( ( type_opt_ident "," )* type_opt_ident )?
 //
 Node *type_(bool need_ident) {
-    TokenKind kind = expect_type_keyword();
+    TokenKind kind = expect_type_prefix();
 
+    if(kind == TK_TYPEDEF) {
+        Node *node = typedef_declaration();
+        return node;
+    }
     Type *cur;
     if(kind == TK_CHAR) {
         cur = &char_type;
@@ -808,6 +816,18 @@ Node *type_(bool need_ident) {
     }else if(kind == TK_ENUM) {
         cur = enum_declaration()->type.type;
         need_ident = false;
+    }else if(kind == TK_IDENT) {
+        char *ident = token->prev->str;
+        int ident_len = token->prev->len;
+        
+        TypedefRegistryEntry *entry;
+        for(int i = 0; i < vector_size(typedef_registry); i++) {
+            entry = vector_get(typedef_registry, i);
+            if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
+                break;
+            }
+        }
+        cur = entry->type;
     }else{
         cur = &int_type;
     }
@@ -937,7 +957,7 @@ Vector *function_arguments() {
     Vector *args = new_vector();
     if(!consume(")")) {
         while(1) {
-            expect_type_keyword();
+            expect_type_prefix();
             unget_token();
             Node *type = type_(false);
             vector_push(args, type);
@@ -1090,8 +1110,61 @@ Vector *enum_members() {
     return vec;
 }
 
+// typedef_declaration = "typedef" type ";"
+Node *typedef_declaration() {
+    Node *type_node = type_(true);
+
+    char *ident;
+    int ident_len;
+    type_find_ident(type_node, &ident, &ident_len);
+
+    for(int i = 0; i < vector_size(typedef_registry); i++) {
+        TypedefRegistryEntry *entry = vector_get(typedef_registry, i);
+        if(compare_ident(ident, ident_len, entry->ident, entry->ident_len)) {
+            error("Typedef name is already defined");
+        }
+    }
+    TypedefRegistryEntry *entry = calloc(1, sizeof(TypedefRegistryEntry));
+    entry->ident = ident;
+    entry->ident_len = ident_len;
+    entry->type = type_node->type.type;
+    vector_push(typedef_registry, entry);
+
+    return type_node;
+}
+
+bool consume_type_prefix(TokenKind *kind) {
+    if(!peek_type_prefix())
+        return false;
+
+    *kind = token->kind;
+    next_token();
+    return true;
+}
+
+TokenKind expect_type_prefix() {
+    TokenKind kind;
+    if(!consume_type_prefix(&kind)) {
+        error_at(token->str, "Not a type kind");
+    }
+    return kind;
+}
+
 bool peek_type_prefix() {
-    return peek_kind(TK_CHAR) || peek_kind(TK_INT) || peek_kind(TK_STRUCT) || peek_kind(TK_ENUM);
+    if(peek_kind(TK_CHAR) || peek_kind(TK_INT) || peek_kind(TK_STRUCT) || peek_kind(TK_ENUM) || peek_kind(TK_TYPEDEF)){ 
+        return true;
+    }
+    char *ident;
+    int ident_len;
+    if(peek_ident(&ident, &ident_len)) {
+        for(int i = 0; i < vector_size(typedef_registry); i++) {
+            TypedefRegistryEntry *entry = vector_get(typedef_registry, i);
+            if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 /// LVar ///
