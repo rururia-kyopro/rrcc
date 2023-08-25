@@ -109,7 +109,6 @@ typedef enum {
     ND_TYPE_ARRAY,
     ND_TYPE_FUNC,
     ND_TYPE_STRUCT,
-    ND_STRUCT_ACCESS,
 } NodeKind;
 
 struct NodeList {
