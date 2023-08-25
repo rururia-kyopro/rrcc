@@ -898,7 +898,7 @@ Node *struct_declaration() {
     node->type.type = type_new_struct(ident, ident_len);
 
     if(consume("{")) {
-        node->type.struct_.members = struct_members();
+        node->type.type->struct_members = struct_members(&node->type.type->struct_size);
         expect("}");
     }
 
@@ -906,11 +906,21 @@ Node *struct_declaration() {
 }
 
 // struct_members = ( type_ ";" )*
-Vector *struct_members() {
+Vector *struct_members(size_t *size) {
     Vector *vec = new_vector();
     while(peek_type_prefix()) {
         Node *type_node = type_(true);
-        vector_push(vec, type_node);
+        StructMember *member = calloc(1, sizeof(StructMember));
+        type_find_ident(type_node, &member->ident, &member->ident_len);
+        for(int i = 0; i < vector_size(vec); i++) {
+            StructMember *member2 = vector_get(vec, i);
+            if(member->ident_len == member2->ident_len && memcmp(member->ident, member2->ident, member->ident_len) == 0) {
+                error("Struct member with same name is already defined: %.*s", member->ident_len, member->ident);
+            }
+        }
+        member->offset = *size;
+        *size += type_sizeof(type_node->type.type);
+        vector_push(vec, member);
         expect(";");
     }
     return vec;
@@ -1003,6 +1013,9 @@ int type_sizeof(Type *type) {
     }
     if(type->ty == INT) {
         return 4;
+    }
+    if(type->ty == STRUCT) {
+        return type->struct_size;
     }
     return 8;
 }

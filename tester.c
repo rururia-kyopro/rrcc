@@ -171,6 +171,7 @@ int main() {
     assert_file(1, "int func(int a);int main(){return 1;}");
     assert_file(1, "struct a{};int main(){return 1;}");
     assert_file(1, "struct a{}b;int main(){return 1;}");
+    assert_file(21, "struct aa{int f;int q;int m;int *g;char p;}p;int main(){return sizeof(p);}");
     printf("OK\n");
     return 0;
 }

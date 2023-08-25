@@ -14,6 +14,7 @@ typedef struct LVar LVar;
 typedef struct Type Type;
 typedef struct GVar GVar;
 typedef struct StringLiteral StringLiteral;
+typedef struct StructMember StructMember;
 
 /// Token ///
 
@@ -147,7 +148,6 @@ struct Node {
                     bool has_size;
                 } array;
                 struct {
-                    Vector *members;
                 } struct_;
             };
         } type;
@@ -215,7 +215,7 @@ Node *type_ident(bool need_ident);
 Node *ident_();
 Vector *function_arguments();
 Node *struct_declaration();
-Vector *struct_members();
+Vector *struct_members(size_t *size);
 bool peek_type_prefix();
 
 /// LVar ///
@@ -269,6 +269,8 @@ struct Type {
     bool has_array_size;
     char *struct_ident;
     int struct_ident_len;
+    Vector *struct_members;
+    size_t struct_size;
 };
 
 extern Type int_type;
@@ -284,6 +286,14 @@ Type *type_new_array(Type *type, bool has_size, int size);
 Type *type_new_func(Type *type, Vector *args);
 Type *type_new_struct(char *ident, int ident_len);
 bool type_find_ident(Node *node, char **ident, int *ident_len);
+
+/// StructMember ///
+struct StructMember {
+    Node *node;
+    int offset;
+    char *ident;
+    int ident_len;
+};
 
 Token *tokenize(char *);
 void gen_string_literals();
