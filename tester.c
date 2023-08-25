@@ -189,6 +189,9 @@ int main() {
     assert_file(3, "enum a{f,g,h};int main(){return g+h;}");
     assert_file(8, "enum a{f=2,g,h=5};int main(){return g+h;}");
     assert_stdout(4, "1 1 1", "int printf(char *s);enum a{f,g,h};int main(){enum a p;p=1;enum a q;q=g;printf(\x22%d %d %d\x22, p, q, p==q);return sizeof(p);}");
+    assert_file(3, "int printf(char *s);typedef int *cp;int main(){int a[10]={3,4,5};cp p;p=a;return p[0];}");
+    assert_file(12, "int printf(char *s);typedef int *cp;int main(){cp p;return sizeof(*p)+sizeof(p);}");
+    assert_file(14, "int printf(char *s);typedef int ca[3];int main(){ca a={1,2,3};return sizeof(a)+a[1];}");
     printf("OK\n");
     return 0;
 }
