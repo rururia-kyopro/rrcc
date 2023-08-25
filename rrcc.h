@@ -22,6 +22,7 @@ typedef enum {
     TK_RESERVED,
     TK_INT,
     TK_CHAR,
+    TK_STRUCT,
     TK_RETURN,
     TK_IF,
     TK_ELSE,

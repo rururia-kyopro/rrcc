@@ -183,6 +183,7 @@ Token *tokenize(char *p){
             const struct Keyword keywords[] = {
                 { "int", TK_INT },
                 { "char", TK_CHAR },
+                { "struct", TK_STRUCT },
                 { "return", TK_RETURN },
                 { "if", TK_IF },
                 { "else", TK_ELSE },
