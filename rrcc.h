@@ -15,6 +15,7 @@ typedef struct Type Type;
 typedef struct GVar GVar;
 typedef struct StringLiteral StringLiteral;
 typedef struct StructMember StructMember;
+typedef struct StructRegistryEntry StructRegistryEntry;
 
 /// Token ///
 
@@ -295,6 +296,16 @@ struct StructMember {
     char *ident;
     int ident_len;
 };
+
+/// Struct Registry Entry ///
+
+struct StructRegistryEntry {
+    Type *type;
+    char *ident;
+    int ident_len;
+};
+
+extern Vector *struct_registry;
 
 bool compare_ident(char *ident_a, int ident_a_len, char *ident_b, int ident_b_len);
 

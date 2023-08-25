@@ -12,6 +12,7 @@ int locals_stack_size;
 Vector *globals;
 int global_size;
 Vector *global_string_literals;
+Vector *struct_registry;
 
 Type int_type = { INT, NULL };
 Type char_type = { CHAR, NULL };
@@ -207,6 +208,7 @@ Node *translation_unit() {
     globals = new_vector();
     global_size = 0;
     global_string_literals = new_vector();
+    struct_registry = new_vector();
 
     Node *node = new_node(ND_TRANS_UNIT, NULL, NULL);
     node->trans_unit.decl = new_vector();
@@ -709,15 +711,27 @@ Node *primary() {
 
             node = new_node(ND_DEREF, added, NULL);
             node->expr_type = added->expr_type->ptr_to;
-        }else if(consume(".")) {
+        }else if(peek(".") || peek("->")) {
+            bool dot = consume(".");
+            if(!dot) {
+                consume("->");
+            }
             char *ident;
             int ident_len;
             expect_ident(&ident, &ident_len);
 
-            if(node->expr_type->ty != STRUCT) {
+            Vector *vec;
+            Type *struct_type = node->expr_type;
+            if(!dot) {
+                if(struct_type->ty != PTR) {
+                    error("Access struct member for non struct pointer variable");
+                }
+                struct_type = struct_type->ptr_to;
+            }
+            if(struct_type->ty != STRUCT) {
                 error("Access struct member for non struct variable");
             }
-            Vector *vec = node->expr_type->struct_members;
+            vec = struct_type->struct_members;
             bool found = false;
             StructMember *mem;
             for(int i = 0; i < vector_size(vec); i++) {
@@ -730,9 +744,14 @@ Node *primary() {
             if(!found) {
                 error("No member name found");
             }
-            Node *addrof = new_node(ND_ADDRESS_OF, node, NULL);
-            addrof->expr_type = type_new_ptr(&char_type);
-            Node *add = new_node_add(addrof, new_node_num(mem->offset));
+            Node *left = NULL;
+            if(dot){
+                left = new_node(ND_ADDRESS_OF, node, NULL);
+            }else{
+                left = node;
+            }
+            left->expr_type = type_new_ptr(&char_type);
+            Node *add = new_node_add(left, new_node_num(mem->offset));
             node = new_node(ND_DEREF, add, NULL);
             node->expr_type = mem->node->type.type;
         }else{
@@ -933,11 +952,37 @@ Node *struct_declaration() {
     expect_ident(&ident, &ident_len);
 
     Node *node = new_node(ND_TYPE_STRUCT, NULL, NULL);
-    node->type.type = type_new_struct(ident, ident_len);
 
     if(consume("{")) {
+        node->type.type = type_new_struct(ident, ident_len);
         node->type.type->struct_members = struct_members(&node->type.type->struct_size);
+        for(int i = 0; i < vector_size(struct_registry); i++) {
+            StructRegistryEntry *entry = vector_get(struct_registry, i);
+            if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
+                error("Struct name is already defined");
+            }
+        }
+        StructRegistryEntry *entry = calloc(1, sizeof(StructRegistryEntry));
+        entry->ident = ident;
+        entry->ident_len = ident_len;
+        entry->type = node->type.type;
+        vector_push(struct_registry, entry);
+
         expect("}");
+    } else {
+        bool found = false;
+        StructRegistryEntry *entry;
+        for(int i = 0; i < vector_size(struct_registry); i++) {
+            entry = vector_get(struct_registry, i);
+            if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
+                found = true;
+                break;
+            }
+        }
+        if(!found) {
+            error("No struct found for specified name");
+        }
+        node->type.type = entry->type;
     }
 
     return node;

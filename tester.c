@@ -183,6 +183,7 @@ int main() {
     assert_file(1, "struct a{}b;int main(){return 1;}");
     assert_file(21, "struct aa{int f;int q;int m;int *g;char p;}p;int main(){return sizeof(p);}");
     assert_file(8, "int printf(char *s);struct st{int a;int b;}c;int main(){char *p=&c;c.a=1;c.b=7;return p[0]+p[4];}");
+    assert_file(11, "int printf(char *s);struct st{int a;int b;}c;int main(){struct st *q;q=&c;char *p=&c;q->a=2;q->b=9;return p[0]+c.b;}");
     printf("OK\n");
     return 0;
 }
