@@ -709,6 +709,32 @@ Node *primary() {
 
             node = new_node(ND_DEREF, added, NULL);
             node->expr_type = added->expr_type->ptr_to;
+        }else if(consume(".")) {
+            char *ident;
+            int ident_len;
+            expect_ident(&ident, &ident_len);
+
+            if(node->expr_type->ty != STRUCT) {
+                error("Access struct member for non struct variable");
+            }
+            Vector *vec = node->expr_type->struct_members;
+            bool found = false;
+            StructMember *mem;
+            for(int i = 0; i < vector_size(vec); i++) {
+                mem = vector_get(vec, i);
+                if(compare_ident(ident, ident_len, mem->ident, mem->ident_len)) {
+                    found = true;
+                    break;
+                }
+            }
+            if(!found) {
+                error("No member name found");
+            }
+            Node *addrof = new_node(ND_ADDRESS_OF, node, NULL);
+            addrof->expr_type = type_new_ptr(&char_type);
+            Node *add = new_node_add(addrof, new_node_num(mem->offset));
+            node = new_node(ND_DEREF, add, NULL);
+            node->expr_type = mem->node->type.type;
         }else{
             break;
         }
@@ -930,6 +956,7 @@ Vector *struct_members(size_t *size) {
                 error("Struct member with same name is already defined: %.*s", member->ident_len, member->ident);
             }
         }
+        member->node = type_node;
         member->offset = *size;
         *size += type_sizeof(type_node->type.type);
         vector_push(vec, member);
@@ -1131,6 +1158,14 @@ void print_indent(int level, const char *fmt, ...) {
     vfprintf(stderr, fmt, ap);
 
     va_end(ap);
+}
+
+bool compare_ident(char *ident_a, int ident_a_len, char *ident_b, int ident_b_len) {
+    if(ident_a_len != ident_b_len) {
+        debug_log("size: %d %d\n", ident_a_len, ident_b_len);
+        return false;
+    }
+    return strncmp(ident_a, ident_b, ident_a_len) == 0;
 }
 
 void dumpnodes_inner(Node *node, int level) {

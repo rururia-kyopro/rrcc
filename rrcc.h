@@ -108,6 +108,7 @@ typedef enum {
     ND_TYPE_ARRAY,
     ND_TYPE_FUNC,
     ND_TYPE_STRUCT,
+    ND_STRUCT_ACCESS,
 } NodeKind;
 
 struct NodeList {
@@ -294,6 +295,8 @@ struct StructMember {
     char *ident;
     int ident_len;
 };
+
+bool compare_ident(char *ident_a, int ident_a_len, char *ident_b, int ident_b_len);
 
 Token *tokenize(char *);
 void gen_string_literals();
