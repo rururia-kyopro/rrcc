@@ -55,6 +55,7 @@ char *node_kind(NodeKind kind){
         case ND_TYPE_FUNC: return "ND_TYPE_FUNC";
         case ND_TYPE_POINTER: return "ND_TYPE_POINTER";
         case ND_TYPE_ARRAY: return "ND_TYPE_ARRAY";
+        case ND_TYPE_STRUCT: return "ND_TYPE_STRUCT";
         default: assert(false);
     }
 }
@@ -284,10 +285,6 @@ Node *function_definition(Node *type_node) {
 
 Node *variable_definition(bool is_global, Node *type_node) {
     Type *type = type_node->type.type;
-    NodeKind kind = is_global ? ND_GVAR_DEF : ND_DECL_VAR;
-    if(type->ty == FUNC) {
-        kind = ND_FUNC_DEF;
-    }
     Node *node = new_node(is_global ? ND_GVAR_DEF : ND_DECL_VAR, type_node, NULL);
 
     bool empty_num = false;
@@ -312,8 +309,11 @@ Node *variable_definition(bool is_global, Node *type_node) {
                 break;
             }
         }
-        if (!found) {
+        if (!found && type->ty != STRUCT) {
             error_at(token->str, "No identifier found for global variable definition");
+        }
+        if(!found && type->ty == STRUCT) {
+            return type_node;
         }
     }else {
         node->decl_var.init_expr = init_expr;
@@ -742,6 +742,9 @@ Node *type_(bool need_ident) {
     Type *cur;
     if(kind == TK_CHAR) {
         cur = &char_type;
+    }else if(kind == TK_STRUCT) {
+        cur = struct_declaration()->type.type;
+        need_ident = false;
     }else{
         cur = &int_type;
     }
@@ -883,6 +886,38 @@ Vector *function_arguments() {
         }
     }
     return args;
+}
+
+// struct_declaration = "struct" ident ( "{" struct_members "}" )?
+Node *struct_declaration() {
+    char *ident;
+    int ident_len;
+    expect_ident(&ident, &ident_len);
+
+    Node *node = new_node(ND_TYPE_STRUCT, NULL, NULL);
+    node->type.type = type_new_struct(ident, ident_len);
+
+    if(consume("{")) {
+        node->type.struct_.members = struct_members();
+        expect("}");
+    }
+
+    return node;
+}
+
+// struct_members = ( type_ ";" )*
+Vector *struct_members() {
+    Vector *vec = new_vector();
+    while(peek_type_prefix()) {
+        Node *type_node = type_(true);
+        vector_push(vec, type_node);
+        expect(";");
+    }
+    return vec;
+}
+
+bool peek_type_prefix() {
+    return peek_kind(TK_CHAR) || peek_kind(TK_INT) || peek_kind(TK_STRUCT);
 }
 
 /// LVar ///
@@ -1039,6 +1074,14 @@ Type *type_new_func(Type *type, Vector *args) {
     func_type->args = args;
     func_type->ptr_to = type;
     return func_type;
+}
+
+Type *type_new_struct(char *ident, int ident_len) {
+    Type *struct_type = calloc(1, sizeof(Type));
+    struct_type->ty = STRUCT;
+    struct_type->struct_ident = ident;
+    struct_type->struct_ident_len = ident_len;
+    return struct_type;
 }
 
 bool type_find_ident(Node *node, char **ident, int *ident_len) {

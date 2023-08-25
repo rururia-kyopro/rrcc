@@ -240,6 +240,9 @@ void gen(Node *node){
             printf("  push rax\n");
             return;
         }    
+        case ND_TYPE:
+            // nop
+            return;
         case ND_FUNC_DECL:
             // nop
             return;

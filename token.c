@@ -42,7 +42,7 @@ bool consume_kind(TokenKind kind) {
 }
 
 bool consume_type_keyword(TokenKind *kind) {
-    if(token->kind != TK_INT && token->kind != TK_CHAR)
+    if(token->kind != TK_INT && token->kind != TK_CHAR && token->kind != TK_STRUCT)
         return false;
 
     *kind = token->kind;
@@ -91,6 +91,14 @@ int expect_number() {
     int val = token->val;
     next_token();
     return val;
+}
+
+bool peek(char* op) {
+    return token->kind == TK_RESERVED && is_prefix(op, token->str, token->len);
+}
+
+bool peek_kind(TokenKind kind) {
+    return token->kind == kind;
 }
 
 bool at_eof() {

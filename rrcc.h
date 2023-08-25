@@ -61,6 +61,8 @@ TokenKind expect_type_keyword();
 bool consume_ident(char **ident, int *ident_len);
 void expect_ident(char **ident, int *ident_len);
 int expect_number();
+bool peek(char* op);
+bool peek_kind(TokenKind kind);
 bool at_eof();
 Token *tokenize(char *p);
 
@@ -104,6 +106,7 @@ typedef enum {
     ND_TYPE_POINTER,
     ND_TYPE_ARRAY,
     ND_TYPE_FUNC,
+    ND_TYPE_STRUCT,
 } NodeKind;
 
 struct NodeList {
@@ -143,6 +146,9 @@ struct Node {
                     size_t size;
                     bool has_size;
                 } array;
+                struct {
+                    Vector *members;
+                } struct_;
             };
         } type;
         Node *else_stmt;
@@ -208,6 +214,9 @@ void type_array_suffix(Vector *array_suffix_vector);
 Node *type_ident(bool need_ident);
 Node *ident_();
 Vector *function_arguments();
+Node *struct_declaration();
+Vector *struct_members();
+bool peek_type_prefix();
 
 /// LVar ///
 
@@ -253,11 +262,13 @@ extern Vector *global_string_literals;
 /// Type ///
 
 struct Type {
-    enum { CHAR, INT, PTR, ARRAY, FUNC } ty;
+    enum { CHAR, INT, PTR, ARRAY, FUNC, STRUCT } ty;
     Type *ptr_to;
     size_t array_size;
     Vector *args;
     bool has_array_size;
+    char *struct_ident;
+    int struct_ident_len;
 };
 
 extern Type int_type;
@@ -271,6 +282,7 @@ bool type_is_same(Type *type_a, Type *type_b);
 Type *type_new_ptr(Type *type);
 Type *type_new_array(Type *type, bool has_size, int size);
 Type *type_new_func(Type *type, Vector *args);
+Type *type_new_struct(char *ident, int ident_len);
 bool type_find_ident(Node *node, char **ident, int *ident_len);
 
 Token *tokenize(char *);
