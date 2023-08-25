@@ -239,7 +239,7 @@ Node *declarator() {
 
 // function_definition = type ident "(" ( type ident "," )* ( type ident )? ")" stmt
 Node *function_definition(Node *type_node) {
-    Node *node = new_node(ND_FUNC_DEF, NULL, NULL);
+    Node *node = new_node(ND_FUNC_DEF, type_node, NULL);
     node->func_def.arg_vec = new_vector();
     node->func_def.lvar_vec = new_vector();
 
@@ -247,6 +247,7 @@ Node *function_definition(Node *type_node) {
     if(!type_find_ident(type_node, &node->func_def.ident, &node->func_def.ident_len)) {
         error_at(token->str, "Function definition must have identifier");
     }
+    debug_log("func_def: %.*s %p\n", node->func_def.ident_len, node->func_def.ident, node->func_def.ident);
 
     locals_stack_size = 0;
 
@@ -269,6 +270,16 @@ Node *function_definition(Node *type_node) {
     }
 
     locals = node->func_def.lvar_vec;
+
+    Node *gvar_def_node = new_node(ND_GVAR_DEF, NULL, NULL);
+
+    GVar *gvar = find_gvar(globals, node->func_def.ident, node->func_def.ident_len);
+    if(gvar != NULL) {
+        error("A global variable with same name is already defined");
+    }
+
+    gvar = new_gvar(globals, node->func_def.ident, node->func_def.ident_len, type_node->type.type);
+    gvar_def_node->gvar_def.gvar = gvar;
 
     if(consume(";")) {
         // function declaration
@@ -630,8 +641,11 @@ Node *unary() {
 }
 
 // primary = "(" expr ")"
-//         | ident ("(" ( (expr ",")* expr )? ")")?
-//         | ident "[" expr "]"
+//         | ident
+//         | primary ("(" ( (expr ",")* expr )? ")")?
+//         | primary "[" expr "]"
+//         | primary "." ident
+//         | primary "->" ident
 //         | num
 //         | string_literal
 Node *primary() {
@@ -640,14 +654,37 @@ Node *primary() {
         expect(")");
         return node;
     }
+    Node *node;
     char *ident;
     int ident_len;
     if(consume_ident(&ident, &ident_len)){
-        if(consume("(")){
-            Node *node = new_node(ND_CALL, NULL, NULL);
-            node->expr_type = &int_type;
+        node = find_symbol(globals, locals, ident, ident_len);
+        if(node == NULL) {
+            error("symbol %.*s is not defined.", ident_len, ident);
+        }
+    }else if(consume_kind(TK_STRING_LITERAL)) {
+        unget_token();
+        StringLiteral *literal = calloc(1, sizeof(StringLiteral));
+        literal->str = token->str;
+        literal->len = token->len;
+        literal->index = vector_size(global_string_literals);
+        vector_push(global_string_literals, literal);
+        next_token();
 
-            NodeList *arg_tail = &node->call_arg_list;
+        node = new_node(ND_STRING_LITERAL, NULL, NULL);
+        node->expr_type = calloc(1, sizeof(Type));
+        node->expr_type->ptr_to = &char_type;
+        node->expr_type->ty = PTR;
+        node->string_literal.literal = literal;
+    }else {
+        node = new_node_num(expect_number());
+    }
+    while(1) {
+        if(consume("(")){
+            Node *call_node = new_node(ND_CALL, node, NULL);
+            call_node->expr_type = &int_type;
+
+            NodeList *arg_tail = &call_node->call_arg_list;
             if(!consume(")")){
                 while(1){
                     NodeList *nodelist = calloc(1, sizeof(NodeList));
@@ -661,47 +698,22 @@ Node *primary() {
                 }
             }
 
-            node->call_ident = ident;
-            node->call_ident_len = ident_len;
-            return node;
+            call_node->call_ident = ident;
+            call_node->call_ident_len = ident_len;
+            node = call_node;
         }else if(consume("[")) {
             Node *expr_node = expr();
             expect("]");
 
-            Node *var_node = find_symbol(globals, locals, ident, ident_len);
-            if(var_node == NULL) {
-                error_at(ident, "identifier is not defined");
-            }
+            Node *added = new_node_add(node, expr_node);
 
-            Node *added = new_node_add(var_node, expr_node);
-
-            Node *node = new_node(ND_DEREF, added, NULL);
+            node = new_node(ND_DEREF, added, NULL);
             node->expr_type = added->expr_type->ptr_to;
-            return node;
         }else{
-            Node *node = find_symbol(globals, locals, ident, ident_len);
-            if(node == NULL) {
-                error_at(ident, "identifier is not defined");
-            }
-            return node;
+            break;
         }
-    }else if(consume_kind(TK_STRING_LITERAL)) {
-        unget_token();
-        StringLiteral *literal = calloc(1, sizeof(StringLiteral));
-        literal->str = token->str;
-        literal->len = token->len;
-        literal->index = vector_size(global_string_literals);
-        vector_push(global_string_literals, literal);
-        next_token();
-
-        Node *node = new_node(ND_STRING_LITERAL, NULL, NULL);
-        node->expr_type = calloc(1, sizeof(Type));
-        node->expr_type->ptr_to = &char_type;
-        node->expr_type->ty = PTR;
-        node->string_literal.literal = literal;
-        return node;
     }
-    return new_node_num(expect_number());
+    return node;
 }
 
 // Parse type specifier like followings.
