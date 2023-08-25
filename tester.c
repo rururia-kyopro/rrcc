@@ -6,6 +6,7 @@ char *system(char *cmd);
 int strlen(char *s);
 int strcmp(char *s, char *t);
 int printf(char *s);
+int memset(char *s, int b, int len);
 int exit(int a);
 
 int compile(char *prefix, char *source, char *suffix) {
@@ -86,14 +87,15 @@ int assert_stdout(int expected, char *str, char *source) {
     if(ret == expected) {
         int *fp;
         char buf[1000];
-        buf[999] = 0;
+        memset(buf, 0, 1000);
         fp = fopen("tmp.output", "r");
         fread(buf, 1000, 1, fp);
         fclose(fp);
         if(strcmp(buf, str) == 0) {
             printf("%s => %d, %s\n", source, ret, str);
         }else{
-            printf("%s => %d, %s expected, but got %s\n", source, expected, str, buf);
+            printf("%s => %d, '%s' expected, but got '%s'\n", source, expected, str, buf);
+            exit(1);
         }
     }else{
         printf("%s => %d expected, but got %d\n", source, expected, ret);
@@ -138,12 +140,12 @@ int main() {
     assert(0, "int a;int b;b=0;for(a=0;a==1;a=a+1){b=1;}b;");
     assert(31, "int a;int b;a=0;b=32;while(b>0){b=b/2;a=a+b;}a;");
     assert(10, "int a;a=0;do a=a+2; while(a<9);a;");
-    assert_stdout(3, "testfunc1 called!", "int testfunc1();int main(){testfunc1();}");
-    assert_stdout(16, "testfunc2,7,9 called!", "int testfunc2();int main(){testfunc2(1+6,9);}");
+    assert_stdout(3, "testfunc1 called!\n", "int testfunc1();int main(){testfunc1();}");
+    assert_stdout(16, "testfunc2,7,9 called!\n", "int testfunc2();int main(){testfunc2(1+6,9);}");
     assert_file(34, "int tra(int a){if(a==1){return 1;}if(a==2){return 2;}return tra(a-1)+tra(a-2);}int main(){return tra(8);}");
     assert_file(3, "int main(){int a;int *b;a=2;b=&a;a=3;return *b;}");
-    assert_stdout(14, "testfunc3,10,4 called!", "char *malloc(int size);int testfunc3(int *c);int main(){int *c;c=malloc(30);*c=10;*(c+1)=4;testfunc3(c);}");
-    assert_stdout(7, "testfunc3,1,2 called!\ntestfunc3,3,4 called!", "char *malloc(int size);int testfunc3(int *c);int main(){int **c;c=malloc(30);int *a;a=malloc(16);int *b;b=malloc(16);*c=a;*(c+1)=b;**c=1;*(a+1)=2;**(c+1)=3;*(b+1)=4;testfunc3(a);testfunc3(b);}");
+    assert_stdout(14, "testfunc3,10,4 called!\n", "char *malloc(int size);int testfunc3(int *c);int main(){int *c;c=malloc(30);*c=10;*(c+1)=4;testfunc3(c);}");
+    assert_stdout(7, "testfunc3,1,2 called!\ntestfunc3,3,4 called!\n", "char *malloc(int size);int testfunc3(int *c);int main(){int **c;c=malloc(30);int *a;a=malloc(16);int *b;b=malloc(16);*c=a;*(c+1)=b;**c=1;*(a+1)=2;**(c+1)=3;*(b+1)=4;testfunc3(a);testfunc3(b);}");
     assert_file(5, "int main(){int *a; 1+sizeof (*a);}");
     assert_file(9, "int main(){int *a; 1+sizeof (a);}");
     assert_file(9, "int main(){int *a; 1+sizeof (a+1);}");
@@ -184,6 +186,9 @@ int main() {
     assert_file(21, "struct aa{int f;int q;int m;int *g;char p;}p;int main(){return sizeof(p);}");
     assert_file(8, "int printf(char *s);struct st{int a;int b;}c;int main(){char *p=&c;c.a=1;c.b=7;return p[0]+p[4];}");
     assert_file(11, "int printf(char *s);struct st{int a;int b;}c;int main(){struct st *q;q=&c;char *p=&c;q->a=2;q->b=9;return p[0]+c.b;}");
+    assert_file(3, "enum a{f,g,h};int main(){return g+h;}");
+    assert_file(8, "enum a{f=2,g,h=5};int main(){return g+h;}");
+    assert_stdout(4, "1 1 1", "int printf(char *s);enum a{f,g,h};int main(){enum a p;p=1;enum a q;q=g;printf(\x22%d %d %d\x22, p, q, p==q);return sizeof(p);}");
     printf("OK\n");
     return 0;
 }

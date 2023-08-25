@@ -42,7 +42,7 @@ bool consume_kind(TokenKind kind) {
 }
 
 bool consume_type_keyword(TokenKind *kind) {
-    if(token->kind != TK_INT && token->kind != TK_CHAR && token->kind != TK_STRUCT)
+    if(token->kind != TK_INT && token->kind != TK_CHAR && token->kind != TK_STRUCT && token->kind != TK_ENUM)
         return false;
 
     *kind = token->kind;
@@ -192,6 +192,7 @@ Token *tokenize(char *p){
                 { "int", TK_INT },
                 { "char", TK_CHAR },
                 { "struct", TK_STRUCT },
+                { "enum", TK_ENUM },
                 { "return", TK_RETURN },
                 { "if", TK_IF },
                 { "else", TK_ELSE },

@@ -13,6 +13,7 @@ Vector *globals;
 int global_size;
 Vector *global_string_literals;
 Vector *struct_registry;
+Vector *enum_registry;
 
 Type int_type = { INT, NULL };
 Type char_type = { CHAR, NULL };
@@ -57,6 +58,7 @@ char *node_kind(NodeKind kind){
         case ND_TYPE_POINTER: return "ND_TYPE_POINTER";
         case ND_TYPE_ARRAY: return "ND_TYPE_ARRAY";
         case ND_TYPE_STRUCT: return "ND_TYPE_STRUCT";
+        case ND_TYPE_ENUM: return "ND_ENUM";
         default: assert(false);
     }
 }
@@ -209,6 +211,7 @@ Node *translation_unit() {
     global_size = 0;
     global_string_literals = new_vector();
     struct_registry = new_vector();
+    enum_registry = new_vector();
 
     Node *node = new_node(ND_TRANS_UNIT, NULL, NULL);
     node->trans_unit.decl = new_vector();
@@ -322,10 +325,10 @@ Node *variable_definition(bool is_global, Node *type_node) {
                 break;
             }
         }
-        if (!found && type->ty != STRUCT) {
+        if (!found && type->ty != STRUCT && type->ty != ENUM) {
             error_at(token->str, "No identifier found for global variable definition");
         }
-        if(!found && type->ty == STRUCT) {
+        if(!found && (type->ty == STRUCT || type->ty == ENUM)) {
             return type_node;
         }
     }else {
@@ -731,7 +734,7 @@ Node *primary() {
             if(struct_type->ty != STRUCT) {
                 error("Access struct member for non struct variable");
             }
-            vec = struct_type->struct_members;
+            vec = struct_type->members;
             bool found = false;
             StructMember *mem;
             for(int i = 0; i < vector_size(vec); i++) {
@@ -801,6 +804,9 @@ Node *type_(bool need_ident) {
         cur = &char_type;
     }else if(kind == TK_STRUCT) {
         cur = struct_declaration()->type.type;
+        need_ident = false;
+    }else if(kind == TK_ENUM) {
+        cur = enum_declaration()->type.type;
         need_ident = false;
     }else{
         cur = &int_type;
@@ -955,7 +961,7 @@ Node *struct_declaration() {
 
     if(consume("{")) {
         node->type.type = type_new_struct(ident, ident_len);
-        node->type.type->struct_members = struct_members(&node->type.type->struct_size);
+        node->type.type->members = struct_members(&node->type.type->struct_size);
         for(int i = 0; i < vector_size(struct_registry); i++) {
             StructRegistryEntry *entry = vector_get(struct_registry, i);
             if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
@@ -1010,8 +1016,82 @@ Vector *struct_members(size_t *size) {
     return vec;
 }
 
+// enum_declaration = "enum" ident ( "{" enum_members "}" )?
+Node *enum_declaration() {
+    char *ident;
+    int ident_len;
+    expect_ident(&ident, &ident_len);
+
+    Node *node = new_node(ND_TYPE_ENUM, NULL, NULL);
+
+    if(consume("{")) {
+        node->type.type = type_new_enum(ident, ident_len);
+        node->type.type->members = enum_members();
+        for(int i = 0; i < vector_size(enum_registry); i++) {
+            EnumRegistryEntry *entry = vector_get(enum_registry, i);
+            if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
+                error("Struct name is already defined");
+            }
+        }
+        EnumRegistryEntry *entry = calloc(1, sizeof(EnumRegistryEntry));
+        entry->ident = ident;
+        entry->ident_len = ident_len;
+        entry->type = node->type.type;
+        vector_push(enum_registry, entry);
+
+        expect("}");
+    } else {
+        bool found = false;
+        EnumRegistryEntry *entry;
+        for(int i = 0; i < vector_size(enum_registry); i++) {
+            entry = vector_get(enum_registry, i);
+            if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
+                found = true;
+                break;
+            }
+        }
+        if(!found) {
+            error("No enum found for specified name");
+        }
+        node->type.type = entry->type;
+    }
+
+    return node;
+}
+
+// enum_members = ( ( ident ( "=" num )? "," )* ident ( "=" num )? )?
+Vector *enum_members() {
+    Vector *vec = new_vector();
+    char *ident;
+    int ident_len;
+    int num = 0;
+    while(consume_ident(&ident, &ident_len)) {
+        EnumMember *member = calloc(1, sizeof(EnumMember));
+        GVar *gvar = find_gvar(globals, ident, ident_len);
+        if(gvar != NULL) {
+            error("Name already defined");
+        }
+
+        if(consume("=")) {
+            num = expect_number();
+        }
+
+        gvar = new_gvar(globals, ident, ident_len, &int_type);
+        gvar->is_enum = true;
+        gvar->enum_num = num;
+        member->gvar = gvar;
+        member->num = num;
+        num++;
+        vector_push(vec, member);
+        if(!consume(",")) {
+            break;
+        }
+    }
+    return vec;
+}
+
 bool peek_type_prefix() {
-    return peek_kind(TK_CHAR) || peek_kind(TK_INT) || peek_kind(TK_STRUCT);
+    return peek_kind(TK_CHAR) || peek_kind(TK_INT) || peek_kind(TK_STRUCT) || peek_kind(TK_ENUM);
 }
 
 /// LVar ///
@@ -1078,6 +1158,10 @@ Node *find_symbol(Vector *globals, Vector *locals, char *ident, int ident_len) {
         if(gvar == NULL) {
             return NULL;
         }
+        if(gvar->is_enum) {
+            Node *node = new_node_num(gvar->enum_num);
+            return node;
+        }
         Node *node = new_node(ND_GVAR, NULL, NULL);
         node->gvar.gvar = gvar;
         node->expr_type = gvar->type;
@@ -1100,6 +1184,9 @@ int type_sizeof(Type *type) {
     }
     if(type->ty == STRUCT) {
         return type->struct_size;
+    }
+    if(type->ty == ENUM) {
+        return 4;
     }
     return 8;
 }
@@ -1176,8 +1263,16 @@ Type *type_new_func(Type *type, Vector *args) {
 Type *type_new_struct(char *ident, int ident_len) {
     Type *struct_type = calloc(1, sizeof(Type));
     struct_type->ty = STRUCT;
-    struct_type->struct_ident = ident;
-    struct_type->struct_ident_len = ident_len;
+    struct_type->ident = ident;
+    struct_type->ident_len = ident_len;
+    return struct_type;
+}
+
+Type *type_new_enum(char *ident, int ident_len) {
+    Type *struct_type = calloc(1, sizeof(Type));
+    struct_type->ty = ENUM;
+    struct_type->ident = ident;
+    struct_type->ident_len = ident_len;
     return struct_type;
 }
 

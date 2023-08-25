@@ -16,6 +16,8 @@ typedef struct GVar GVar;
 typedef struct StringLiteral StringLiteral;
 typedef struct StructMember StructMember;
 typedef struct StructRegistryEntry StructRegistryEntry;
+typedef struct EnumMember EnumMember;
+typedef struct EnumRegistryEntry EnumRegistryEntry;
 
 /// Token ///
 
@@ -25,6 +27,7 @@ typedef enum {
     TK_INT,
     TK_CHAR,
     TK_STRUCT,
+    TK_ENUM,
     TK_RETURN,
     TK_IF,
     TK_ELSE,
@@ -109,6 +112,7 @@ typedef enum {
     ND_TYPE_ARRAY,
     ND_TYPE_FUNC,
     ND_TYPE_STRUCT,
+    ND_TYPE_ENUM,
 } NodeKind;
 
 struct NodeList {
@@ -217,6 +221,8 @@ Node *ident_();
 Vector *function_arguments();
 Node *struct_declaration();
 Vector *struct_members(size_t *size);
+Node *enum_declaration();
+Vector *enum_members();
 bool peek_type_prefix();
 
 /// LVar ///
@@ -242,6 +248,8 @@ struct GVar {
     char *name;
     int len;
     Type *type;
+    bool is_enum;
+    int enum_num;
 };
 
 extern Vector *globals;
@@ -263,15 +271,15 @@ extern Vector *global_string_literals;
 /// Type ///
 
 struct Type {
-    enum { CHAR, INT, PTR, ARRAY, FUNC, STRUCT } ty;
+    enum { CHAR, INT, PTR, ARRAY, FUNC, STRUCT, ENUM } ty;
     Type *ptr_to;
     size_t array_size;
-    Vector *args;
+    Vector *args; // func
     bool has_array_size;
-    char *struct_ident;
-    int struct_ident_len;
-    Vector *struct_members;
-    size_t struct_size;
+    char *ident; // enum or struct
+    int ident_len; // enum or struct
+    Vector *members; // enum or struct
+    size_t struct_size; // struct
 };
 
 extern Type int_type;
@@ -286,6 +294,7 @@ Type *type_new_ptr(Type *type);
 Type *type_new_array(Type *type, bool has_size, int size);
 Type *type_new_func(Type *type, Vector *args);
 Type *type_new_struct(char *ident, int ident_len);
+Type *type_new_enum(char *ident, int ident_len);
 bool type_find_ident(Node *node, char **ident, int *ident_len);
 
 /// StructMember ///
@@ -305,6 +314,22 @@ struct StructRegistryEntry {
 };
 
 extern Vector *struct_registry;
+
+/// EnumMember ///
+struct EnumMember {
+    int num;
+    GVar *gvar;
+};
+
+/// Enum Registry Entry ///
+
+struct EnumRegistryEntry {
+    Type *type;
+    char *ident;
+    int ident_len;
+};
+
+extern Vector *enum_registry;
 
 bool compare_ident(char *ident_a, int ident_a_len, char *ident_b, int ident_b_len);
 
