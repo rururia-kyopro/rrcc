@@ -164,6 +164,10 @@ int main() {
     assert_file(20, "int a[2]={10,20};int main(){return a[1];}");
     assert_file(8, "int fun(){return 4;}int main(){int a[2]={fun(),fun()};return a[0]+a[1];}");
     assert_file(5, "int fun(){return 4;}int main(){int a=fun();return a+1;}");
+    assert_file(40, "int *a[5];int main(){return sizeof(a);}");
+    assert_file(8, "int (*a)[5];int main(){return sizeof(a);}");
+    assert_file(1, "int (*a)[5];int main(){int b[5];a=&b;b[0]=2;return *a == b;}");
+    assert_file(1, "int (*a[2])[5];int main(){return sizeof(a);}");
     printf("OK\n");
     return 0;
 }
