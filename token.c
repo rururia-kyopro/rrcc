@@ -155,7 +155,16 @@ Token *tokenize(char *p){
         if(*p == '"') {
             p++;
             char *literal = p;
-            while(*p != '"' && *p) {
+            bool state = false;
+            while(*p) {
+                if(*p == '"' && !state) {
+                    break;
+                }
+                if(*p == '\\'){
+                    state = true;
+                }else{
+                    state = false;
+                }
                 p++;
             }
             int len = p - literal;
