@@ -43,6 +43,7 @@ char *node_kind(NodeKind kind){
         case ND_COMPOUND: return "ND_COMPOUND";
         case ND_CALL: return "ND_CALL";
         case ND_FUNC_DEF: return "ND_FUNC_DEF";
+        case ND_FUNC_DECL: return "ND_FUNC_DECL";
         case ND_ADDRESS_OF: return "ND_ADDRESS_OF";
         case ND_DEREF: return "ND_DEREF";
         case ND_SIZEOF: return "ND_SIZEOF";
@@ -267,6 +268,12 @@ Node *function_definition(Node *type_node) {
     }
 
     locals = node->func_def.lvar_vec;
+
+    if(consume(";")) {
+        // function declaration
+        node->kind = ND_FUNC_DECL;
+        return node;
+    }
     node->lhs = stmt();
     if(node->lhs->kind != ND_COMPOUND) {
         error_at(token->str, "Statement of function definition shall be a compound statement.");

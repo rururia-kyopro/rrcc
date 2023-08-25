@@ -91,6 +91,7 @@ typedef enum {
     ND_COMPOUND,
     ND_CALL,
     ND_FUNC_DEF,
+    ND_FUNC_DECL,
     ND_ADDRESS_OF,
     ND_DEREF,
     ND_SIZEOF,

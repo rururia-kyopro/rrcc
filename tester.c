@@ -167,7 +167,8 @@ int main() {
     assert_file(40, "int *a[5];int main(){return sizeof(a);}");
     assert_file(8, "int (*a)[5];int main(){return sizeof(a);}");
     assert_file(1, "int (*a)[5];int main(){int b[5];a=&b;b[0]=2;return *a == b;}");
-    assert_file(1, "int (*a[2])[5];int main(){return sizeof(a);}");
+    assert_file(16, "int (*a[2])[5];int main(){return sizeof(a);}");
+    assert_file(1, "int func(int a);int main(){return 1;}");
     printf("OK\n");
     return 0;
 }

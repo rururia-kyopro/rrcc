@@ -240,6 +240,9 @@ void gen(Node *node){
             printf("  push rax\n");
             return;
         }    
+        case ND_FUNC_DECL:
+            // nop
+            return;
         case ND_FUNC_DEF:
             printf(".text\n");
             printf(".globl %.*s\n", node->func_def.ident_len, node->func_def.ident);
