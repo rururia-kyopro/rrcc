@@ -1018,20 +1018,32 @@ Node *struct_declaration() {
     Node *node = new_node(ND_TYPE_STRUCT, NULL, NULL);
 
     if(consume("{")) {
-        node->type.type = type_new_struct(ident, ident_len);
-        node->type.type->members = struct_members(&node->type.type->struct_size);
+        StructRegistryEntry *entry = NULL;
         for(int i = 0; i < vector_size(struct_registry); i++) {
-            StructRegistryEntry *entry = vector_get(struct_registry, i);
+            entry = vector_get(struct_registry, i);
             if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
-                error("Struct name is already defined");
+                if(entry->type->struct_complete) {
+                    error("Struct name is already defined");
+                }
+                break;
             }
         }
-        StructRegistryEntry *entry = calloc(1, sizeof(StructRegistryEntry));
-        entry->ident = ident;
-        entry->ident_len = ident_len;
-        entry->type = node->type.type;
-        entry->type->struct_complete = true;
-        vector_push(struct_registry, entry);
+        if(entry) {
+            // Convert incomplete struct to complete one if already exists.
+            node->type.type = entry->type;
+            entry->type->struct_complete = true;
+        } else {
+            node->type.type = type_new_struct(ident, ident_len);
+        }
+        node->type.type->members = struct_members(&node->type.type->struct_size);
+        if(entry == NULL) {
+            StructRegistryEntry *entry = calloc(1, sizeof(StructRegistryEntry));
+            entry->ident = ident;
+            entry->ident_len = ident_len;
+            entry->type = node->type.type;
+            entry->type->struct_complete = true;
+            vector_push(struct_registry, entry);
+        }
 
         expect("}");
     } else {

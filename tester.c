@@ -200,6 +200,7 @@ int main() {
     assert_file(10, "extern int printf(char *s);int main(){printf(\"\");return 10;}");
     assert_stdout(0, "1", "int fprintf();int a;extern int *stderr;extern int *stdout;int main(){a=1;fprintf(stdout, \"%d\", a);return 0;}");
     assert_stdout(0, "1", "int fprintf();int a;struct FILE {int dummy;};typedef struct FILE FILE;extern FILE *stderr;extern FILE *stdout;int main(){a=1;fprintf(stdout, \"%d\", a);return 0;}");
+    assert_file(1, "int fprintf();typedef struct S S;struct S {int a;};int main(){S a;a.a=1;return a.a;}");
     printf("OK\n");
     return 0;
 }
