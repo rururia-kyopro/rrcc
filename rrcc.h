@@ -118,6 +118,7 @@ typedef enum {
     ND_TYPE_STRUCT,
     ND_TYPE_ENUM,
     ND_TYPE_TYPEDEF,
+    ND_TYPE_EXTERN,
 } NodeKind;
 
 struct NodeList {

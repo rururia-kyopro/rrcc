@@ -61,6 +61,7 @@ char *node_kind(NodeKind kind){
         case ND_TYPE_STRUCT: return "ND_TYPE_STRUCT";
         case ND_TYPE_ENUM: return "ND_ENUM";
         case ND_TYPE_TYPEDEF: return "ND_TYPE_TYPEDEF";
+        case ND_TYPE_EXTERN: return "ND_TYPE_EXTERN";
         default: assert(false);
     }
 }
@@ -240,7 +241,7 @@ Node *declarator() {
     dumpnodes(type_node);
     fprintf(stderr, "// type node end\n");
 
-    if(type_node->type.type->ty == FUNC) {
+    if(type_node->kind == ND_TYPE_EXTERN && type_node->lhs->type.type->ty == FUNC || type_node->kind == ND_TYPE && type_node->type.type->ty == FUNC) {
         return function_definition(type_node);
     }
     return variable_definition(true, type_node);
@@ -248,6 +249,11 @@ Node *declarator() {
 
 // function_definition = type ident "(" ( type ident "," )* ( type ident )? ")" stmt
 Node *function_definition(Node *type_node) {
+    bool is_extern = false;
+    if(type_node->kind == ND_TYPE_EXTERN) {
+        is_extern = true;
+        type_node = type_node->lhs;
+    }
     Node *node = new_node(ND_FUNC_DEF, type_node, NULL);
     node->func_def.arg_vec = new_vector();
     node->func_def.lvar_vec = new_vector();
@@ -295,6 +301,9 @@ Node *function_definition(Node *type_node) {
         node->kind = ND_FUNC_DECL;
         return node;
     }
+    if(is_extern) {
+        error("extern function cannot have function body");
+    }
     node->lhs = stmt();
     if(node->lhs->kind != ND_COMPOUND) {
         error_at(token->str, "Statement of function definition shall be a compound statement.");
@@ -304,12 +313,20 @@ Node *function_definition(Node *type_node) {
 }
 
 Node *variable_definition(bool is_global, Node *type_node) {
+    bool is_extern = false;
+    if(type_node->kind == ND_TYPE_EXTERN) {
+        is_extern = true;
+        type_node = type_node->lhs;
+    }
     Type *type = type_node->type.type;
     Node *node = new_node(is_global ? ND_GVAR_DEF : ND_DECL_VAR, type_node, NULL);
 
     bool empty_num = false;
     Node *init_expr = NULL;
     if(consume("=")) {
+        if(is_extern) {
+            error("extern variable cannot have initializer");
+        }
         init_expr = initializer();
         if((init_expr->kind == ND_INIT) != (type->ty == ARRAY)) {
             error_at(token->str, "Initializer type does not match");
@@ -830,6 +847,8 @@ Node *type_(bool need_ident) {
             }
         }
         cur = entry->type;
+    }else if(kind == TK_EXTERN) {
+        return new_node(ND_TYPE_EXTERN, type_(need_ident), NULL);
     }else{
         cur = &int_type;
     }
@@ -1153,7 +1172,7 @@ TokenKind expect_type_prefix() {
 }
 
 bool peek_type_prefix() {
-    if(peek_kind(TK_CHAR) || peek_kind(TK_INT) || peek_kind(TK_STRUCT) || peek_kind(TK_ENUM) || peek_kind(TK_TYPEDEF)){ 
+    if(peek_kind(TK_CHAR) || peek_kind(TK_INT) || peek_kind(TK_STRUCT) || peek_kind(TK_ENUM) || peek_kind(TK_TYPEDEF) || peek_kind(TK_EXTERN)){ 
         return true;
     }
     char *ident;

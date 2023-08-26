@@ -197,6 +197,7 @@ int main() {
     assert_file(82, "int printf(char *s);int main(){char s[3]=\"\\x52\";return s[0];}");
     assert_stdout(39, "b", "int putchar(char s);int main(){putchar('b');return '\\'';}");
     assert_stdout(34, "o", "int putchar(char s);int main(){putchar('\\x6f');return '\"';}");
+    assert_file(10, "extern int printf(char *s);int main(){printf(\"\");return 10;}");
     printf("OK\n");
     return 0;
 }
