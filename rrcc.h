@@ -30,6 +30,7 @@ typedef enum {
     TK_STRUCT,
     TK_ENUM,
     TK_TYPEDEF,
+    TK_EXTERN,
     TK_RETURN,
     TK_IF,
     TK_ELSE,

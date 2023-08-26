@@ -296,6 +296,7 @@ Token *tokenize(char *p){
                 { "struct", TK_STRUCT },
                 { "enum", TK_ENUM },
                 { "typedef", TK_TYPEDEF },
+                { "extern", TK_EXTERN },
                 { "return", TK_RETURN },
                 { "if", TK_IF },
                 { "else", TK_ELSE },
