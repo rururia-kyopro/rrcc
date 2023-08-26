@@ -306,6 +306,9 @@ void gen(Node *node){
                 error("Conversion unsupported for type %d and %d", node->lhs->expr_type->ty, node->expr_type->ty);
             }
             return;
+        case ND_TYPE_EXTERN:
+            // nop
+            return;
     }
     gen(node->lhs);
     gen(node->rhs);

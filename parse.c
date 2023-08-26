@@ -334,6 +334,16 @@ Node *variable_definition(bool is_global, Node *type_node) {
     }
     expect(";");
 
+    if(is_extern) {
+        char *ident;
+        int ident_len;
+        if(!type_find_ident(node, &ident, &ident_len)) {
+            error("No identifier on extern variable");
+        }
+        global_variable_definition(node, ident, ident_len);
+
+        return new_node(ND_TYPE_EXTERN, node, NULL);
+    }
     if(is_global) {
         node->gvar_def.init_expr = init_expr;
         Node *cur = node;

@@ -198,6 +198,7 @@ int main() {
     assert_stdout(39, "b", "int putchar(char s);int main(){putchar('b');return '\\'';}");
     assert_stdout(34, "o", "int putchar(char s);int main(){putchar('\\x6f');return '\"';}");
     assert_file(10, "extern int printf(char *s);int main(){printf(\"\");return 10;}");
+    assert_stdout(0, "1", "int fprintf();int a;extern int *stderr;extern int *stdout;int main(){a=1;fprintf(stdout, \"%d\", a);return 0;}");
     printf("OK\n");
     return 0;
 }
