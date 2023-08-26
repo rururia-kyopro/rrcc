@@ -50,6 +50,8 @@ struct Token {
     int val;
     char *str;
     int len;
+    Vector *literal;
+    int literal_len;
 };
 
 extern Token *token;
@@ -268,6 +270,8 @@ Node *find_symbol(Vector *globals, Vector *locals, char *ident, int ident_len);
 struct StringLiteral {
     char *str;
     int len;
+    Vector *char_vec;
+    int vec_len;
     int index;
 };
 

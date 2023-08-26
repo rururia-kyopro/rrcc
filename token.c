@@ -123,6 +123,34 @@ static bool is_keyword(char *keyword, char *str, int len) {
     return strncmp(str, keyword, len) == 0;
 }
 
+static bool is_octdigit(char c) {
+    return c >= '0' && c <= '7';
+}
+
+static int octdigit2i(char c) {
+    if(c >= '0' && c <= '7') {
+        return c - '0';
+    }
+    return -1;
+}
+
+static bool is_hexdigit(char c) {
+    return c >= '0' && c <= '9' || c >= 'A' && c <= 'F' || c >= 'a' && c <= 'f';
+}
+
+static int hexdigit2i(char c) {
+    if(c >= '0' && c <= '9') {
+        return c - '0';
+    }
+    if(c >= 'A' && c <= 'F'){
+        return c - 'A' + 10;
+    }
+    if(c >= 'a' && c <= 'f'){
+        return c - 'a' + 10;
+    }
+    return -1;
+}
+
 Token *tokenize(char *p){
     Token head;
     head.prev = NULL;
@@ -155,15 +183,58 @@ Token *tokenize(char *p){
         if(*p == '"') {
             p++;
             char *literal = p;
-            bool state = false;
+            int state = 0;
+            Vector *char_vec = new_vector();
             while(*p) {
-                if(*p == '"' && !state) {
+                if(state == 1) {
+                    if(*p == '"' || *p == '\\' || *p == '?' || *p == '\'') {
+                        vector_push(char_vec, (void *)(long)*p);
+                    }else if(*p == 'a') {
+                        vector_push(char_vec, (void *)'\a');
+                    }else if(*p == 'b') {
+                        vector_push(char_vec, (void *)'\b');
+                    }else if(*p == 'f') {
+                        vector_push(char_vec, (void *)'\f');
+                    }else if(*p == 'n') {
+                        vector_push(char_vec, (void *)'\n');
+                    }else if(*p == 'r') {
+                        vector_push(char_vec, (void *)'\r');
+                    }else if(*p == 't') {
+                        vector_push(char_vec, (void *)'\t');
+                    }else if(*p == 'v') {
+                        vector_push(char_vec, (void *)'\v');
+                    }else if(is_octdigit(*p)) {
+                        long oct = 0;
+                        while(is_octdigit(*p)) {
+                            oct *= 8;
+                            oct += octdigit2i(*p);
+                            p++;
+                        }
+                        p--;
+                        vector_push(char_vec, (void *)(long)oct);
+                    }else if(*p == 'x') {
+                        p++;
+                        long hex = 0;
+                        while(is_hexdigit(*p)) {
+                            hex *= 16;
+                            hex += hexdigit2i(*p);
+                            p++;
+                        }
+                        p--;
+                        vector_push(char_vec, (void *)(long)hex);
+                    }
+                    p++;
+                    state = 0;
+                    continue;
+                }
+                if(*p == '"') {
                     break;
                 }
                 if(*p == '\\'){
-                    state = true;
+                    state = 1;
                 }else{
-                    state = false;
+                    vector_push(char_vec, (void *)(long)*p);
+                    state = 0;
                 }
                 p++;
             }
@@ -171,6 +242,8 @@ Token *tokenize(char *p){
             if(*p == '"') {
                 p++;
                 cur = new_token(TK_STRING_LITERAL, cur, literal, len);
+                cur->literal = char_vec;
+                cur->literal_len = vector_size(char_vec);
                 continue;
             } else {
                 error_at(p, "expect \" (double quote)");

@@ -348,7 +348,7 @@ Node *variable_definition(bool is_global, Node *type_node) {
             type->array_size = vector_size(vec);
         }
         if(vector_size(vec) > type->array_size) {
-            error_at(token->str, "Too many initializer for array size %d", type->array_size);
+            error_at(token->str, "Too many initializer for array size %d (fed %d)", type->array_size, vector_size(vec));
         }
         for(int i = 0; i < vector_size(vec); i++) {
             Node *elem_node = vector_get(vec, i);
@@ -395,8 +395,8 @@ Node *initializer() {
         unget_token();
         Node *node = new_node(ND_INIT, NULL, NULL);
         node->init.init_expr = new_vector();
-        for(int i = 0; i < token->len; i++) {
-            vector_push(node->init.init_expr, new_node_char(token->str[i]));
+        for(int i = 0; i < vector_size(token->literal); i++) {
+            vector_push(node->init.init_expr, new_node_char((char)(long)vector_get(token->literal, i)));
         }
         next_token();
         vector_push(node->init.init_expr, new_node_char(0));
@@ -676,6 +676,8 @@ Node *primary() {
         StringLiteral *literal = calloc(1, sizeof(StringLiteral));
         literal->str = token->str;
         literal->len = token->len;
+        literal->char_vec = token->literal;
+        literal->vec_len = token->literal_len;
         literal->index = vector_size(global_string_literals);
         vector_push(global_string_literals, literal);
         next_token();

@@ -167,12 +167,12 @@ int main() {
     assert_file(1, "int main(){char a;return sizeof(a);}");
     assert_file(4, "int main(){char a;return sizeof(a+1);}");
     assert_file(7, "int main(){char a[7];return sizeof(a);}");
-    assert_file(99, "int main(){char *a;a=\x22zbc\x22;a[2];}");
-    assert_file(122, "int main(){char *b;char *a;a=\x22zbc\x22;b=\x22zef\x22;b[0];}");
-    assert_stdout(12, "Hello world!", "int printf(char*f);int main(){printf(\x22Hello world!\x22);}");
+    assert_file(99, "int main(){char *a;a=\"zbc\";a[2];}");
+    assert_file(122, "int main(){char *b;char *a;a=\"zbc\";b=\"zef\";b[0];}");
+    assert_stdout(12, "Hello world!", "int printf(char*f);int main(){printf(\"Hello world!\");}");
     assert_file(2, "int main(){int a;a=1/*bb b */+1;return a;}");
     assert_file(2, "int main(){// test comment\nint a;a=1\n///*bb b */\n+1;return a;}");
-    assert_file(97, "char a[2]=\x22/\x22;int main(){char b[4]=\x22g23\x22;a[0]+b[1];}");
+    assert_file(97, "char a[2]=\"/\";int main(){char b[4]=\"g23\";a[0]+b[1];}");
     assert_file(20, "int a[2]={10,20};int main(){return a[1];}");
     assert_file(8, "int fun(){return 4;}int main(){int a[2]={fun(),fun()};return a[0]+a[1];}");
     assert_file(5, "int fun(){return 4;}int main(){int a=fun();return a+1;}");
@@ -188,10 +188,13 @@ int main() {
     assert_file(11, "int printf(char *s);struct st{int a;int b;}c;int main(){struct st *q;q=&c;char *p=&c;q->a=2;q->b=9;return p[0]+c.b;}");
     assert_file(3, "enum a{f,g,h};int main(){return g+h;}");
     assert_file(8, "enum a{f=2,g,h=5};int main(){return g+h;}");
-    assert_stdout(4, "1 1 1", "int printf(char *s);enum a{f,g,h};int main(){enum a p;p=1;enum a q;q=g;printf(\x22%d %d %d\x22, p, q, p==q);return sizeof(p);}");
+    assert_stdout(4, "1 1 1", "int printf(char *s);enum a{f,g,h};int main(){enum a p;p=1;enum a q;q=g;printf(\"%d %d %d\", p, q, p==q);return sizeof(p);}");
     assert_file(3, "int printf(char *s);typedef int *cp;int main(){int a[10]={3,4,5};cp p;p=a;return p[0];}");
     assert_file(12, "int printf(char *s);typedef int *cp;int main(){cp p;return sizeof(*p)+sizeof(p);}");
     assert_file(14, "int printf(char *s);typedef int ca[3];int main(){ca a={1,2,3};return sizeof(a)+a[1];}");
+    assert_file(34, "int printf(char *s);int main(){char s[3]=\"\\\"\";return s[0];}");
+    assert_file(48, "int printf(char *s);int main(){char s[3]=\"\\60\";return s[0];}");
+    assert_file(82, "int printf(char *s);int main(){char s[3]=\"\\x52\";return s[0];}");
     printf("OK\n");
     return 0;
 }
