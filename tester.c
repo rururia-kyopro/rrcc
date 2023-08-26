@@ -195,6 +195,8 @@ int main() {
     assert_file(34, "int printf(char *s);int main(){char s[3]=\"\\\"\";return s[0];}");
     assert_file(48, "int printf(char *s);int main(){char s[3]=\"\\60\";return s[0];}");
     assert_file(82, "int printf(char *s);int main(){char s[3]=\"\\x52\";return s[0];}");
+    assert_stdout(39, "b", "int putchar(char s);int main(){putchar('b');return '\\'';}");
+    assert_stdout(34, "o", "int putchar(char s);int main(){putchar('\\x6f');return '\"';}");
     printf("OK\n");
     return 0;
 }

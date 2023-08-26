@@ -151,6 +151,47 @@ static int hexdigit2i(char c) {
     return -1;
 }
 
+static char read_escape(char **p) {
+    if(**p == '"' || **p == '\\' || **p == '?' || **p == '\'') {
+        return **p;
+    }else if(**p == 'a') {
+        return '\a';
+    }else if(**p == 'b') {
+        return '\b';
+    }else if(**p == 'f') {
+        return '\f';
+    }else if(**p == 'n') {
+        return '\n';
+    }else if(**p == 'r') {
+        return '\r';
+    }else if(**p == 't') {
+        return '\t';
+    }else if(**p == 'v') {
+        return '\v';
+    }else if(is_octdigit(**p)) {
+        long oct = 0;
+        while(is_octdigit(**p)) {
+            oct *= 8;
+            oct += octdigit2i(**p);
+            (*p)++;
+        }
+        (*p)--;
+        return oct;
+    }else if(**p == 'x') {
+        (*p)++;
+        long hex = 0;
+        while(is_hexdigit(**p)) {
+            hex *= 16;
+            hex += hexdigit2i(**p);
+            (*p)++;
+        }
+        (*p)--;
+        return hex;
+    }
+    error("Invalid escape sequence");
+    return 0;
+}
+
 Token *tokenize(char *p){
     Token head;
     head.prev = NULL;
@@ -180,6 +221,27 @@ Token *tokenize(char *p){
             continue;
         }
 
+        if(*p == '\'') {
+            char *q = p;
+            p++;
+            char c;
+            if(*p == '\\') {
+                p++;
+                c = read_escape(&p);
+                p++;
+            } else {
+                c = *p;
+                p++;
+            }
+            if(*p != '\''){
+                error("expect ' (single quote)");
+            }
+            cur = new_token(TK_NUM, cur, q, p - q);
+            cur->val = c;
+            p++;
+            continue;
+        }
+
         if(*p == '"') {
             p++;
             char *literal = p;
@@ -187,42 +249,8 @@ Token *tokenize(char *p){
             Vector *char_vec = new_vector();
             while(*p) {
                 if(state == 1) {
-                    if(*p == '"' || *p == '\\' || *p == '?' || *p == '\'') {
-                        vector_push(char_vec, (void *)(long)*p);
-                    }else if(*p == 'a') {
-                        vector_push(char_vec, (void *)'\a');
-                    }else if(*p == 'b') {
-                        vector_push(char_vec, (void *)'\b');
-                    }else if(*p == 'f') {
-                        vector_push(char_vec, (void *)'\f');
-                    }else if(*p == 'n') {
-                        vector_push(char_vec, (void *)'\n');
-                    }else if(*p == 'r') {
-                        vector_push(char_vec, (void *)'\r');
-                    }else if(*p == 't') {
-                        vector_push(char_vec, (void *)'\t');
-                    }else if(*p == 'v') {
-                        vector_push(char_vec, (void *)'\v');
-                    }else if(is_octdigit(*p)) {
-                        long oct = 0;
-                        while(is_octdigit(*p)) {
-                            oct *= 8;
-                            oct += octdigit2i(*p);
-                            p++;
-                        }
-                        p--;
-                        vector_push(char_vec, (void *)(long)oct);
-                    }else if(*p == 'x') {
-                        p++;
-                        long hex = 0;
-                        while(is_hexdigit(*p)) {
-                            hex *= 16;
-                            hex += hexdigit2i(*p);
-                            p++;
-                        }
-                        p--;
-                        vector_push(char_vec, (void *)(long)hex);
-                    }
+                    char c = read_escape(&p);
+                    vector_push(char_vec, (void *)(long)c);
                     p++;
                     state = 0;
                     continue;
