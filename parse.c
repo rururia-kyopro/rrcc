@@ -241,6 +241,10 @@ Node *declarator() {
     dumpnodes(type_node);
     fprintf(stderr, "// type node end\n");
 
+    if(type_node->kind == ND_TYPE_TYPEDEF) {
+        expect(";");
+        return type_node;
+    }
     if(type_node->kind == ND_TYPE_EXTERN && type_node->lhs->type.type->ty == FUNC || type_node->kind == ND_TYPE && type_node->type.type->ty == FUNC) {
         return function_definition(type_node);
     }
@@ -343,6 +347,9 @@ Node *variable_definition(bool is_global, Node *type_node) {
         global_variable_definition(node, ident, ident_len);
 
         return new_node(ND_TYPE_EXTERN, node, NULL);
+    }
+    if(type->ty == STRUCT && !type->struct_complete) {
+        error("Cannot define variable with incomplete type (struct)");
     }
     if(is_global) {
         node->gvar_def.init_expr = init_expr;
@@ -1023,6 +1030,7 @@ Node *struct_declaration() {
         entry->ident = ident;
         entry->ident_len = ident_len;
         entry->type = node->type.type;
+        entry->type->struct_complete = true;
         vector_push(struct_registry, entry);
 
         expect("}");
@@ -1037,7 +1045,15 @@ Node *struct_declaration() {
             }
         }
         if(!found) {
-            error("No struct found for specified name");
+            entry = calloc(1, sizeof(StructRegistryEntry));
+            entry->ident = ident;
+            entry->ident_len = ident_len;
+            node->type.type = type_new_struct(ident, ident_len);
+            entry->type = node->type.type;
+            entry->type->struct_complete = false;
+            vector_push(struct_registry, entry);
+
+            //error("No struct found for specified name");
         }
         node->type.type = entry->type;
     }
@@ -1161,7 +1177,7 @@ Node *typedef_declaration() {
     entry->type = type_node->type.type;
     vector_push(typedef_registry, entry);
 
-    return type_node;
+    return new_node(ND_TYPE_TYPEDEF, type_node, NULL);
 }
 
 bool consume_type_prefix(TokenKind *kind) {

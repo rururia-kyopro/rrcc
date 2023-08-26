@@ -291,6 +291,7 @@ struct Type {
     int ident_len; // enum or struct
     Vector *members; // enum or struct
     size_t struct_size; // struct
+    bool struct_complete;
 };
 
 extern Type int_type;
