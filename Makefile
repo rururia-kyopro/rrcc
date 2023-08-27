@@ -1,5 +1,5 @@
 CFLAGS=-std=c11 -g -static
-SRCS=main.c parse.c codegen.c token.c vector.c
+SRCS=main.c parse.c codegen.c token.c vector.c pp.c token_common.c
 OBJS=$(SRCS:.c=.o)
 
 rrcc: $(OBJS)

@@ -1,10 +1,16 @@
 #include "vector.h"
 #include <stddef.h>
+#include <stdbool.h>
 
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 
 void debug_log(char *fmt, ...);
+
+char *read_file(char *path);
+char read_escape(char **p);
+
+int pp_main(int argc, char *argv[]);
 
 typedef struct Token Token;
 typedef struct Node Node;
