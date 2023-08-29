@@ -630,6 +630,8 @@ static PPToken *if_group(PPToken **cur) {
                 if(!any_met) {
                     if_condition_met = true;
                     any_met = true;
+                } else {
+                    if_condition_met = false;
                 }
                 continue;
             } else if(pp_consume(cur, "endif")) {

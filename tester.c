@@ -243,6 +243,8 @@ int main() {
     assert_file(0, "#define H 1\n#undef A\nint main(){return 0;}");
     assert_file(1, "int main(){int a;a=2;\n#if 1\na=1;\n#endif\nreturn a;}");
     assert_file(2, "int main(){int a;a=2;\n#if 0\na=1;\n#endif\nreturn a;}");
+    assert_file(1, "int main(){int a;a=2;\n#if 1\na=1;\n#else\na=3;\n#endif\nreturn a;}");
+    assert_file(3, "int main(){int a;a=2;\n#if 0\na=1;\n#else\na=3;\n#endif\nreturn a;}");
     printf("OK\n");
     return 0;
 }
