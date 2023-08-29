@@ -965,7 +965,7 @@ static int constant_expression(PPToken **cur) {
 static int conditional_expression(PPToken **cur) {
     int val = logical_OR_expression(cur);
     if(pp_consume(cur, "?")) {
-        int if_true = constant_expression(cur);
+        int if_true = expression(cur);
         pp_consume(cur, ":");
         int if_false = conditional_expression(cur);
 
