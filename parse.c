@@ -70,6 +70,7 @@ void error(char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
 
+    fprintf(stderr, "Error: %s\n", filename);
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
     exit(1);
