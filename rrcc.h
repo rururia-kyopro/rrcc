@@ -11,6 +11,7 @@ char *read_file(char *path);
 char read_escape(char **p);
 
 int pp_main(int argc, char *argv[]);
+char *do_pp();
 
 typedef struct Token Token;
 typedef struct Node Node;

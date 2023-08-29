@@ -23,6 +23,13 @@ int main(int argc, char **argv) {
 
   filename = argv[1];
   user_input = read_file(argv[1]);
+
+  bool use_pp = true;
+  if(use_pp) {
+    filename = argv[1];
+    user_input = do_pp();
+  }
+
   token = tokenize(user_input);
   Node *node_trans_unit = translation_unit();
 

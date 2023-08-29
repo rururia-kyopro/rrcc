@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdarg.h>
 #include "rrcc.h"
 
 typedef struct PPToken PPToken;
@@ -729,29 +730,54 @@ static PPToken *constant_expression(PPToken **cur) {
 
 }
 
-static void print_tokens(PPToken *cur) {
-    for(; cur->next; cur = cur->next) {
-        if(cur->preceded_by_space) {
-            printf(" ");
+static void append_printf(char **buf, char **tail, int *len, char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int appendlen = vsnprintf(NULL, 0, fmt, ap);
+    va_end(ap);
+    int filled = *tail - *buf;
+    if(filled + appendlen + 1 > *len) {
+        int newlen = filled + appendlen + 1;
+        if(newlen < *len * 2) {
+            newlen = *len * 2;
         }
-        if(cur->kind == PPTK_CHAR_CONST) {
-            printf("%.*s", cur->len + 1, cur->str);
-        }else if(cur->kind == PPTK_IDENT) {
-            printf("%.*s", cur->len, cur->str);
-        }else if(cur->kind == PPTK_PUNC) {
-            printf("%.*s", cur->len, cur->str);
-        }else if(cur->kind == PPTK_STRING_LITERAL) {
-            printf("%.*s", cur->len + 2, cur->str - 1);
-        }else if(cur->kind == PPTK_PPNUMBER) {
-            printf("%.*s", cur->len, cur->str);
-        }else if(cur->kind == PPTK_NEWLINE) {
-            printf("\n");
-        }
+        *buf = realloc(*buf, newlen);
+        *tail = *buf + filled;
+        *len = newlen;
     }
+    va_start(ap, fmt);
+    vsnprintf(*tail, *len - filled, fmt, ap);
+    va_end(ap);
+    (*tail) += appendlen;
 }
 
-int pp_main(int argc, char **argv) {
-    filename = argv[2];
+static char *reconstruct_tokens(PPToken *cur) {
+    char *buf = calloc(1, 1);
+    char *tail = buf;
+    int len = 1;
+
+    for(; cur; cur = cur->next) {
+        if(cur->preceded_by_space) {
+            append_printf(&buf, &tail, &len, " ");
+        }
+        if(cur->kind == PPTK_CHAR_CONST) {
+            append_printf(&buf, &tail, &len, "%.*s", cur->len + 1, cur->str);
+        }else if(cur->kind == PPTK_IDENT) {
+            append_printf(&buf, &tail, &len, "%.*s", cur->len, cur->str);
+        }else if(cur->kind == PPTK_PUNC) {
+            append_printf(&buf, &tail, &len, "%.*s", cur->len, cur->str);
+        }else if(cur->kind == PPTK_STRING_LITERAL) {
+            append_printf(&buf, &tail, &len, "%.*s", cur->len + 2, cur->str - 1);
+        }else if(cur->kind == PPTK_PPNUMBER) {
+            append_printf(&buf, &tail, &len, "%.*s", cur->len, cur->str);
+        }else if(cur->kind == PPTK_NEWLINE) {
+            append_printf(&buf, &tail, &len, "\n");
+        }
+    }
+    return buf;
+}
+
+char *do_pp() {
     user_input = read_file(filename);
     // debug_log("read file: '%s'\n", user_input);
     char *processed = calloc(1, strlen(user_input) + 1);
@@ -761,10 +787,17 @@ int pp_main(int argc, char **argv) {
     user_input = processed;
 
     PPToken *pptoken = pp_tokenize();
-    // pp_dump_token();
 
     PPToken *newhead = pp_parse(&pptoken);
-    print_tokens(newhead);
+    //pp_dump_token(newhead);
+    return reconstruct_tokens(newhead);
+}
+
+int pp_main(int argc, char **argv) {
+    filename = argv[2];
+
+    char *output = do_pp();
+    printf("%s", output);
 
     return 0;
 }
