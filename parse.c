@@ -1434,7 +1434,7 @@ void print_indent(int level, const char *fmt, ...) {
 
 bool compare_ident(char *ident_a, int ident_a_len, char *ident_b, int ident_b_len) {
     if(ident_a_len != ident_b_len) {
-        debug_log("size: %d %d\n", ident_a_len, ident_b_len);
+        //debug_log("size: %d %d\n", ident_a_len, ident_b_len);
         return false;
     }
     return strncmp(ident_a, ident_b, ident_a_len) == 0;
