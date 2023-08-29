@@ -480,6 +480,7 @@ struct MacroRegistryEntry {
     int ident_len;
     Vector *param_list;
     Vector *rep_list;
+    bool vararg;
 };
 
 MacroRegistryEntry *find_macro(char *ident, int ident_len) {
@@ -729,17 +730,23 @@ static PPToken *control_line(PPToken **cur) {
             // define function-like macro
             entry->func = true;
             entry->param_list = new_vector();
-            while(1) {
-                char *ident;
-                int ident_len;
-                pp_expect_ident(cur, &ident, &ident_len);
-                vector_push(entry->param_list, (*cur)->prev);
+            if(!pp_consume(cur, ")")) {
+                while(1) {
+                    char *ident;
+                    int ident_len;
+                    if(pp_consume(cur, "...")) {
+                        entry->vararg = true;
+                        break;
+                    }
+                    pp_expect_ident(cur, &ident, &ident_len);
+                    vector_push(entry->param_list, (*cur)->prev);
 
-                if(!pp_consume(cur, ",")) {
-                    break;
+                    if(!pp_consume(cur, ",")) {
+                        break;
+                    }
                 }
+                pp_expect(cur, ")");
             }
-            pp_expect(cur, ")");
         }
 
         while(!pp_consume_newline(cur) && !pp_at_eof(cur)) {
