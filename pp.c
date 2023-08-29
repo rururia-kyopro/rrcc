@@ -716,6 +716,9 @@ static PPToken *scan_replacement_list(MacroRegistryEntry *entry, Vector *vec) {
             PPToken *new_head = text_line(&head);
             debug_log("==Recursive ret==");
 
+            // Make sure introduced token don't join to previous one.
+            new_head->preceded_by_space = true;
+
             // pp_dump_token(new_head);
 
             rep_out->next = new_head;
