@@ -12,6 +12,8 @@ char read_escape(char **p);
 
 int pp_main(int argc, char *argv[]);
 char *do_pp();
+void init_include_pathes();
+void append_include_pathes(char *p);
 
 typedef struct Token Token;
 typedef struct Node Node;

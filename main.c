@@ -13,20 +13,37 @@
 char *filename;
 
 int main(int argc, char **argv) {
-  if (argc < 2) {
-    fprintf(stderr, "引数の個数が正しくありません\n");
-    return 1;
-  }
   if(strcmp(argv[1], "-p") == 0){
       return pp_main(argc, argv);
   }
+  init_include_pathes();
+  for(int i = 1; i < argc; i++) {
+      if(strncmp(argv[i], "-I", 2) == 0){ 
+          if(strlen(argv[i]) == 2) {
+              if(i + 1 >= argc) {
+                  fprintf(stderr, "Error no argument for -I");
+                  exit(1);
+              }
+              append_include_pathes(argv[i+1]);
+              i += 1;
+          } else {
+              append_include_pathes(argv[i] + 2);
+          }
+      } else {
+          filename = argv[i];
+          break;
+      }
+  }
 
-  filename = argv[1];
-  user_input = read_file(argv[1]);
+  if(!filename) {
+      fprintf(stderr, "No filename specified");
+      exit(1);
+  }
+
+  user_input = read_file(filename);
 
   bool use_pp = true;
   if(use_pp) {
-    filename = argv[1];
     user_input = do_pp();
     // debug_log("Preprocessed:\n%s", user_input);
   }

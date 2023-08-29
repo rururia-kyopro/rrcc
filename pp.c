@@ -9,6 +9,7 @@
 typedef struct PPToken PPToken;
 typedef struct MacroRegistryEntry MacroRegistryEntry;
 Vector *macro_registry;
+Vector *include_pathes;
 
 static void pp_next_token(PPToken **cur);
 static bool pp_expect(PPToken **cur, char *str);
@@ -654,6 +655,14 @@ static PPToken *if_group(PPToken **cur) {
     return head.next;
 }
 
+static bool file_exists(char *file) {
+    FILE *fp = fopen(file, "r");
+    if(fp == NULL) {
+        return false;
+    }
+    fclose(fp);
+    return true;
+}
 
 static PPToken *control_line(PPToken **cur) {
     if(pp_consume(cur, "include")) {
@@ -672,10 +681,35 @@ static PPToken *control_line(PPToken **cur) {
             error("Invalid token as header name");
         }
 
-        debug_log("include %s", file);
+        char *p = file;
+        bool found = false;
+        for(int i = 0; i < vector_size(include_pathes); i++) {
+            char *d = vector_get(include_pathes, i);
+            p = calloc(1, strlen(d) + strlen(file) + 2);
+            strcpy(p, d);
+            strcat(p, "/");
+            strcat(p, file);
+            debug_log("File check %s", p);
+            if(file_exists(p)) {
+                debug_log("Found %s", p);
+                found = true;
+                break;
+            }
+            free(p);
+        }
+        if(!found) {
+            p = file;
+            if(file_exists(p)) {
+                found = true;
+            }else{
+                error("file %s not found", file);
+            }
+        }
+
+        debug_log("include %s", p);
         char *tmp_filename = filename;
         char *tmp_user_input = user_input;
-        filename = file;
+        filename = p;
         PPToken *token = pp_parse_file();
         filename = tmp_filename;
         user_input = tmp_user_input;
@@ -1183,6 +1217,14 @@ PPToken *pp_parse_file() {
 
 char *do_pp() {
     return reconstruct_tokens(pp_parse_file());
+}
+
+void init_include_pathes() {
+    include_pathes = new_vector();
+}
+
+void append_include_pathes(char *p) {
+    vector_push(include_pathes, p);
 }
 
 int pp_main(int argc, char **argv) {
