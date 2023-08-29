@@ -450,6 +450,7 @@ static PPToken *preprocessing_file(PPToken **cur) {
         tail->next = group_part(cur);
         pp_dump_token(tail);
         tail = pp_list_tail(tail);
+        tail = new_pptoken(PPTK_NEWLINE, tail, (*cur)->str, (*cur)->len);
     }
     return head.next;
 }
@@ -743,6 +744,8 @@ static void print_tokens(PPToken *cur) {
             printf("%.*s", cur->len + 2, cur->str - 1);
         }else if(cur->kind == PPTK_PPNUMBER) {
             printf("%.*s", cur->len, cur->str);
+        }else if(cur->kind == PPTK_NEWLINE) {
+            printf("\n");
         }
     }
 }
