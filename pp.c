@@ -981,7 +981,9 @@ static int conditional_expression(PPToken **cur) {
 static int logical_OR_expression(PPToken **cur) {
     int ret = logical_AND_expression(cur);
     while(pp_consume(cur, "||")) {
-        ret = ret || logical_AND_expression(cur);
+        // Be careful of short circuit!
+        int val = logical_AND_expression(cur);
+        ret = ret || val;
     }
     return ret;
 }
@@ -989,7 +991,9 @@ static int logical_OR_expression(PPToken **cur) {
 static int logical_AND_expression(PPToken **cur) {
     int ret = inclusive_OR_expression(cur);
     while(pp_consume(cur, "&&")) {
-        ret = ret && inclusive_OR_expression(cur);
+        // Be careful of short circuit!
+        int val = inclusive_OR_expression(cur);
+        ret = ret && val;
     }
     return ret;
 }
