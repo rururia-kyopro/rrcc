@@ -1,4 +1,5 @@
-CFLAGS=-std=c11 -g -static
+CFLAGS=-std=c11 -g -static -fsanitize=undefined
+LDFLAGS=-fsanitize=undefined
 SRCS=main.c parse.c codegen.c token.c vector.c pp.c token_common.c
 OBJS=$(SRCS:.c=.o)
 
