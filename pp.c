@@ -430,7 +430,6 @@ static bool pp_at_eof(PPToken **cur) {
 
 static PPToken *preprocessing_file(PPToken **cur);
 PPToken *pp_parse(PPToken **cur) {
-    macro_registry = new_vector();
     return preprocessing_file(cur);
 }
 
@@ -596,6 +595,7 @@ static PPToken *if_group(PPToken **cur) {
         pp_expect_ident(cur, &ident, &ident_len);
         pp_expect_newline(cur);
         if_condition_met = find_macro(ident, ident_len) != NULL;
+        debug_log("ifdef check %.*s %d", ident_len, ident, if_condition_met);
     }else if(pp_consume(cur, "ifndef")) {
         char *ident;
         int ident_len;
@@ -1216,6 +1216,7 @@ PPToken *pp_parse_file() {
 }
 
 char *do_pp() {
+    macro_registry = new_vector();
     return reconstruct_tokens(pp_parse_file());
 }
 
