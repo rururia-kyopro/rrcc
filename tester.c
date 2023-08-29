@@ -241,6 +241,8 @@ int main() {
     assert_file_inc(8, "#define H \"tmpinc.h\"\n#include H\nint main() { return func(4)+M(3); }", "int func(int n){return n+2;}\n#define M(a) (a-1)\n");
     assert_file(0, "#define H 1\n#undef H\nint main(){return 0;}");
     assert_file(0, "#define H 1\n#undef A\nint main(){return 0;}");
+    assert_file(1, "int main(){int a;a=2;\n#if 1\na=1;\n#endif\nreturn a;}");
+    assert_file(2, "int main(){int a;a=2;\n#if 0\na=1;\n#endif\nreturn a;}");
     printf("OK\n");
     return 0;
 }

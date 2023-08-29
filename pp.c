@@ -518,7 +518,135 @@ static PPToken *if_section(PPToken **cur) {
     return if_group(cur);
 }
 
+static bool eval_constant_expression(PPToken **cur) {
+    PPToken head = {};
+    PPToken *tail = &head;
+
+    // Process defined operator
+    while(!pp_consume_newline(cur) && !pp_at_eof(cur)) {
+        if(pp_consume(cur, "defined")) {
+            bool paren = pp_consume(cur, "(");
+            char *ident;
+            int ident_len;
+            pp_expect_ident(cur, &ident, &ident_len);
+            bool found = find_macro(ident, ident_len) != NULL;
+            if(paren) {
+                pp_expect(cur, ")");
+            }
+            tail = new_pptoken(PPTK_PPNUMBER, tail, found ? "1" : "0", 1);
+        } else {
+            tail = dup_pptoken(tail, *cur);
+        }
+        pp_next_token(cur);
+    }
+
+    tail = new_pptoken(PPTK_EOF, tail, tail->str, tail->len);
+    PPToken *tmp_cur = head.next;
+    PPToken *macro_replaced_tokens = text_line(&tmp_cur);
+
+    PPToken *constant_token = constant_expression(&macro_replaced_tokens);
+    if(constant_token->next) {
+        error_at(constant_token->next->str, "Extra token after constant expression");
+    }
+    if(constant_token->kind != PPTK_PPNUMBER) {
+        error_at(constant_token->str, "Invalid constant expression");
+    }
+    debug_log("ki:%s %.*s\n", pp_tokenkind_str(constant_token->kind), constant_token->len, constant_token->str);
+    return constant_token->val;
+}
+
+void pp_skip_until_newline(PPToken **cur) {
+    while(!pp_consume_newline(cur)) {
+        pp_next_token(cur);
+    }
+}
+
+void pp_skip_group(PPToken **cur) {
+    int level = 0;
+    while(!pp_at_eof(cur)) {
+        PPToken *pre = *cur;
+        if(pp_consume(cur, "#")) {
+            if(pp_consume(cur, "if")) {
+                level++;
+            }else if(pp_consume(cur, "elif") || pp_consume(cur, "else")) {
+                if(!level) {
+                    *cur = pre;
+                    break;
+                }
+            }else if(pp_consume(cur, "endif")) {
+                if(!level) {
+                    *cur = pre;
+                    break;
+                }
+                level--;
+            }
+        }
+        pp_skip_until_newline(cur);
+    }
+}
+
 static PPToken *if_group(PPToken **cur) {
+    bool if_condition_met = false;
+    if(pp_consume(cur, "if")) {
+        if_condition_met = eval_constant_expression(cur);
+    }else if(pp_consume(cur, "ifdef")) {
+        char *ident;
+        int ident_len;
+        pp_expect_ident(cur, &ident, &ident_len);
+        pp_expect_newline(cur);
+        if_condition_met = find_macro(ident, ident_len) != NULL;
+    }else if(pp_consume(cur, "ifndef")) {
+        char *ident;
+        int ident_len;
+        pp_expect_ident(cur, &ident, &ident_len);
+        pp_expect_newline(cur);
+        if_condition_met = find_macro(ident, ident_len) == NULL;
+    }
+    bool any_met = if_condition_met;
+
+    // if condition is not met, containing group is scanned only for nested if directive.
+    PPToken head = {};
+    PPToken *tail = &head;
+    int state = 0;
+    while(!pp_at_eof(cur)) {
+        PPToken *pre = *cur;
+        if(pp_consume(cur, "#")) {
+            if(pp_consume(cur, "elif")) {
+                if(state != 0) {
+                    error("Invalid elif directive (after else?)");
+                }
+                bool met = eval_constant_expression(cur);
+                if(!any_met && met) {
+                    if_condition_met = true;
+                    any_met = true;
+                }
+                continue;
+            } else if(pp_consume(cur, "else")) {
+                if(state != 0) {
+                    error("Invalid else directive (multiple else?)");
+                }
+                state = 1;
+                pp_expect_newline(cur);
+                if(!any_met) {
+                    if_condition_met = true;
+                    any_met = true;
+                }
+                continue;
+            } else if(pp_consume(cur, "endif")) {
+                pp_expect_newline(cur);
+                break;
+            } else {
+                *cur = pre;
+            }
+        }
+        if(!if_condition_met) {
+            pp_skip_group(cur);
+        } else {
+            tail->next = group_part(cur);
+            tail = pp_list_tail(tail);
+        }
+    }
+    return head.next;
 }
 
 
@@ -774,7 +902,13 @@ static PPToken *scan_replacement_list(MacroRegistryEntry *entry, Vector *vec) {
 }
 
 static PPToken *constant_expression(PPToken **cur) {
-
+    if((*cur)->next) {
+        error("Unsupported");
+    }
+    PPToken *ret = *cur;
+    ret->val = atoi(ret->str);
+    pp_next_token(cur);
+    return ret;
 }
 
 static void append_printf(char **buf, char **tail, int *len, char *fmt, ...) {
