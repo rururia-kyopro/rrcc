@@ -201,6 +201,12 @@ int main() {
     assert_stdout(0, "1", "int fprintf();int a;extern int *stderr;extern int *stdout;int main(){a=1;fprintf(stdout, \"%d\", a);return 0;}");
     assert_stdout(0, "1", "int fprintf();int a;struct FILE {int dummy;};typedef struct FILE FILE;extern FILE *stderr;extern FILE *stdout;int main(){a=1;fprintf(stdout, \"%d\", a);return 0;}");
     assert_file(1, "int fprintf();typedef struct S S;struct S {int a;};int main(){S a;a.a=1;return a.a;}");
+    assert_file(10, "#define M 10\nint main() { return M; }");
+    assert_file(14, "#define M 10+2\nint main() { return M*2; }");
+    assert_file(24, "#define M (10+2)\nint main() { return M*2; }");
+    assert_file(13, "#define M(a,b) a + b\nint main() { return M(3,5)*2; }");
+    assert_file(13, "#define M(a,b) a + b\nint main() { int a; a = 9; return M(3,5)*2; }");
+    assert_file(19, "#define M(c,b) a + b\nint main() { int a; a = 9; return M(3,5)*2; }");
     printf("OK\n");
     return 0;
 }

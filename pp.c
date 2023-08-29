@@ -454,7 +454,7 @@ static PPToken *preprocessing_file(PPToken **cur) {
 
     while(!pp_at_eof(cur)) {
         tail->next = group_part(cur);
-        pp_dump_token(tail);
+        // pp_dump_token(tail);
         tail = pp_list_tail(tail);
         tail = new_pptoken(PPTK_NEWLINE, tail, (*cur)->str, (*cur)->len);
     }
@@ -711,12 +711,12 @@ static PPToken *scan_replacement_list(MacroRegistryEntry *entry, Vector *vec) {
             new_pptoken(PPTK_EOF, tmp, tmp->str, tmp->len);
 
             debug_log("==Dump argument==");
-            pp_dump_token(head);
+            // pp_dump_token(head);
             debug_log("==End of dump argument==");
             PPToken *new_head = text_line(&head);
             debug_log("==Recursive ret==");
 
-            pp_dump_token(new_head);
+            // pp_dump_token(new_head);
 
             rep_out->next = new_head;
             new_head->prev = rep_out;

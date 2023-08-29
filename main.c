@@ -28,6 +28,7 @@ int main(int argc, char **argv) {
   if(use_pp) {
     filename = argv[1];
     user_input = do_pp();
+    // debug_log("Preprocessed:\n%s", user_input);
   }
 
   token = tokenize(user_input);
