@@ -538,15 +538,17 @@ static bool eval_constant_expression(PPToken **cur) {
             tail = new_pptoken(PPTK_PPNUMBER, tail, found ? "1" : "0", 1);
         } else {
             tail = dup_pptoken(tail, *cur);
+            pp_next_token(cur);
         }
-        pp_next_token(cur);
     }
 
-    tail = new_pptoken(PPTK_EOF, tail, tail->str, tail->len);
+    tail = new_pptoken(PPTK_EOF, tail, (*cur)->prev->str, (*cur)->prev->len);
     PPToken *tmp_cur = head.next;
+    // debug_log("dump");
+    // pp_dump_token(tmp_cur);
     PPToken *macro_replaced_tokens = text_line(&tmp_cur);
     PPToken *mtail = pp_list_tail(macro_replaced_tokens);
-    new_pptoken(PPTK_EOF, mtail, mtail->str, mtail->len);
+    new_pptoken(PPTK_EOF, mtail, (*cur)->prev->str, (*cur)->prev->len);
 
     int val = constant_expression(&macro_replaced_tokens);
     if(macro_replaced_tokens->next) {
@@ -788,7 +790,7 @@ static PPToken *non_directive(PPToken **cur) {
 }
 
 static PPToken *text_line(PPToken **cur) {
-    debug_log("text_line %.*s", (*cur)->len, (*cur)->str);
+    //debug_log("text_line %.*s", (*cur)->len, (*cur)->str);
     PPToken gen_head = {};
     PPToken *gen_tail = &gen_head;
 
