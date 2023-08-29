@@ -946,8 +946,11 @@ static int eval_as_int(PPToken *token) {
     if(token->kind == PPTK_PPNUMBER) {
         char *en;
         int ret = strtol(token->str, &en, 0);
+        if(*en == 'L'){
+            en++;
+        }
         if(en != token->str + token->len) {
-            error("Invalid number token");
+            error("Invalid number token %.*s", token->len, token->str);
         }
         return ret;
     }
