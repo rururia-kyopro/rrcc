@@ -249,6 +249,12 @@ int main() {
     assert_file(0, "int main(){\n#define A 1\n#ifdef B\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
     assert_file(0, "int main(){\n#define A 1\n#ifndef A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
     assert_file(1, "int main(){\n#define A 1\n#ifndef B\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
+    assert_file(0, "int main(){\n#define A 1-1\n#if A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
+    assert_file(1, "int main(){\n#define A 1-1*2\n#if A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
+    assert_file(0, "int main(){\n#define A 2*(3-3)\n#if A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
+    assert_file(0, "int main(){\n#define A 2 ?0:1\n#if A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
+    assert_file(1, "int main(){\n#define A 0 ?0:1\n#if A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
+    assert_file(1, "int main(){\n#define A C==0\n#if A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
     printf("OK\n");
     return 0;
 }
