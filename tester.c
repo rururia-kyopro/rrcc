@@ -247,6 +247,8 @@ int main() {
     assert_file(3, "int main(){int a;a=2;\n#if 0\na=1;\n#else\na=3;\n#endif\nreturn a;}");
     assert_file(1, "int main(){\n#define A 1\n#ifdef A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
     assert_file(0, "int main(){\n#define A 1\n#ifdef B\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
+    assert_file(0, "int main(){\n#define A 1\n#ifndef A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
+    assert_file(1, "int main(){\n#define A 1\n#ifndef B\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
     printf("OK\n");
     return 0;
 }
