@@ -1024,7 +1024,7 @@ static int equality_expression(PPToken **cur) {
         if(pp_consume(cur, "==")) {
             ret = ret == relational_expression(cur);
         }else if(pp_consume(cur, "!=")) {
-            ret = ret == relational_expression(cur);
+            ret = ret != relational_expression(cur);
         }else {
             break;
         }
