@@ -71,6 +71,15 @@ int assert_file(int expected, char *source) {
     }
 }
 
+int assert_compile_fail(char *source) {
+    if(compile("", source, "")) {
+        printf("OK: Compile failed %s\n", source);
+        return 0;
+    }
+    printf("%s => 'failed compilation' expected, but succeeded\n", source);
+    exit(1);
+}
+
 int assert_stdout(int expected, char *str, char *source) {
     if(compile("", source, "")) {
         printf("Compile failed %s\n", source);
@@ -255,6 +264,9 @@ int main() {
     assert_file(0, "int main(){\n#define A 2 ?0:1\n#if A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
     assert_file(1, "int main(){\n#define A 0 ?0:1\n#if A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
     assert_file(1, "int main(){\n#define A C==0\n#if A\nreturn 1;\n#else\nreturn 0;\n#endif\n}");
+    assert_compile_fail("int main(){}\n#if 1\n");
+    assert_file(1, "#if 1\n#endif\nint main(){return 1;}");
+    assert_compile_fail("int main(){}\n#if 1\n#if 0\n#elif a\n#else\n#endif\n");
     printf("OK\n");
     return 0;
 }

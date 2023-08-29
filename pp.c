@@ -608,7 +608,10 @@ static PPToken *if_group(PPToken **cur) {
     PPToken head = {};
     PPToken *tail = &head;
     int state = 0;
-    while(!pp_at_eof(cur)) {
+    while(1) {
+        if(pp_at_eof(cur)) {
+            error("Expect #endif");
+        }
         PPToken *pre = *cur;
         if(pp_consume(cur, "#")) {
             if(pp_consume(cur, "elif")) {
