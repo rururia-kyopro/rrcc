@@ -27,6 +27,7 @@ typedef enum {
     PPTK_IDENT,
     PPTK_CHAR_CONST,
     PPTK_STRING_LITERAL,
+    PPTK_OTHER,
     PPTK_EOF,
     PPTK_DUMMY,
 } PPTokenKind;
@@ -53,6 +54,7 @@ char *pp_tokenkind_str(PPTokenKind kind) {
         case PPTK_IDENT: return "PPTK_IDENT";
         case PPTK_CHAR_CONST: return "PPTK_CHAR_CONST";
         case PPTK_STRING_LITERAL: return "PPTK_STRING_LITERAL";
+        case PPTK_OTHER: return "PPTK_OTHER";
         case PPTK_EOF: return "PPTK_EOF";
         case PPTK_DUMMY: return "PPTK_DUMMY";
     }
@@ -268,7 +270,7 @@ PPToken *pp_tokenize() {
             char *q = p;
             p++;
             char c;
-            printf("read escape: %d %d\n", *p, '\\');
+            debug_log("read escape: %d %d\n", *p, '\\');
             if(*p == '\\') {
                 p++;
                 c = read_escape(&p);
@@ -321,6 +323,9 @@ PPToken *pp_tokenize() {
                 error_at(p, "expect \" (double quote)");
             }
         }
+
+        cur = new_pptoken(PPTK_OTHER, cur, p, 1);
+        p++;
     }
     cur = new_pptoken(PPTK_EOF, cur, p, 1);
     return head.next;
@@ -769,6 +774,8 @@ static char *reconstruct_tokens(PPToken *cur) {
         }else if(cur->kind == PPTK_STRING_LITERAL) {
             append_printf(&buf, &tail, &len, "%.*s", cur->len + 2, cur->str - 1);
         }else if(cur->kind == PPTK_PPNUMBER) {
+            append_printf(&buf, &tail, &len, "%.*s", cur->len, cur->str);
+        }else if(cur->kind == PPTK_OTHER) {
             append_printf(&buf, &tail, &len, "%.*s", cur->len, cur->str);
         }else if(cur->kind == PPTK_NEWLINE) {
             append_printf(&buf, &tail, &len, "\n");
