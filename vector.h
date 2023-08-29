@@ -11,3 +11,4 @@ void vector_push(Vector *vec, void *x);
 void *vector_pop(Vector *vec);
 void *vector_get(Vector *vec, int i);
 int vector_size(Vector *vec);
+void vector_remove(Vector *vec, void *x);

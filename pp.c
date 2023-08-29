@@ -12,6 +12,7 @@ Vector *macro_registry;
 
 static void pp_next_token(PPToken **cur);
 static bool pp_expect(PPToken **cur, char *str);
+static bool pp_expect_newline(PPToken **cur);
 static bool pp_expect_ident(PPToken **cur, char **ident, int *ident_len);
 static bool pp_peek(PPToken **cur, char *str);
 static bool pp_peek_newline(PPToken **cur);
@@ -372,6 +373,15 @@ static bool pp_expect(PPToken **cur, char *str) {
     return false;
 }
 
+static bool pp_expect_newline(PPToken **cur) {
+    if(pp_peek_newline(cur)) {
+        pp_next_token(cur);
+        return true;
+    }
+    error_at((*cur)->str, "Expect newline\n");
+    return false;
+}
+
 static bool pp_expect_ident(PPToken **cur, char **ident, int *ident_len) {
     if(pp_peek_ident(cur, ident, ident_len)) {
         pp_next_token(cur);
@@ -569,9 +579,14 @@ static PPToken *control_line(PPToken **cur) {
         }
         vector_push(macro_registry, entry);
     } else if(pp_consume(cur, "undef")) {
-        while(!pp_consume_newline(cur) && !pp_at_eof(cur)) {
-            (*cur) = (*cur)->next;
+        char *ident;
+        int ident_len;
+        pp_expect_ident(cur, &ident, &ident_len);
+        MacroRegistryEntry *entry = find_macro(ident, ident_len);
+        if(entry) {
+            vector_remove(macro_registry, entry);
         }
+        pp_expect_newline(cur);
     } else if(pp_consume(cur, "line")) {
         while(!pp_consume_newline(cur) && !pp_at_eof(cur)) {
             (*cur) = (*cur)->next;

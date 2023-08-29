@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 #include "vector.h"
 
 static void vector_ensure(Vector *vec, int size);
@@ -38,4 +39,14 @@ static void vector_ensure(Vector *vec, int size) {
         vec->capacity = size;
     }
     vec->ptr = realloc(vec->ptr, sizeof(void *) * vec->capacity);
+}
+
+void vector_remove(Vector *vec, void *x) {
+    for(int i = 0; i < vector_size(vec); i++) {
+        if(vector_get(vec, i) == x) {
+            memmove(vec->ptr, vec->ptr + 1, (vec->size - i - 1) * sizeof(void *));
+            vec->size--;
+            return;
+        }
+    }
 }
