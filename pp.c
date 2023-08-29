@@ -17,6 +17,7 @@ static bool pp_peek(PPToken **cur, char *str);
 static bool pp_peek_newline(PPToken **cur);
 static bool pp_peek_ident(PPToken **cur, char **ident, int *ident_len);
 static PPToken *scan_replacement_list(MacroRegistryEntry *entry, Vector *vec);
+PPToken *pp_parse_file();
 
 typedef enum {
     PPTK_NEWLINE,
@@ -513,9 +514,32 @@ static PPToken *if_group(PPToken **cur) {
 
 static PPToken *control_line(PPToken **cur) {
     if(pp_consume(cur, "include")) {
-        while(!pp_consume_newline(cur) && !pp_at_eof(cur)) {
-            (*cur) = (*cur)->next;
+        PPToken *headername = text_line(cur);
+        if(headername->next != NULL) {
+            error("Extra token after header name");
         }
+        char *file;
+        if(headername->kind == PPTK_HEADER_NAME) {
+            file = calloc(1, headername->len - 2 + 1);
+            memcpy(file, headername->str + 1, headername->len - 2);
+        }else if(headername->kind == PPTK_STRING_LITERAL) {
+            file = calloc(1, headername->len + 1);
+            memcpy(file, headername->str, headername->len);
+        }else{
+            error("Invalid token as header name");
+        }
+
+        debug_log("include %s", file);
+        char *tmp_filename = filename;
+        char *tmp_user_input = user_input;
+        filename = file;
+        PPToken *token = pp_parse_file();
+        filename = tmp_filename;
+        user_input = tmp_user_input;
+
+        PPToken *tail = pp_list_tail(token);
+        tail = new_pptoken(PPTK_NEWLINE, tail, (*cur)->str, (*cur)->len);
+        return token;
     } else if(pp_consume(cur, "define")) {
         MacroRegistryEntry *entry = calloc(1, sizeof(MacroRegistryEntry));
         pp_expect_ident(cur, &entry->ident, &entry->ident_len);
@@ -787,7 +811,7 @@ static char *reconstruct_tokens(PPToken *cur) {
     return buf;
 }
 
-char *do_pp() {
+PPToken *pp_parse_file() {
     user_input = read_file(filename);
     // debug_log("read file: '%s'\n", user_input);
     char *processed = calloc(1, strlen(user_input) + 1);
@@ -797,10 +821,13 @@ char *do_pp() {
     user_input = processed;
 
     PPToken *pptoken = pp_tokenize();
+    pp_dump_token(pptoken);
 
-    PPToken *newhead = pp_parse(&pptoken);
-    //pp_dump_token(newhead);
-    return reconstruct_tokens(newhead);
+    return pp_parse(&pptoken);
+}
+
+char *do_pp() {
+    return reconstruct_tokens(pp_parse_file());
 }
 
 int pp_main(int argc, char **argv) {

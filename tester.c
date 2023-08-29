@@ -103,6 +103,33 @@ int assert_stdout(int expected, char *str, char *source) {
     }
 }
 
+int assert_file_inc(int expected, char *source, char *inc_content) {
+    int *fp;
+    fp = fopen("tmpinc.h", "w");
+    fwrite(inc_content, strlen(inc_content), 1, fp);
+    fclose(fp);
+
+    if(compile("", source, "")) {
+        printf("Compile failed %s\n", source);
+        exit(1);
+    }
+
+    int ret;
+    ret = system("./tmp");
+    if(ret == -1) {
+        printf("Execution failed. %s\n", source);
+        exit(1);
+    }
+    ret = ret / 256;
+
+    if(ret == expected) {
+        printf("%s => %d\n", source, ret);
+    }else{
+        printf("%s => %d expected, but got %d\n", source, expected, ret);
+        exit(1);
+    }
+}
+
 
 int main() {
     assert(0, "0;");
@@ -207,6 +234,11 @@ int main() {
     assert_file(13, "#define M(a,b) a + b\nint main() { return M(3,5)*2; }");
     assert_file(13, "#define M(a,b) a + b\nint main() { int a; a = 9; return M(3,5)*2; }");
     assert_file(19, "#define M(c,b) a + b\nint main() { int a; a = 9; return M(3,5)*2; }");
+    assert_file(8, "#define N 2+2\n#define M(a) N * a\nint main() { return M(3); }");
+    assert_file(21, "#define P(a) (a* 3) \n#define N P(5)+2\n#define M(a) N * a\nint main() { return M(3); }");
+    assert_file_inc(8, "#include <tmpinc.h>\nint main() { return func(4)+M(3); }", "int func(int n){return n+2;}\n#define M(a) (a-1)\n");
+    assert_file_inc(8, "#include \"tmpinc.h\"\nint main() { return func(4)+M(3); }", "int func(int n){return n+2;}\n#define M(a) (a-1)\n");
+    assert_file_inc(8, "#define H \"tmpinc.h\"\n#include H\nint main() { return func(4)+M(3); }", "int func(int n){return n+2;}\n#define M(a) (a-1)\n");
     printf("OK\n");
     return 0;
 }
