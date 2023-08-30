@@ -599,7 +599,7 @@ void pp_skip_group(PPToken **cur) {
 static PPToken *if_group(PPToken **cur) {
     bool if_condition_met = false;
     if(pp_consume(cur, "if")) {
-        debug_log("if start %.*s", 20, (*cur)->str);
+        // debug_log("if start %.*s", 20, (*cur)->str);
         if_condition_met = eval_constant_expression(cur);
     }else if(pp_consume(cur, "ifdef")) {
         char *ident;
@@ -607,7 +607,7 @@ static PPToken *if_group(PPToken **cur) {
         pp_expect_ident(cur, &ident, &ident_len);
         pp_expect_newline(cur);
         if_condition_met = find_macro(ident, ident_len) != NULL;
-        debug_log("ifdef check %.*s %d", ident_len, ident, if_condition_met);
+        // debug_log("ifdef check %.*s %d", ident_len, ident, if_condition_met);
     }else if(pp_consume(cur, "ifndef")) {
         char *ident;
         int ident_len;
@@ -817,13 +817,13 @@ static PPToken *text_line(PPToken **cur) {
             PPToken *macro_ident_token = *cur;
             MacroRegistryEntry *entry = find_macro(ident, ident_len);
             if(entry) {
-                debug_log("Macro: %.*s func: %d", ident_len, ident, entry->func);
+                // debug_log("Macro: %.*s func: %d", ident_len, ident, entry->func);
                 pp_next_token(cur);
                 if(entry->func) {
                     // If defined macro is func-like and "(" follows, it is macro invocation.
                     // TOOD: ignore new-line before "("
                     if(pp_consume(cur, "(")) {
-                        debug_log("Macro invocation");
+                        // debug_log("Macro invocation");
                         Vector *vec;
                         // Parse macro invocation until ')'.
                         // vec is a list of each argument.
@@ -931,7 +931,7 @@ static PPToken *scan_replacement_list(MacroRegistryEntry *entry, Vector *vec) {
         PPToken head = {};
         PPToken *tail = &head;
         bool found = false;
-        debug_log("macro param %.*s %d", token->len, token->str, compare_slice(token->str, token->len, "__VA_ARGS__"));
+        // debug_log("macro param %.*s %d", token->len, token->str, compare_slice(token->str, token->len, "__VA_ARGS__"));
         if(compare_slice(token->str, token->len, "__VA_ARGS__")) {
             if(!entry->vararg) {
                 error_at(token->str, "__VA_ARGS__ paramter can't be used on non-vararg macro");

@@ -235,9 +235,9 @@ Node *translation_unit() {
 //
 Node *declarator() {
     Node *type_node = type_(true);
-    fprintf(stderr, "// type call end\n");
-    dumpnodes(type_node);
-    fprintf(stderr, "// type node end\n");
+    // fprintf(stderr, "// type call end\n");
+    // dumpnodes(type_node);
+    // fprintf(stderr, "// type node end\n");
 
     if(type_node->kind == ND_TYPE_TYPEDEF) {
         expect(";");
@@ -502,7 +502,7 @@ Node *stmt() {
     }else if(consume_type_prefix(&kind)) {
         unget_token();
         Node *type_node = type_(true);
-        dumpnodes(type_node);
+        // dumpnodes(type_node);
         Node *node = variable_definition(false, type_node);
         char *ident;
         int ident_len;
