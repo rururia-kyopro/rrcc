@@ -19,6 +19,7 @@ static bool pp_peek(PPToken **cur, char *str);
 static bool pp_peek_newline(PPToken **cur);
 static bool pp_peek_ident(PPToken **cur, char **ident, int *ident_len);
 static PPToken *scan_replacement_list(MacroRegistryEntry *entry, Vector *vec);
+static void process_token_concat_operator(PPToken *cur);
 PPToken *pp_parse_file();
 
 typedef enum {
@@ -31,6 +32,7 @@ typedef enum {
     PPTK_CHAR_CONST,
     PPTK_STRING_LITERAL,
     PPTK_OTHER,
+    PPTK_PLACE_MARKER,
     PPTK_EOF,
     PPTK_DUMMY,
 } PPTokenKind;
@@ -58,6 +60,7 @@ char *pp_tokenkind_str(PPTokenKind kind) {
         case PPTK_CHAR_CONST: return "PPTK_CHAR_CONST";
         case PPTK_STRING_LITERAL: return "PPTK_STRING_LITERAL";
         case PPTK_OTHER: return "PPTK_OTHER";
+        case PPTK_PLACE_MARKER: return "PPTK_PLACE_MARKER";
         case PPTK_EOF: return "PPTK_EOF";
         case PPTK_DUMMY: return "PPTK_DUMMY";
     }
@@ -120,6 +123,62 @@ static PPToken *pp_list_tail(PPToken *cur) {
         cur = cur->next;
     }
     return cur;
+}
+
+int pp_match_punc(char *p) {
+    // The longer the punctuator, the more it must be placed in front.
+    static const char *punc[] = {
+        // 4 chars
+        "%:%:",
+        // 3 chars
+        "<<=", ">>=", "...",
+        // 2 chars
+        "->", "++", "--",
+        "<<", ">>", "<=",
+        ">=", "==", "!=",
+        "&&", "||", "*=",
+        "/=", "%=", "+=",
+        "-=", "&=", "^=",
+        "|=", "##", "<:",
+        ":>", "<%", "%>"};
+
+    for(int i = 0; i < sizeof(punc) / sizeof(punc[0]); i++){
+        if(strncmp(p, punc[i], strlen(punc[i])) == 0) {
+            return strlen(punc[i]);
+        }
+    }
+    if(strchr("[](){}.%*+-~!/%<>^|?:;=,#", *p)) {
+        return 1;
+    }
+    return 0;
+}
+
+int pp_match_string_literal(char *p, Vector **char_vec) {
+    char *b = p;
+    if(*p != '"') {
+        return 0;
+    }
+    p++;
+    *char_vec = new_vector();
+    while(*p) {
+        if(*p == '\\'){
+            p++;
+            char c = read_escape(&p);
+            vector_push(*char_vec, (void *)(long)c);
+            p++;
+            continue;
+        }else if(*p == '"') {
+            break;
+        }
+        vector_push(*char_vec, (void *)(long)*p);
+        p++;
+    }
+    if(*p == '"') {
+        p++;
+    } else {
+        error_at(p, "Expect \"");
+    }
+    return p - b;
 }
 
 PPToken *pp_tokenize() {
@@ -214,45 +273,16 @@ PPToken *pp_tokenize() {
             continue;
         }
 
-        // The longer the punctuator, the more it must be placed in front.
-        static const char *punc[] = {
-            // 4 chars
-            "%:%:",
-            // 3 chars
-            "<<=", ">>=", "...",
-            // 2 chars
-            "->", "++", "--",
-            "<<", ">>", "<=",
-            ">=", "==", "!=",
-            "&&", "||", "*=",
-            "/=", "%=", "+=",
-            "-=", "&=", "^=",
-            "|=", "##", "<:",
-            ":>", "<%", "%>"};
-
-        bool found = false;
-        int len = 0;
-        for(int i = 0; i < sizeof(punc) / sizeof(punc[0]); i++){
-            if(strncmp(p, punc[i], strlen(punc[i])) == 0) {
-                found = true;
-                len = strlen(punc[i]);
-                break;
-            }
-        }
-        if(found) {
-            cur = new_pptoken(PPTK_PUNC, cur, p, len);
-            p += len;
-            continue;
-        }
-        if(strchr("[](){}.%*+-~!/%<>^|?:;=,#", *p)) {
-            if(*p == '#') {
+        int punc_len = pp_match_punc(p);
+        if(punc_len) {
+            if(punc_len == 1 && *p == '#') {
                 include_state = 1;
             }
-            cur = new_pptoken(PPTK_PUNC, cur, p, 1);
+            cur = new_pptoken(PPTK_PUNC, cur, p, punc_len);
             if(p > user_input && (p[-1] == ' ' || p[-1] == '\t')) {
                 cur->preceded_by_space = true;
             }
-            p++;
+            p += punc_len;
             continue;
         }
 
@@ -273,7 +303,6 @@ PPToken *pp_tokenize() {
             char *q = p;
             p++;
             char c;
-            debug_log("read escape: %d %d\n", *p, '\\');
             if(*p == '\\') {
                 p++;
                 c = read_escape(&p);
@@ -292,39 +321,13 @@ PPToken *pp_tokenize() {
         }
 
         if(*p == '"') {
-            p++;
-            char *literal = p;
-            int state = 0;
-            Vector *char_vec = new_vector();
-            while(*p) {
-                if(state == 1) {
-                    char c = read_escape(&p);
-                    vector_push(char_vec, (void *)(long)c);
-                    p++;
-                    state = 0;
-                    continue;
-                }
-                if(*p == '"') {
-                    break;
-                }
-                if(*p == '\\'){
-                    state = 1;
-                }else{
-                    vector_push(char_vec, (void *)(long)*p);
-                    state = 0;
-                }
-                p++;
-            }
-            int len = p - literal;
-            if(*p == '"') {
-                p++;
-                cur = new_pptoken(PPTK_STRING_LITERAL, cur, literal, len);
-                cur->literal = char_vec;
-                cur->literal_len = vector_size(char_vec);
-                continue;
-            } else {
-                error_at(p, "expect \" (double quote)");
-            }
+            Vector *char_vec;
+            int len = pp_match_string_literal(p, &char_vec);
+            cur = new_pptoken(PPTK_STRING_LITERAL, cur, p + 1, len - 2);
+            cur->literal = char_vec;
+            cur->literal_len = vector_size(char_vec);
+            p += len;
+            continue;
         }
 
         cur = new_pptoken(PPTK_OTHER, cur, p, 1);
@@ -426,6 +429,10 @@ static bool pp_peek_ident(PPToken **cur, char **ident, int *ident_len) {
 
 static bool pp_at_eof(PPToken **cur) {
     return (*cur)->kind == PPTK_EOF;
+}
+
+static bool pp_compare_punc(PPToken *token, char *str) {
+    return token->kind == PPTK_PUNC && token->len == strlen(str) && memcmp(token->str, str, token->len) == 0;
 }
 
 static PPToken *preprocessing_file(PPToken **cur);
@@ -548,6 +555,7 @@ static bool eval_constant_expression(PPToken **cur) {
     // debug_log("dump");
     // pp_dump_token(tmp_cur);
     PPToken *macro_replaced_tokens = text_line(&tmp_cur);
+    PPToken *tmp2 = macro_replaced_tokens;
     PPToken *mtail = pp_list_tail(macro_replaced_tokens);
     new_pptoken(PPTK_EOF, mtail, (*cur)->prev->str, (*cur)->prev->len);
 
@@ -591,6 +599,7 @@ void pp_skip_group(PPToken **cur) {
 static PPToken *if_group(PPToken **cur) {
     bool if_condition_met = false;
     if(pp_consume(cur, "if")) {
+        debug_log("if start %.*s", 20, (*cur)->str);
         if_condition_met = eval_constant_expression(cur);
     }else if(pp_consume(cur, "ifdef")) {
         char *ident;
@@ -620,7 +629,7 @@ static PPToken *if_group(PPToken **cur) {
         if(pp_consume(cur, "#")) {
             if(pp_consume(cur, "elif")) {
                 if(state != 0) {
-                    error("Invalid elif directive (after else?)");
+                    error_at((*cur)->str, "Invalid elif directive (after else?)");
                 }
                 bool met = eval_constant_expression(cur);
                 if(!any_met && met) {
@@ -630,7 +639,7 @@ static PPToken *if_group(PPToken **cur) {
                 continue;
             } else if(pp_consume(cur, "else")) {
                 if(state != 0) {
-                    error("Invalid else directive (multiple else?)");
+                    error_at((*cur)->str, "Invalid else directive (multiple else?)");
                 }
                 state = 1;
                 pp_expect_newline(cur);
@@ -824,9 +833,9 @@ static PPToken *text_line(PPToken **cur) {
                         if(vector_size(vec) != vector_size(entry->param_list)) {
                             error("Argument number in macro invocation doesn't match");
                         }
-                        debug_log("Arg length: %d\n", vector_size(vec));
 
                         PPToken *rep_out = scan_replacement_list(entry, vec);
+                        process_token_concat_operator(rep_out);
 
                         // rep_out: Tokens generated by rep_list
                         // *cur: Points the token immidiately after ")"
@@ -849,6 +858,11 @@ static PPToken *text_line(PPToken **cur) {
                         PPToken *token = vector_get(entry->rep_list, i);
                         rep_out = dup_pptoken(rep_out, token);
                     }
+                    if(rep_out_head.next) {
+                        rep_out_head.next->prev = NULL;
+                    }
+                    process_token_concat_operator(rep_out_head.next);
+                    rep_out = pp_list_tail(rep_out_head.next);
                     rep_out->next = *cur;
                     (*cur)->prev = rep_out;
                     // rescan from beggining of newly instroduced tokens.
@@ -925,17 +939,33 @@ static PPToken *scan_replacement_list(MacroRegistryEntry *entry, Vector *vec) {
             PPToken *tmp = pp_list_tail(head);
             new_pptoken(PPTK_EOF, tmp, tmp->str, tmp->len);
 
-            debug_log("==Dump argument==");
             // pp_dump_token(head);
-            debug_log("==End of dump argument==");
             PPToken *new_head = text_line(&head);
-            debug_log("==Recursive ret==");
 
             // Make sure introduced token don't join to previous one.
             new_head->preceded_by_space = true;
 
             // pp_dump_token(new_head);
 
+            if(new_head == NULL) {
+                // Generate place marker for empty list if it is operand of ##.
+                bool found_sharp = false;
+                if(i > 0) {
+                    PPToken *prev_token = vector_get(entry->rep_list, i - 1);
+                    if(pp_compare_punc(prev_token, "##")) {
+                        found_sharp = true;
+                    }
+                }
+                if(i + 1 < vector_size(entry->rep_list)) {
+                    PPToken *next_token = vector_get(entry->rep_list, i + 1);
+                    if(pp_compare_punc(next_token, "##")) {
+                        found_sharp = true;
+                    }
+                }
+                if(found_sharp) {
+                    new_head = new_pptoken(PPTK_PLACE_MARKER, new_head, "", 0);
+                }
+            }
             rep_out->next = new_head;
             new_head->prev = rep_out;
             while(rep_out->next) {
@@ -946,7 +976,107 @@ static PPToken *scan_replacement_list(MacroRegistryEntry *entry, Vector *vec) {
             rep_out = dup_pptoken(rep_out, token);
         }
     }
+
+    if(rep_out_head.next) {
+        rep_out_head.next->prev = NULL;
+    }
     return rep_out_head.next;
+}
+
+static void process_token_concat_operator(PPToken *cur) {
+    // Process ## operator
+    PPToken *cur2 = cur;
+    for(; cur2; cur2 = cur2->next) {
+        if(pp_compare_punc(cur2, "##")) {
+            if(cur2->prev == NULL) {
+                error_at(cur2->str, "## operator cannot appear on the beginning of replacement list");
+            }
+            if(cur2->next == NULL) {
+                error_at(cur2->str, "## operator cannot appear on the end of replacement list");
+            }
+            PPToken *r = cur2->prev;
+            PPToken *l = cur2->next;
+            if(r->kind == PPTK_PLACE_MARKER) {
+                // Place marker + other token = other token
+                // (include place + place)
+                *r = *l;
+                if(r->next) {
+                    r->next->prev = r;
+                }
+            } else if(l->kind == PPTK_PLACE_MARKER) {
+                // Other token + Place marker = other token
+                r->next = l->next;
+                if(r->next) {
+                    r->next->prev = r;
+                }
+            } else {
+                // Generate new token
+                char *old_str = r->str;
+                int len = r->len + l->len;
+                char *p = calloc(1, len);
+                memcpy(p, r->str, r->len);
+                memcpy(p + r->len, l->str, l->len);
+
+                r->str = p;
+                r->len = len;
+                int punc_len = pp_match_punc(p);
+                if(p[0] == '.' && isdigit(p[1]) || isdigit(p[0])) {
+                    r->kind = PPTK_PPNUMBER;
+                } else if(punc_len == len) {
+                    r->kind = PPTK_PUNC;
+                }else if(isalpha(*p) || *p == '_') {
+                    r->kind = PPTK_IDENT;
+                }else if(*p == '"') {
+                    Vector *char_vec;
+                    int mlen = pp_match_string_literal(p, &char_vec);
+                    if(mlen != len) {
+                        error_at(old_str, "Invalid string literal was generated from ## operator");
+                    }
+
+                    r->literal = char_vec;
+                    r->literal_len = vector_size(char_vec);
+                    r->kind = PPTK_STRING_LITERAL;
+                }else if(*p == '\'') {
+                    r->kind = PPTK_CHAR_CONST;
+                    char *q = p;
+                    p++;
+                    char c;
+                    if(*p == '\\') {
+                        p++;
+                        c = read_escape(&p);
+                        p++;
+                    } else {
+                        c = *p;
+                        p++;
+                    }
+                    if(*p != '\''){
+                        error("expect ' (single quote)");
+                    }
+                    p++;
+                    if(p - q != len) {
+                        error_at(old_str, "Invalid char const was generated from ## operator: %.*s", r->len, r->str);
+                    }
+                    r->val = c;
+                }else {
+                    r->kind = PPTK_OTHER;
+                }
+                r->next = cur2->next->next;
+                if(r->next) {
+                    r->next->prev = r;
+                }
+            }
+        }
+    }
+    // Remove place marker
+    cur2 = cur;
+    while(cur2) {
+        if(cur2->kind == PPTK_PLACE_MARKER) {
+            cur2->prev->next = cur2->next;
+            cur2->next->prev = cur2->prev;
+        } else {
+            cur2 = cur2->next;
+        }
+    }
 }
 
 static int eval_as_int(PPToken *token) {
@@ -1226,7 +1356,7 @@ PPToken *pp_parse_file() {
     user_input = processed;
 
     PPToken *pptoken = pp_tokenize();
-    pp_dump_token(pptoken);
+    //pp_dump_token(pptoken);
 
     return pp_parse(&pptoken);
 }

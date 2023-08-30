@@ -269,6 +269,8 @@ int main() {
     assert_compile_fail("int main(){}\n#if 1\n#if 0\n#elif a\n#else\n#endif\n");
     assert_file_inc(8, "#define A\n#include \"tmpinc.h\"\nint main() { return func(4)+M(3); }", "#ifdef A\nint func(int n){return n+2;}\n#define M(a) (a-1)\n#endif");
     assert_file(1, "#define A\n#define B\n#if defined A && defined B\nint main(){return 1;}\n#endif");
+    assert_file(1, "#define A 1\n#define B 2\n#define C(a,b) a ## b\nint main(){return C(A,B) == 12;}\n");
+    assert_file(1, "#define C 1 ## 2\nint main(){return C == 12;}\n");
     printf("OK\n");
     return 0;
 }

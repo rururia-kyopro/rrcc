@@ -1441,6 +1441,14 @@ bool compare_ident(char *ident_a, int ident_a_len, char *ident_b, int ident_b_le
     return strncmp(ident_a, ident_b, ident_a_len) == 0;
 }
 
+bool compare_slice(char *slice, int slice_len, char *null_term_str) {
+    int len = strlen(null_term_str);
+    if(len != slice_len) {
+        return false;
+    }
+    return memcmp(slice, null_term_str, slice_len);
+}
+
 void dumpnodes_inner(Node *node, int level) {
     if(node == NULL) return;
     print_indent(level, "%s\n", node_kind(node->kind));
