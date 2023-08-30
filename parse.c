@@ -234,9 +234,6 @@ Node *translation_unit() {
 //            | global_variable_definition
 //
 Node *declarator() {
-    peek_type_prefix();
-    expect_type_prefix();
-    unget_token();
     Node *type_node = type_(true);
     fprintf(stderr, "// type call end\n");
     dumpnodes(type_node);
