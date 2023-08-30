@@ -577,7 +577,7 @@ void pp_skip_group(PPToken **cur) {
     while(!pp_at_eof(cur)) {
         PPToken *pre = *cur;
         if(pp_consume(cur, "#")) {
-            if(pp_consume(cur, "if")) {
+            if(pp_consume(cur, "if") || pp_consume(cur, "ifdef") || pp_consume(cur, "ifndef")) {
                 level++;
             }else if(pp_consume(cur, "elif") || pp_consume(cur, "else")) {
                 if(!level) {
