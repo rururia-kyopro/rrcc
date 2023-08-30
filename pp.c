@@ -1396,8 +1396,8 @@ void append_include_pathes(char *p) {
     vector_push(include_pathes, p);
 }
 
-int pp_main(int argc, char **argv) {
-    filename = argv[2];
+int pp_main(char *file) {
+    filename = file;
 
     char *output = do_pp();
     printf("%s", output);

@@ -10,7 +10,7 @@ void debug_log(char *fmt, ...);
 char *read_file(char *path);
 char read_escape(char **p);
 
-int pp_main(int argc, char *argv[]);
+int pp_main(char *file);
 char *do_pp();
 void init_include_pathes();
 void append_include_pathes(char *p);

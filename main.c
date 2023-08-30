@@ -13,9 +13,6 @@
 char *filename;
 
 int main(int argc, char **argv) {
-  if(strcmp(argv[1], "-p") == 0){
-      return pp_main(argc, argv);
-  }
   init_include_pathes();
   for(int i = 1; i < argc; i++) {
       if(strncmp(argv[i], "-I", 2) == 0){ 
@@ -29,6 +26,8 @@ int main(int argc, char **argv) {
           } else {
               append_include_pathes(argv[i] + 2);
           }
+      }else if(strncmp(argv[i], "-p", 2) == 0){
+          return pp_main(argv[i+1]);
       } else {
           filename = argv[i];
           break;
