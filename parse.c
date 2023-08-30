@@ -1446,7 +1446,7 @@ bool compare_slice(char *slice, int slice_len, char *null_term_str) {
     if(len != slice_len) {
         return false;
     }
-    return memcmp(slice, null_term_str, slice_len);
+    return memcmp(slice, null_term_str, slice_len) == 0;
 }
 
 void dumpnodes_inner(Node *node, int level) {
