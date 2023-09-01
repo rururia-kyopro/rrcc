@@ -410,6 +410,14 @@ void gen(Node *node){
         case ND_AND:
             printf("  and rax,rsi\n");
             break;
+        case ND_LSHIFT:
+            printf("  mov rcx,rsi\n");
+            printf("  shl rax,cl\n");
+            break;
+        case ND_RSHIFT:
+            printf("  mov rcx,rsi\n");
+            printf("  shr rax,cl\n");
+            break;
     }
     printf("  push rax\n");
 }

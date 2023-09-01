@@ -305,6 +305,8 @@ int main() {
     assert_file(2, "int main() {int a=(10&3); return a;}");
     assert_file(11, "int main() {int a=(10|3); return a;}");
     assert_file(9, "int main() {int a=(10^3); return a;}");
+    assert_file(40, "int main() {int a=(10 << 2); return a;}");
+    assert_file(2, "int main() {int a=(10 >> 2); return a;}");
     printf("OK\n");
     return 0;
 }
