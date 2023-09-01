@@ -1199,10 +1199,14 @@ Node *type_(bool need_ident, bool is_global, bool parse_one_type) {
             char *ident;
             int ident_len;
             if(!type_find_ident(node, &ident, &ident_len)) {
-                error("No identifier on extern variable");
+                error("No identifier on function declaration");
             }
-            Node *node_gvar_func = global_variable_definition(node, ident, ident_len);
-            var_node = new_node(ND_FUNC_DECL, node_gvar_func, NULL);
+            GVar *gvar = find_gvar(globals, ident, ident_len);
+            if(gvar == NULL) {
+                gvar = new_gvar(globals, ident, ident_len, node->lhs->type.type);
+            }
+
+            var_node = new_node(ND_FUNC_DECL, node, NULL);
         } else {
             var_node = variable_definition(is_global, node, type_storage);
         }
