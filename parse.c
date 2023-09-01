@@ -15,6 +15,7 @@ Vector *global_string_literals;
 Vector *struct_registry;
 Vector *enum_registry;
 Vector *typedef_registry;
+int unnamed_struct_count = 0;
 
 Type void_type = { VOID };
 Type char_type = { CHAR, NOSIGNED };
@@ -1174,11 +1175,19 @@ Vector *function_arguments() {
     return args;
 }
 
-// struct_declaration = "struct" ident ( "{" struct_members "}" )?
+// struct_declaration = "struct" ident? ( "{" struct_members "}" )?
 Node *struct_declaration() {
     char *ident;
     int ident_len;
-    expect_ident(&ident, &ident_len);
+    // ident is optional
+    if(!consume_ident(&ident, &ident_len)) {
+        char buf[100];
+        sprintf(buf, "__unnamed_struct_%d", unnamed_struct_count);
+        unnamed_struct_count++;
+        ident = malloc(strlen(buf)+1);
+        memcpy(ident, buf, strlen(buf)+1);
+        ident_len = strlen(buf);
+    }
 
     Node *node = new_node(ND_TYPE_STRUCT, NULL, NULL);
 
