@@ -11,6 +11,7 @@
 #include <string.h>
 
 char *filename;
+int debug_parse = 0;
 
 int main(int argc, char **argv) {
   init_include_pathes();
@@ -28,6 +29,8 @@ int main(int argc, char **argv) {
           }
       }else if(strncmp(argv[i], "-p", 2) == 0){
           return pp_main(argv[i+1]);
+      }else if(strncmp(argv[i], "-d", 2) == 0){
+          debug_parse = 1;
       } else {
           filename = argv[i];
           break;
@@ -50,9 +53,11 @@ int main(int argc, char **argv) {
   token = tokenize(user_input);
   Node *node_trans_unit = translation_unit();
 
-  // for(int i = 0; i < vector_size(node_trans_unit->trans_unit.decl); i++){
-  //     dumpnodes(vector_get(node_trans_unit->trans_unit.decl, i));
-  // }
+  if(debug_parse) {
+      for(int i = 0; i < vector_size(node_trans_unit->trans_unit.decl); i++){
+          dumpnodes(vector_get(node_trans_unit->trans_unit.decl, i));
+      }
+  }
 
   printf(".intel_syntax noprefix\n");
 

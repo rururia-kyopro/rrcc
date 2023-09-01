@@ -122,6 +122,7 @@ extern Token *token;
 
 extern char *user_input;
 extern char *filename;
+extern int debug_parse;
 
 void next_token();
 void unget_token();
