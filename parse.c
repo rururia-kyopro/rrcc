@@ -66,10 +66,11 @@ char *node_kind(NodeKind kind){
         case ND_DEREF: return "ND_DEREF";
         case ND_SIZEOF: return "ND_SIZEOF";
         case ND_DECL_VAR: return "ND_DECL_VAR";
+        case ND_DECL_LIST: return "ND_DECL_LIST";
         case ND_TYPE: return "ND_TYPE";
         case ND_INIT: return "ND_INIT";
         case ND_CONVERT: return "ND_CONVERT";
-        case ND_GVAR_DEF: return "ND_GLOBAL_VAR";
+        case ND_GVAR_DEF: return "ND_GVAR_DEF";
         case ND_TYPE_FUNC: return "ND_TYPE_FUNC";
         case ND_TYPE_POINTER: return "ND_TYPE_POINTER";
         case ND_TYPE_ARRAY: return "ND_TYPE_ARRAY";
@@ -254,11 +255,6 @@ Node *external_declaration() {
 
 // function_definition = type ident "(" ( type ident "," )* ( type ident )? ")" stmt
 Node *function_definition(TypeStorage type_storage, Node *type_node) {
-    bool is_extern = false;
-    if(type_node->kind == ND_TYPE_EXTERN) {
-        is_extern = true;
-        type_node = type_node->lhs;
-    }
     Node *node = new_node(ND_FUNC_DEF, type_node, NULL);
     node->func_def.arg_vec = new_vector();
     node->func_def.lvar_vec = new_vector();
@@ -302,12 +298,7 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
     gvar = new_gvar(globals, node->func_def.ident, node->func_def.ident_len, type_node->type.type);
     gvar_def_node->gvar_def.gvar = gvar;
 
-    if(consume(";")) {
-        // function declaration
-        node->kind = ND_FUNC_DECL;
-        return node;
-    }
-    if(is_extern) {
+    if(type_storage == TS_EXTERN) {
         error("extern function cannot have function body");
     }
     node->lhs = stmt();
@@ -364,6 +355,7 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
         for(; cur != NULL; cur = cur->lhs) {
             if(cur->kind == ND_IDENT) {
                 found = true;
+                debug_log("global var add: %.*s", cur->ident.ident_len, cur->ident.ident);
                 global_variable_definition(node, cur->ident.ident, cur->ident.ident_len);
                 break;
             }
@@ -1025,7 +1017,18 @@ Node *type_(bool need_ident, bool is_global, bool is_funcarg) {
             return function_definition(type_storage, node);
         }
         // declaration
-        Node *var_node = variable_definition(is_global, node, type_storage);
+        Node *var_node;
+        if(node->type.type->ty == FUNC) {
+            char *ident;
+            int ident_len;
+            if(!type_find_ident(node, &ident, &ident_len)) {
+                error("No identifier on extern variable");
+            }
+            Node *node_gvar_func = global_variable_definition(node, ident, ident_len);
+            var_node = new_node(ND_FUNC_DECL, node_gvar_func, NULL);
+        } else {
+            var_node = variable_definition(is_global, node, type_storage);
+        }
         vector_push(list_node->decl_list.decls, var_node);
 
         // If we are in function argument list, comma should be handled on upper functions.
@@ -1633,6 +1636,15 @@ void dumpnodes_inner(Node *node, int level) {
         print_indent(level, "name: ");
         fwrite(node->lvar->name, node->lvar->len, 1, stderr);
         fprintf(stderr, "\n");
+    }else if(node->kind == ND_GVAR_DEF){
+        print_indent(level, "ND_GVAR_DEF: %.*s\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
+    }else if(node->kind == ND_DECL_LIST){
+        print_indent(level, "ND_DECL_LIST:\n");
+        for(int i = 0; i < vector_size(node->decl_list.decls); i++) {
+            Node *decl = vector_get(node->decl_list.decls, i);
+
+            dumpnodes_inner(decl, level + 1);
+        }
     }else if(node->kind == ND_TYPE){
         for(Type *cur = node->type.type; cur; cur = cur->ptr_to) {
             if(cur->ty == PTR) {
