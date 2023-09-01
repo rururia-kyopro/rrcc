@@ -281,6 +281,12 @@ int main() {
     assert_file(10, "union a{short f;char g;};int main(){union a p; p.f=0;p.g=10; return p.g;}");
     assert_file(0, "union a{short f;char g;};int main(){union a p; p.f=0;p.g=10; p.f=0; return p.g;}");
     assert_stdout(0, "266", "int printf();union a{short f;char g;};int main(){union a p; p.f=300;p.g=10; printf(\"%d\", p.f); return 0;}");
+    assert_file(8, "char *const a;int main(){return sizeof(a);}");
+    assert_file(8, "char *restrict a;int main(){return sizeof(a);}");
+    assert_file(8, "char *volatile a;int main(){return sizeof(a);}");
+    assert_file(8, "char *const volatile restrict a;int main(){return sizeof(a);}");
+    assert_file(8, "char *const volatile restrict**const* a;int main(){return sizeof(a);}");
+    assert_file(8, "char *const volatile restrict**const* (*const a)[1];int main(){return sizeof(a);}");
     printf("OK\n");
     return 0;
 }
