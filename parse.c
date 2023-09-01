@@ -989,6 +989,10 @@ Node *type_(bool need_ident, bool is_global, bool is_funcarg) {
 
     Node *list_node = new_node(ND_DECL_LIST, NULL, NULL);
     list_node->decl_list.decls = new_vector();
+    if(consume(";")) {
+        // struct definition.
+        return list_node;
+    }
     while(!at_eof()) {
         Type *cur = base_type;
         Node *node = new_node(ND_TYPE, type_pointer(need_ident), NULL);
@@ -1236,20 +1240,26 @@ Node *struct_declaration() {
 Vector *struct_members(size_t *size) {
     Vector *vec = new_vector();
     while(peek_type_prefix()) {
-        Node *type_node = type_(true, false, false);
-        StructMember *member = calloc(1, sizeof(StructMember));
-        type_find_ident(type_node, &member->ident, &member->ident_len);
-        for(int i = 0; i < vector_size(vec); i++) {
-            StructMember *member2 = vector_get(vec, i);
-            if(member->ident_len == member2->ident_len && memcmp(member->ident, member2->ident, member->ident_len) == 0) {
-                error("Struct member with same name is already defined: %.*s", member->ident_len, member->ident);
-            }
+        Node *decl_list = type_(true, false, false);
+        if(decl_list->kind != ND_DECL_LIST) {
+            error_at(token->str, "Invalid declaration of struct member");
         }
-        member->node = type_node;
-        member->offset = *size;
-        *size += type_sizeof(type_node->type.type);
-        vector_push(vec, member);
-        expect(";");
+        for(int i = 0; i < vector_size(decl_list->decl_list.decls); i++){
+            Node *decl_node = vector_get(decl_list->decl_list.decls, i);
+            Node *type_node = decl_node->lhs;
+            StructMember *member = calloc(1, sizeof(StructMember));
+            type_find_ident(type_node, &member->ident, &member->ident_len);
+            for(int i = 0; i < vector_size(vec); i++) {
+                StructMember *member2 = vector_get(vec, i);
+                if(member->ident_len == member2->ident_len && memcmp(member->ident, member2->ident, member->ident_len) == 0) {
+                    error("Struct member with same name is already defined: %.*s", member->ident_len, member->ident);
+                }
+            }
+            member->node = type_node;
+            member->offset = *size;
+            *size += type_sizeof(type_node->type.type);
+            vector_push(vec, member);
+        }
     }
     return vec;
 }
