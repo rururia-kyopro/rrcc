@@ -309,6 +309,12 @@ void gen(Node *node){
         case ND_TYPE_EXTERN:
             // nop
             return;
+        case ND_DECL_LIST:
+            for(int i = 0; i < vector_size(node->decl_list.decls); i++) {
+                Node *decl = vector_get(node->decl_list.decls, i);
+                gen(decl);
+            }
+            return;
     }
     gen(node->lhs);
     gen(node->rhs);

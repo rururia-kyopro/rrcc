@@ -16,8 +16,23 @@ Vector *struct_registry;
 Vector *enum_registry;
 Vector *typedef_registry;
 
-Type int_type = { INT, NULL };
-Type char_type = { CHAR, NULL };
+Type void_type = { VOID };
+Type char_type = { CHAR, NOSIGNED };
+Type unsigned_char_type = { CHAR, UNSIGNED };
+Type signed_char_type = { CHAR, SIGNED };
+Type signed_short_type = { SHORT, SIGNED };
+Type unsigned_short_type = { SHORT, UNSIGNED };
+Type signed_int_type = { INT, SIGNED };
+Type unsigned_int_type = { INT, UNSIGNED };
+Type signed_long_type = { LONG, SIGNED };
+Type unsigned_long_type = { LONG, UNSIGNED };
+Type signed_longlong_type = { LONGLONG, SIGNED };
+Type unsigned_longlong_type = { LONGLONG, UNSIGNED };
+Type float_type = { FLOAT, UNSIGNED };
+Type double_type = { DOUBLE, UNSIGNED };
+Type longdouble_type = { LONGDOUBLE, UNSIGNED };
+Type complex_type = { COMPLEX, NOSIGNED };
+Type bool_type = { BOOL, NOSIGNED };
 
 char *node_kind(NodeKind kind){
     switch(kind){
@@ -189,7 +204,7 @@ Node *new_node_num(int val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
-    node->expr_type = &int_type;
+    node->expr_type = &signed_int_type;
     return node;
 }
 
@@ -223,7 +238,7 @@ Node *translation_unit() {
 
     while(!at_eof()){
         //debug_log("next: %d %s\n", token->kind, token->str);
-        vector_push(node->trans_unit.decl, declarator());
+        vector_push(node->trans_unit.decl, external_declaration());
     }
     return node;
 }
@@ -233,24 +248,12 @@ Node *translation_unit() {
 // declarator = function_definition
 //            | global_variable_definition
 //
-Node *declarator() {
-    Node *type_node = type_(true);
-    // fprintf(stderr, "// type call end\n");
-    // dumpnodes(type_node);
-    // fprintf(stderr, "// type node end\n");
-
-    if(type_node->kind == ND_TYPE_TYPEDEF) {
-        expect(";");
-        return type_node;
-    }
-    if(type_node->kind == ND_TYPE_EXTERN && type_node->lhs->type.type->ty == FUNC || type_node->kind == ND_TYPE && type_node->type.type->ty == FUNC) {
-        return function_definition(type_node);
-    }
-    return variable_definition(true, type_node);
+Node *external_declaration() {
+    return type_(true, true, false);
 }
 
 // function_definition = type ident "(" ( type ident "," )* ( type ident )? ")" stmt
-Node *function_definition(Node *type_node) {
+Node *function_definition(TypeStorage type_storage, Node *type_node) {
     bool is_extern = false;
     if(type_node->kind == ND_TYPE_EXTERN) {
         is_extern = true;
@@ -269,7 +272,8 @@ Node *function_definition(Node *type_node) {
     locals_stack_size = 0;
 
     for(int i = 0; i < vector_size(type->args); i++) {
-        Node *arg_type_node = vector_get(type->args, i);
+        Node *arg_lvar_node = vector_get(type->args, i);
+        Node *arg_type_node = arg_lvar_node->lhs;
         Type *arg_type = arg_type_node->type.type;
         FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
         arg->type = arg_type;
@@ -314,19 +318,20 @@ Node *function_definition(Node *type_node) {
     return node;
 }
 
-Node *variable_definition(bool is_global, Node *type_node) {
-    bool is_extern = false;
-    if(type_node->kind == ND_TYPE_EXTERN) {
-        is_extern = true;
-        type_node = type_node->lhs;
-    }
+Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_storage) {
     Type *type = type_node->type.type;
     Node *node = new_node(is_global ? ND_GVAR_DEF : ND_DECL_VAR, type_node, NULL);
 
     bool empty_num = false;
     Node *init_expr = NULL;
     if(consume("=")) {
-        if(is_extern) {
+        if(type->ty == FUNC) {
+            error_at(token->str, "Function type cannot have initializer");
+        }
+        if(type_storage == TS_TYPEDEF) {
+            error_at(token->str, "typedef cannot have initializer");
+        }
+        if(type_storage == TS_EXTERN) {
             error("extern variable cannot have initializer");
         }
         init_expr = initializer();
@@ -334,9 +339,8 @@ Node *variable_definition(bool is_global, Node *type_node) {
             error_at(token->str, "Initializer type does not match");
         }
     }
-    expect(";");
 
-    if(is_extern) {
+    if(type_storage == TS_EXTERN) {
         char *ident;
         int ident_len;
         if(!type_find_ident(node, &ident, &ident_len)) {
@@ -345,6 +349,9 @@ Node *variable_definition(bool is_global, Node *type_node) {
         global_variable_definition(node, ident, ident_len);
 
         return new_node(ND_TYPE_EXTERN, node, NULL);
+    }
+    if(type_storage == TS_TYPEDEF) {
+        return typedef_declaration(is_global, type_node);
     }
     if(type->ty == STRUCT && !type->struct_complete) {
         error("Cannot define variable with incomplete type (struct)");
@@ -501,48 +508,53 @@ Node *stmt() {
         return node;
     }else if(consume_type_prefix(&kind)) {
         unget_token();
-        Node *type_node = type_(true);
-        // dumpnodes(type_node);
-        Node *node = variable_definition(false, type_node);
-        char *ident;
-        int ident_len;
-        if(!type_find_ident(node, &ident, &ident_len)) {
-            error("Local variable must have identifier");
+        Node *decl_list = type_(true, false, false);
+        if(decl_list->kind != ND_DECL_LIST) {
+            error_at(token->str, "Function was defined in non global scope");
         }
 
-        if(find_lvar(locals, ident, ident_len) != NULL){
-            error("variable with same name is already defined.");
-        }
-        node->decl_var.lvar = new_lvar(locals, ident, ident_len);
-        node->decl_var.lvar->type = type_node->type.type;
-        locals_stack_size += type_sizeof(node->decl_var.lvar->type);
+        for(int i = 0; i < vector_size(decl_list->decl_list.decls); i++) {
+            Node *node = vector_get(decl_list->decl_list.decls, i);
+            Node *type_node = node->lhs;
+            char *ident;
+            int ident_len;
+            if(!type_find_ident(node, &ident, &ident_len)) {
+                error("Local variable must have identifier");
+            }
 
-        if(node->decl_var.init_expr) {
-            if(node->decl_var.init_expr->kind == ND_INIT) {
-                Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
-                int n = vector_size(node->decl_var.init_expr->init.init_expr);
-                init_code_node->compound_stmt_list = new_vector();
-                for(int i = 0; i < n; i++){
-                    Node *expr = vector_get(node->decl_var.init_expr->init.init_expr, i);
+            if(find_lvar(locals, ident, ident_len) != NULL){
+                error("variable with same name is already defined.");
+            }
+            node->decl_var.lvar = new_lvar(locals, ident, ident_len);
+            node->decl_var.lvar->type = type_node->type.type;
+            locals_stack_size += type_sizeof(node->decl_var.lvar->type);
+
+            if(node->decl_var.init_expr) {
+                if(node->decl_var.init_expr->kind == ND_INIT) {
+                    Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
+                    int n = vector_size(node->decl_var.init_expr->init.init_expr);
+                    init_code_node->compound_stmt_list = new_vector();
+                    for(int i = 0; i < n; i++){
+                        Node *expr = vector_get(node->decl_var.init_expr->init.init_expr, i);
+                        Node *lvar_node = new_node_lvar(node->decl_var.lvar);
+
+                        Node *deref_node = new_node(ND_DEREF, new_node_add(lvar_node, new_node_num(i)), NULL);
+                        deref_node->expr_type = deref_node->lhs->expr_type->ptr_to;
+                        Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
+
+                        vector_push(init_code_node->compound_stmt_list, assign_node);
+                    }
+                    node->rhs = init_code_node;
+                }else {
+                    Node *expr = node->decl_var.init_expr;
                     Node *lvar_node = new_node_lvar(node->decl_var.lvar);
 
-                    Node *deref_node = new_node(ND_DEREF, new_node_add(lvar_node, new_node_num(i)), NULL);
-                    deref_node->expr_type = deref_node->lhs->expr_type->ptr_to;
-                    Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
-
-                    vector_push(init_code_node->compound_stmt_list, assign_node);
+                    Node *assign_node = new_node(ND_ASSIGN, lvar_node, expr);
+                    node->rhs = assign_node;
                 }
-                node->rhs = init_code_node;
-            }else {
-                Node *expr = node->decl_var.init_expr;
-                Node *lvar_node = new_node_lvar(node->decl_var.lvar);
-
-                Node *assign_node = new_node(ND_ASSIGN, lvar_node, expr);
-                node->rhs = assign_node;
             }
         }
-
-        return node;
+        return decl_list;
     }else if(consume("{")) {
         Node *node = new_node(ND_COMPOUND, NULL, NULL);
         node->compound_stmt_list = new_vector();
@@ -627,7 +639,7 @@ Node *add() {
                     node->expr_type = node->lhs->expr_type;
                 }else {
                     // ptr - ptr -> int
-                    node->expr_type = &int_type;
+                    node->expr_type = &signed_int_type;
                 }
             }
         }
@@ -725,7 +737,7 @@ Node *primary() {
     while(1) {
         if(consume("(")){
             Node *call_node = new_node(ND_CALL, node, NULL);
-            call_node->expr_type = &int_type;
+            call_node->expr_type = &signed_int_type;
 
             NodeList *arg_tail = &call_node->call_arg_list;
             if(!consume(")")){
@@ -834,26 +846,142 @@ Node *primary() {
 //
 // function_arguments = ( ( type_opt_ident "," )* type_opt_ident )?
 //
-Node *type_(bool need_ident) {
-    TokenKind kind = expect_type_prefix();
-
-    if(kind == TK_TYPEDEF) {
-        Node *node = typedef_declaration();
-        return node;
+Node *type_(bool need_ident, bool is_global, bool is_funcarg) {
+    TypeStorage type_storage = TS_NONE;
+    int type_qual = 0;
+    TypeBasic type_basic = TB_NONE;
+    bool unsigned_flag = false;
+    bool signed_flag = false;
+    bool inline_flag = false;
+    char *ident;
+    int ident_len;
+    Type *base_type = NULL;
+    int tk_count[TK_MAX] = {};
+    while(1) {
+        TokenKind kind;
+        if(!consume_type_prefix(&kind)) {
+            break;
+        }
+        if(kind == TK_STRUCT) {
+            base_type = struct_declaration()->type.type;
+        } else if(kind == TK_UNION) {
+            error_at(token->str, "union is unsupported");
+            //cur = struct_declaration()->type.type;
+        }
+        if(kind == TK_IDENT) {
+            ident = token->prev->str;
+            ident_len = token->prev->len;
+        }
+        tk_count[kind]++;
     }
-    Type *cur;
-    if(kind == TK_CHAR) {
-        cur = &char_type;
-    }else if(kind == TK_STRUCT) {
-        cur = struct_declaration()->type.type;
-        need_ident = false;
-    }else if(kind == TK_ENUM) {
-        cur = enum_declaration()->type.type;
-        need_ident = false;
-    }else if(kind == TK_IDENT) {
-        char *ident = token->prev->str;
-        int ident_len = token->prev->len;
-        
+    TokenKind base_types[] = {TK_VOID, TK_CHAR, TK_SHORT, TK_INT, TK_FLOAT, TK_DOUBLE, TK_COMPLEX, TK_BOOL, TK_STRUCT, TK_UNION, TK_IDENT};
+    TypeBasic basic_base_types[] = {TB_VOID, TB_CHAR, TB_SHORT, TB_INT, TB_FLOAT, TB_DOUBLE, TB_COMPLEX, TB_BOOL, TB_STRUCT, TB_UNION, TB_TYPEDEF_NAME};
+    int base_type_count = 0;
+    for(int i = 0; i < sizeof(base_types) / sizeof(base_types[i]); i++) {
+        base_type_count += tk_count[base_types[i]];
+        if(tk_count[base_types[i]]) {
+            type_basic = basic_base_types[i];
+        }
+    }
+    if(base_type_count >= 2) {
+        error_at(token->str, "Extra base type keyword");
+    }
+    if(tk_count[TK_LONG] >= 3) {
+        error_at(token->str, "Extra long keyword");
+    }
+    if(tk_count[TK_LONG] == 2) {
+        if(type_basic == TB_NONE || type_basic == TB_INT) {
+            type_basic = TB_LONGLONG;
+        }else{
+            error_at(token->str, "Extra long keyword");
+        }
+    } else if(tk_count[TK_LONG] == 1) {
+        if(type_basic == TB_NONE || type_basic == TB_INT) {
+            type_basic = TB_LONG;
+        }else if(type_basic == TB_DOUBLE) {
+            type_basic = TB_LONGDOUBLE;
+        }else{
+            error_at(token->str, "Extra long keyword");
+        }
+    }
+    if(type_basic == TB_NONE) {
+        type_basic = TB_INT;
+    }
+
+    if(tk_count[TK_UNSIGNED] && tk_count[TK_SIGNED]) {
+        error_at(token->str, "Conflicting unsigned and signed");
+    }
+
+    if(tk_count[TK_CONST]) { type_qual |= 1<<TQ_CONST; }
+    if(tk_count[TK_RESTRICT]) { type_qual |= 1<<TQ_RESTRICT; }
+    if(tk_count[TK_VOLATILE]) { type_qual |= 1<<TQ_VOLATILE; }
+
+    TokenKind storage_keywords[] = {TK_TYPEDEF, TK_EXTERN, TK_STATIC, TK_AUTO, TK_REGISTER};
+    TypeStorage storage_types[] = {TS_TYPEDEF, TS_EXTERN, TS_STATIC, TS_AUTO, TS_REGISTER};
+    int storage_type_count = 0;
+    for(int i = 0; i < sizeof(storage_keywords) / sizeof(storage_keywords[i]); i++) {
+        storage_type_count += tk_count[storage_keywords[i]];
+        if(tk_count[storage_keywords[i]]) {
+            type_storage = storage_types[i];
+        }
+    }
+    if(storage_type_count >= 2) {
+        error_at(token->str, "Conflicting storage type keyword");
+    }
+    if(type_basic == TB_NONE) {
+        if(signed_flag) {
+            type_basic = TB_INT;
+        }
+        if(unsigned_flag) {
+            type_basic = TB_INT;
+        }
+    }
+    switch(type_basic) {
+        case TB_VOID: base_type = &void_type; break;
+        case TB_CHAR:
+                      if(signed_flag) {
+                          base_type = &signed_char_type;
+                      }else if(unsigned_flag) {
+                          base_type = &unsigned_char_type;
+                      }else{
+                          base_type = &char_type;
+                      }
+                      break;
+        case TB_INT:
+                      if(unsigned_flag) {
+                          base_type = &unsigned_int_type;
+                      }else{
+                          base_type = &signed_int_type;
+                      }
+                      break;
+        case TB_SHORT:
+                      if(unsigned_flag) {
+                          base_type = &unsigned_short_type;
+                      }else{
+                          base_type = &signed_short_type;
+                      }
+                      break;
+        case TB_LONG:
+                      if(unsigned_flag) {
+                          base_type = &unsigned_long_type;
+                      }else{
+                          base_type = &signed_long_type;
+                      }
+                      break;
+        case TB_LONGLONG:
+                      if(unsigned_flag) {
+                          base_type = &unsigned_longlong_type;
+                      }else{
+                          base_type = &signed_longlong_type;
+                      }
+                      break;
+        case TB_FLOAT: base_type = &float_type; break;
+        case TB_DOUBLE: base_type = &double_type; break;
+        case TB_LONGDOUBLE: base_type = &longdouble_type; break;
+        case TB_COMPLEX: base_type = &complex_type; break;
+        case TB_BOOL: base_type = &bool_type; break;
+    }
+    if(type_basic == TB_TYPEDEF_NAME) {
         TypedefRegistryEntry *entry;
         for(int i = 0; i < vector_size(typedef_registry); i++) {
             entry = vector_get(typedef_registry, i);
@@ -861,28 +989,55 @@ Node *type_(bool need_ident) {
                 break;
             }
         }
-        cur = entry->type;
-    }else if(kind == TK_EXTERN) {
-        return new_node(ND_TYPE_EXTERN, type_(need_ident), NULL);
-    }else{
-        cur = &int_type;
+        base_type = entry->type;
     }
-    Node *node = new_node(ND_TYPE, type_pointer(need_ident), NULL);
-    Node *node_cur = node;
-    for(; node_cur; node_cur = node_cur->lhs) {
-        if(node_cur->kind == ND_IDENT) {
-            break;
-        } else if(node_cur->kind == ND_TYPE_POINTER) {
-            cur = type_new_ptr(cur);
-        } else if(node_cur->kind == ND_TYPE_ARRAY) {
-            cur = type_new_array(cur, node_cur->type.array.has_size, node_cur->type.array.size);
-        } else if(node_cur->kind == ND_TYPE_FUNC) {
-            cur = type_new_func(cur, node_cur->type.func_args.args);
+    if(base_type == NULL) {
+        error_at(token->str, "Cannot parse type specifier");
+    }
+
+    Node *list_node = new_node(ND_DECL_LIST, NULL, NULL);
+    list_node->decl_list.decls = new_vector();
+    while(!at_eof()) {
+        Type *cur = base_type;
+        Node *node = new_node(ND_TYPE, type_pointer(need_ident), NULL);
+        Node *node_cur = node;
+        for(; node_cur; node_cur = node_cur->lhs) {
+            if(node_cur->kind == ND_IDENT) {
+                break;
+            } else if(node_cur->kind == ND_TYPE_POINTER) {
+                cur = type_new_ptr(cur);
+            } else if(node_cur->kind == ND_TYPE_ARRAY) {
+                cur = type_new_array(cur, node_cur->type.array.has_size, node_cur->type.array.size);
+            } else if(node_cur->kind == ND_TYPE_FUNC) {
+                cur = type_new_func(cur, node_cur->type.func_args.args);
+            }
+            node_cur->type.type = cur;
         }
-        node_cur->type.type = cur;
+        node->type.type = cur;
+        if(peek("{")) {
+            if(cur->ty != FUNC) {
+                error_at(token->str, "Non function type cannot have function body");
+            }
+            if(type_storage == TS_TYPEDEF) {
+                error_at(token->str, "typedef cannot have function body");
+            }
+            // function definition
+            return function_definition(type_storage, node);
+        }
+        // declaration
+        Node *var_node = variable_definition(is_global, node, type_storage);
+        vector_push(list_node->decl_list.decls, var_node);
+
+        // If we are in function argument list, comma should be handled on upper functions.
+        if(is_funcarg) {
+            break;
+        }
+        if(consume(";")) {
+            break;
+        }
+        expect(",");
     }
-    node->type.type = cur;
-    return node;
+    return list_node;
 }
 
 Node *type_pointer(bool need_ident) {
@@ -995,8 +1150,11 @@ Vector *function_arguments() {
         while(1) {
             expect_type_prefix();
             unget_token();
-            Node *type = type_(false);
-            vector_push(args, type);
+            Node *type = type_(false, false, true);
+            if(type->kind != ND_DECL_LIST) {
+                error_at(token->str, "Function type cannot be used as argument");
+            }
+            vector_push(args, vector_get(type->decl_list.decls, 0));
 
             if(consume(")")) {
                 break;
@@ -1075,7 +1233,7 @@ Node *struct_declaration() {
 Vector *struct_members(size_t *size) {
     Vector *vec = new_vector();
     while(peek_type_prefix()) {
-        Node *type_node = type_(true);
+        Node *type_node = type_(true, false, false);
         StructMember *member = calloc(1, sizeof(StructMember));
         type_find_ident(type_node, &member->ident, &member->ident_len);
         for(int i = 0; i < vector_size(vec); i++) {
@@ -1153,7 +1311,7 @@ Vector *enum_members() {
             num = expect_number();
         }
 
-        gvar = new_gvar(globals, ident, ident_len, &int_type);
+        gvar = new_gvar(globals, ident, ident_len, &signed_int_type);
         gvar->is_enum = true;
         gvar->enum_num = num;
         member->gvar = gvar;
@@ -1168,9 +1326,7 @@ Vector *enum_members() {
 }
 
 // typedef_declaration = "typedef" type ";"
-Node *typedef_declaration() {
-    Node *type_node = type_(true);
-
+Node *typedef_declaration(bool is_global, Node *type_node) {
     char *ident;
     int ident_len;
     type_find_ident(type_node, &ident, &ident_len);
@@ -1208,7 +1364,30 @@ TokenKind expect_type_prefix() {
 }
 
 bool peek_type_prefix() {
-    if(peek_kind(TK_CHAR) || peek_kind(TK_INT) || peek_kind(TK_STRUCT) || peek_kind(TK_ENUM) || peek_kind(TK_TYPEDEF) || peek_kind(TK_EXTERN)){ 
+    switch(token->kind){
+    case TK_VOID:
+    case TK_CHAR:
+    case TK_SHORT:
+    case TK_INT:
+    case TK_LONG:
+    case TK_FLOAT:
+    case TK_DOUBLE:
+    case TK_SIGNED:
+    case TK_UNSIGNED:
+    case TK_BOOL:
+    case TK_COMPLEX:
+    case TK_STRUCT:
+    case TK_UNION:
+    case TK_ENUM:
+    case TK_TYPEDEF:
+    case TK_EXTERN:
+    case TK_STATIC:
+    case TK_AUTO:
+    case TK_REGISTER:
+    case TK_CONST:
+    case TK_RESTRICT:
+    case TK_VOLATILE:
+    case TK_INLINE:
         return true;
     }
     char *ident;
@@ -1326,7 +1505,7 @@ Type *type_arithmetic(Type *type_r, Type *type_l) {
         error_at(token->str, "Invalid arithmetic operand with ptr type");
         return NULL;
     }
-    return &int_type;
+    return &signed_int_type;
 }
 
 Type *type_comparator(Type *type_r, Type *type_l) {
@@ -1335,7 +1514,7 @@ Type *type_comparator(Type *type_r, Type *type_l) {
         error_at(token->str, "Invalid comparison between ptr and non-ptr");
         return NULL;
     }
-    return &int_type;
+    return &signed_int_type;
 }
 
 bool type_implicit_ptr(Type *type) {

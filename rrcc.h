@@ -29,9 +29,8 @@ typedef struct EnumMember EnumMember;
 typedef struct EnumRegistryEntry EnumRegistryEntry;
 typedef struct TypedefRegistryEntry TypedefRegistryEntry;
 
-/// Token ///
+/// Enums ///
 
-// トークンの種類
 typedef enum {
     TK_RESERVED,
     TK_VOID,
@@ -46,6 +45,7 @@ typedef enum {
     TK_BOOL,
     TK_COMPLEX,
     TK_STRUCT,
+    TK_UNION,
     TK_ENUM,
     TK_TYPEDEF,
     TK_EXTERN,
@@ -67,7 +67,45 @@ typedef enum {
     TK_NUM,
     TK_STRING_LITERAL,
     TK_EOF,
+    TK_MAX
 } TokenKind;
+
+typedef enum {
+    TS_NONE,
+    TS_TYPEDEF,
+    TS_EXTERN,
+    TS_STATIC,
+    TS_AUTO,
+    TS_REGISTER,
+} TypeStorage;
+
+typedef enum {
+    TQ_NONE,
+    TQ_CONST,
+    TQ_RESTRICT,
+    TQ_VOLATILE,
+} TypeQual;
+
+typedef enum {
+    TB_NONE,
+    TB_VOID,
+    TB_CHAR,
+    TB_SHORT,
+    TB_INT,
+    TB_LONG,
+    TB_LONGLONG,
+    TB_FLOAT,
+    TB_DOUBLE,
+    TB_LONGDOUBLE,
+    TB_BOOL,
+    TB_COMPLEX,
+    TB_STRUCT,
+    TB_UNION,
+    TB_ENUM,
+    TB_TYPEDEF_NAME,
+} TypeBasic;
+
+/// Token ///
 
 struct Token {
     TokenKind kind;
@@ -129,6 +167,7 @@ typedef enum {
     ND_CALL,
     ND_FUNC_DEF,
     ND_FUNC_DECL,
+    ND_DECL_LIST,
     ND_ADDRESS_OF,
     ND_DEREF,
     ND_SIZEOF,
@@ -223,16 +262,19 @@ struct Node {
         struct {
             Vector *init_expr;
         } init;
+        struct {
+            Vector *decls;
+        } decl_list;
     };
 };
 
 extern Node *code[100];
 
 Node *translation_unit();
-Node *declarator();
-Node *function_definition(Node *type_node);
+Node *external_declaration();
+Node *function_definition(TypeStorage type_storage, Node *type_node);
 Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len);
-Node *variable_definition(bool is_global, Node *type_node);
+Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_storage);
 Node *initializer();
 Node *stmt();
 Node *expr();
@@ -243,7 +285,7 @@ Node *add();
 Node *primary();
 Node *mul();
 Node *unary();
-Node *type_(bool need_ident);
+Node *type_(bool need_ident, bool is_global, bool is_funcarg);
 Node *type_pointer(bool need_ident);
 Node *type_array(bool need_ident);
 void type_array_suffix(Vector *array_suffix_vector);
@@ -254,7 +296,7 @@ Node *struct_declaration();
 Vector *struct_members(size_t *size);
 Node *enum_declaration();
 Vector *enum_members();
-Node *typedef_declaration();
+Node *typedef_declaration(bool is_global, Node *type_node);
 bool consume_type_prefix(TokenKind *kind);
 TokenKind expect_type_prefix();
 bool peek_type_prefix();
@@ -307,7 +349,8 @@ extern Vector *global_string_literals;
 /// Type ///
 
 struct Type {
-    enum { CHAR, INT, PTR, ARRAY, FUNC, STRUCT, ENUM } ty;
+    enum { VOID, CHAR, SHORT, INT, LONG, LONGLONG, FLOAT, DOUBLE, LONGDOUBLE, BOOL, COMPLEX, PTR, ARRAY, FUNC, STRUCT, ENUM } ty;
+    enum { NOSIGNED, UNSIGNED, SIGNED } signedness;
     Type *ptr_to;
     size_t array_size;
     Vector *args; // func
@@ -318,8 +361,6 @@ struct Type {
     size_t struct_size; // struct
     bool struct_complete;
 };
-
-extern Type int_type;
 
 int type_sizeof(Type *type);
 Type *type_arithmetic(Type *type_r, Type *type_l);
