@@ -363,7 +363,7 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
         return typedef_declaration(is_global, type_node);
     }
     if(type->ty == STRUCT && !type->struct_complete) {
-        error("Cannot define variable with incomplete type (struct)");
+        error_at(token->str, "Cannot define variable with incomplete type (struct): %.*s", type->ident_len, type->ident);
     }
     if(is_global) {
         node->gvar_def.init_expr = init_expr;
