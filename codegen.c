@@ -401,6 +401,15 @@ void gen(Node *node){
             printf("  setge al\n");
             printf("  movzb rax,al\n");
             break;
+        case ND_OR:
+            printf("  or rax,rsi\n");
+            break;
+        case ND_XOR:
+            printf("  xor rax,rsi\n");
+            break;
+        case ND_AND:
+            printf("  and rax,rsi\n");
+            break;
     }
     printf("  push rax\n");
 }
