@@ -1831,3 +1831,10 @@ void dumpnodes_inner(Node *node, int level) {
 void dumpnodes(Node *node) {
     dumpnodes_inner(node, 0);
 }
+
+char *mystrdup(char *p) {
+    int len = strlen(p);
+    char *q = malloc(len + 1);
+    memcpy(q, p, len + 1);
+    return q;
+}

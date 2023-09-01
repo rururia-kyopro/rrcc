@@ -4,6 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <time.h>
 #include "rrcc.h"
 
 typedef struct PPToken PPToken;
@@ -1369,6 +1370,15 @@ static char *reconstruct_tokens(PPToken *cur) {
     return buf;
 }
 
+static void inject_directive(char *directive) {
+    user_input = directive;
+    PPToken *cur = pp_tokenize();
+    PPToken *tail = pp_list_tail(cur);
+    tail = new_pptoken(PPTK_NEWLINE, tail, "\n", 1);
+
+    preprocessing_file(&cur);
+}
+
 PPToken *pp_parse_file() {
     user_input = read_file(filename);
     // debug_log("read file: '%s'\n", user_input);
@@ -1386,6 +1396,27 @@ PPToken *pp_parse_file() {
 
 char *do_pp() {
     macro_registry = new_vector();
+    char *tmp = user_input;
+    inject_directive("#define __STDC__ 1");
+    inject_directive("#define __STDC_HOSTED__ 1");
+    inject_directive("#define __STDC_MB_MIGHT_NEQ_WC__ 1");
+    inject_directive("#define __STDC_VERSION__ 199901L");
+    char buf[1000], buf2[1100];
+    time_t t;
+    struct tm* tm_obj;
+    t = time(NULL);
+    tm_obj = localtime(&t);
+
+    strftime(buf, sizeof(buf), "%b %d %Y", tm_obj);
+    sprintf(buf2, "#define __DATE__ \"%s\"", buf);
+    // buf must be malloc'ed because macro registry will have pointer to sub string.
+    inject_directive(mystrdup(buf2));
+
+    strftime(buf, sizeof(buf), "hh:mm:ss", tm_obj);
+    sprintf(buf2, "#define __TIME__ \"%s\"", buf);
+    inject_directive(mystrdup(buf2));
+
+    user_input = tmp;
     return reconstruct_tokens(pp_parse_file());
 }
 

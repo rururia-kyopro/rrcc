@@ -430,3 +430,5 @@ void gen_string_literals();
 void gen(Node *);
 
 void dumpnodes(Node *node);
+
+char *mystrdup(char *p);
