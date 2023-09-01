@@ -185,39 +185,36 @@ Node *new_node_add(Node *lhs, Node *rhs) {
     return node;
 }
 
-Node *new_node_arithmetic(NodeKind kind, Node *lhs, Node *rhs){
+Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
     node->lhs = lhs;
     node->rhs = rhs;
-    node->expr_type = type_arithmetic(lhs->expr_type, rhs->expr_type);
-    return node;
-}
-
-Node *new_node_compare(NodeKind kind, Node *lhs, Node *rhs){
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = kind;
-    node->lhs = lhs;
-    node->rhs = rhs;
-    node->expr_type = type_comparator(lhs->expr_type, rhs->expr_type);
-    return node;
-}
-
-Node *new_node_logical(NodeKind kind, Node *lhs, Node *rhs){
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = kind;
-    node->lhs = lhs;
-    node->rhs = rhs;
-    node->expr_type = type_logical(lhs->expr_type, rhs->expr_type);
-    return node;
-}
-
-Node *new_node_bitwise(NodeKind kind, Node *lhs, Node *rhs){
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = kind;
-    node->lhs = lhs;
-    node->rhs = rhs;
-    node->expr_type = type_bitwise(lhs->expr_type, rhs->expr_type);
+    switch(kind) {
+        case ND_ADD:
+        case ND_SUB:
+        case ND_MUL:
+        case ND_DIV:
+            node->expr_type = type_arithmetic(lhs->expr_type, rhs->expr_type);
+            break;
+        case ND_EQUAL:
+        case ND_NOT_EQUAL:
+        case ND_LESS:
+        case ND_LESS_OR_EQUAL:
+        case ND_GREATER:
+        case ND_GREATER_OR_EQUAL:
+            node->expr_type = type_comparator(lhs->expr_type, rhs->expr_type);
+            break;
+        case ND_OR:
+        case ND_XOR:
+        case ND_AND:
+            node->expr_type = type_bitwise(lhs->expr_type, rhs->expr_type);
+            break;
+        case ND_LSHIFT:
+        case ND_RSHIFT:
+            node->expr_type = type_shift(lhs->expr_type, rhs->expr_type);
+            break;
+    }
     return node;
 }
 
@@ -629,7 +626,7 @@ Node *inclusive_OR_expression() {
 
     while(1) {
         if(consume("|")) {
-            node = new_node_bitwise(ND_OR, node, exclusive_OR_expression());
+            node = new_node_binop(ND_OR, node, exclusive_OR_expression());
         } else {
             return node;
         }
@@ -642,7 +639,7 @@ Node *exclusive_OR_expression() {
 
     while(1) {
         if(consume("^")) {
-            node = new_node_bitwise(ND_XOR, node, AND_expression());
+            node = new_node_binop(ND_XOR, node, AND_expression());
         } else {
             return node;
         }
@@ -655,7 +652,7 @@ Node *AND_expression() {
 
     while(1) {
         if(consume("&")) {
-            node = new_node_bitwise(ND_AND, node, equality_expression());
+            node = new_node_binop(ND_AND, node, equality_expression());
         } else {
             return node;
         }
@@ -668,27 +665,41 @@ Node *equality_expression() {
 
     for(;;){
         if(consume("=="))
-            node = new_node_compare(ND_EQUAL, node, relational_expression());
+            node = new_node_binop(ND_EQUAL, node, relational_expression());
         else if(consume("!="))
-            node = new_node_compare(ND_NOT_EQUAL, node, relational_expression());
+            node = new_node_binop(ND_NOT_EQUAL, node, relational_expression());
         else
             return node;
     }
 }
 
-// relational = add ( "<" add | "<=" add | ">" add | ">=" add )*
+// relational_expression = shift_expression ( "<" shift_expression | "<=" shift_expression | ">" shift_expression | ">=" shift_expression )*
 Node *relational_expression() {
-    Node *node = additive_expression();
+    Node *node = shift_expression();
 
     for(;;){
         if(consume("<"))
-            node = new_node_compare(ND_LESS, node, additive_expression());
+            node = new_node_binop(ND_LESS, node, shift_expression());
         else if(consume("<="))
-            node = new_node_compare(ND_LESS_OR_EQUAL, node, additive_expression());
+            node = new_node_binop(ND_LESS_OR_EQUAL, node, shift_expression());
         else if(consume(">"))
-            node = new_node_compare(ND_GREATER, node, additive_expression());
+            node = new_node_binop(ND_GREATER, node, shift_expression());
         else if(consume(">="))
-            node = new_node_compare(ND_GREATER_OR_EQUAL, node, additive_expression());
+            node = new_node_binop(ND_GREATER_OR_EQUAL, node, shift_expression());
+        else
+            return node;
+    }
+}
+
+// shift_expression = additive_expression ( ( "<<" | ">>" ) additive_expression )*
+Node *shift_expression() {
+    Node *node = additive_expression();
+
+    while(1) {
+        if(consume("<<"))
+            node = new_node_binop(ND_LSHIFT, node, additive_expression());
+        else if(consume(">>"))
+            node = new_node_binop(ND_RSHIFT, node, additive_expression());
         else
             return node;
     }
@@ -732,9 +743,9 @@ Node *multiplicative_expression() {
 
     for(;;){
         if(consume("*"))
-            node = new_node_arithmetic(ND_MUL, node, cast_expression());
+            node = new_node_binop(ND_MUL, node, cast_expression());
         else if(consume("/"))
-            node = new_node_arithmetic(ND_DIV, node, cast_expression());
+            node = new_node_binop(ND_DIV, node, cast_expression());
         else
             return node;
     }
@@ -770,7 +781,7 @@ Node *unary_expression() {
     if(consume("+"))
         return primary_expression();
     if(consume("-"))
-        return new_node_arithmetic(ND_SUB, new_node_num(0), primary_expression());
+        return new_node_binop(ND_SUB, new_node_num(0), primary_expression());
     if(consume("&")) {
         Node *node = new_node(ND_ADDRESS_OF, unary_expression(), NULL);
         node->expr_type = calloc(1, sizeof(Type));
@@ -1750,6 +1761,14 @@ Type *type_logical(Type *type_r, Type *type_l) {
 Type *type_bitwise(Type *type_r, Type *type_l) {
     if(!type_is_int(type_r) || !type_is_int(type_l)) {
         error_at(token->str, "Invalid bitwise evaluation of non integer type");
+        return NULL;
+    }
+    return &signed_int_type;
+}
+
+Type *type_shift(Type *type_r, Type *type_l) {
+    if(!type_is_int(type_r) || !type_is_int(type_l)) {
+        error_at(token->str, "Invalid shift evaluation of non integer type");
         return NULL;
     }
     return &signed_int_type;

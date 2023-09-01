@@ -149,6 +149,8 @@ typedef enum {
     ND_SUB,
     ND_MUL,
     ND_DIV,
+    ND_LSHIFT,
+    ND_RSHIFT,
     ND_OR,
     ND_XOR,
     ND_AND,
@@ -296,6 +298,7 @@ Node *exclusive_OR_expression();
 Node *AND_expression();
 Node *equality_expression();
 Node *relational_expression();
+Node *shift_expression();
 Node *additive_expression();
 Node *multiplicative_expression();
 Node *cast_expression();
@@ -383,6 +386,7 @@ Type *type_arithmetic(Type *type_r, Type *type_l);
 Type *type_comparator(Type *type_r, Type *type_l);
 Type *type_logical(Type *type_r, Type *type_l);
 Type *type_bitwise(Type *type_r, Type *type_l);
+Type *type_shift(Type *type_r, Type *type_l);
 bool type_implicit_ptr(Type *type);
 bool type_is_int(Type *type);
 bool type_is_floating(Type *type);
