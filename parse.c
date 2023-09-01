@@ -884,6 +884,12 @@ Node *type_(bool need_ident, bool is_global, bool is_funcarg) {
     if(tk_count[TK_LONG] >= 3) {
         error_at(token->str, "Extra long keyword");
     }
+    if(tk_count[TK_SHORT] >= 2) {
+        error_at(token->str, "Extra short keyword");
+    }
+    if(tk_count[TK_SHORT] && tk_count[TK_LONG]) {
+        error_at(token->str, "Extra short/long keyword");
+    }
     if(tk_count[TK_LONG] == 2) {
         if(type_basic == TB_NONE || type_basic == TB_INT) {
             type_basic = TB_LONGLONG;
@@ -897,6 +903,12 @@ Node *type_(bool need_ident, bool is_global, bool is_funcarg) {
             type_basic = TB_LONGDOUBLE;
         }else{
             error_at(token->str, "Extra long keyword");
+        }
+    } else if(tk_count[TK_SHORT] == 1) {
+        if(type_basic == TB_NONE || type_basic == TB_INT) {
+            type_basic = TB_SHORT;
+        }else{
+            error_at(token->str, "Extra short keyword");
         }
     }
     if(type_basic == TB_NONE) {
