@@ -1380,16 +1380,18 @@ Node *struct_declaration(bool is_struct) {
     Vector *reg = is_struct ? struct_registry : union_registry;
     if(consume("{")) {
         StructRegistryEntry *entry = NULL;
+        bool found = false;
         for(int i = 0; i < vector_size(reg); i++) {
             entry = vector_get(reg, i);
             if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
                 if(entry->type->struct_complete) {
                     error("Struct name is already defined");
                 }
+                found = true;
                 break;
             }
         }
-        if(entry) {
+        if(found) {
             // Convert incomplete struct to complete one if already exists.
             node->type.type = entry->type;
             entry->type->struct_complete = true;
@@ -1398,7 +1400,7 @@ Node *struct_declaration(bool is_struct) {
         }
         node->type.type->members = struct_members(&node->type.type->struct_size, is_struct);
         if(entry == NULL) {
-            StructRegistryEntry *entry = calloc(1, sizeof(StructRegistryEntry));
+            entry = calloc(1, sizeof(StructRegistryEntry));
             entry->ident = ident;
             entry->ident_len = ident_len;
             entry->type = node->type.type;
