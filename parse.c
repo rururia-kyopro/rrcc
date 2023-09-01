@@ -1399,7 +1399,7 @@ Node *struct_declaration(bool is_struct) {
             node->type.type = type_new_struct(ident, ident_len);
         }
         node->type.type->members = struct_members(&node->type.type->struct_size, is_struct);
-        if(entry == NULL) {
+        if(!found) {
             entry = calloc(1, sizeof(StructRegistryEntry));
             entry->ident = ident;
             entry->ident_len = ident_len;
