@@ -44,7 +44,7 @@ static void vector_ensure(Vector *vec, int size) {
 void vector_remove(Vector *vec, void *x) {
     for(int i = 0; i < vector_size(vec); i++) {
         if(vector_get(vec, i) == x) {
-            memmove(vec->ptr, vec->ptr + 1, (vec->size - i - 1) * sizeof(void *));
+            memmove(vec->ptr + i, vec->ptr + i + 1, (vec->size - i - 1) * sizeof(void *));
             vec->size--;
             return;
         }
