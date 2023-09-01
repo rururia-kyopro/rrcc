@@ -146,7 +146,7 @@ int match_punc(char *p) {
             return strlen(punc[i]);
         }
     }
-    if(strchr("[](){}.%*+-~!/%<>^|?:;=,#", *p)) {
+    if(strchr("[](){}.%&*+-~!/%<>^|?:;=,#", *p)) {
         return 1;
     }
     return 0;
