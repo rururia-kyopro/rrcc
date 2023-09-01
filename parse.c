@@ -336,7 +336,6 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
     Type *type = type_node->type.type;
     Node *node = new_node(is_global ? ND_GVAR_DEF : ND_DECL_VAR, type_node, NULL);
 
-    bool empty_num = false;
     Node *init_expr = NULL;
     if(consume("=")) {
         if(type->ty == FUNC) {
@@ -393,13 +392,14 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
         node->decl_var.init_expr = init_expr;
     }
 
-    if(empty_num && init_expr == NULL) {
+    if(type->ty == ARRAY && !type->has_array_size && init_expr == NULL) {
         error_at(token->str, "Variable with empty array size must has initializer");
     }
     if(init_expr && init_expr->kind == ND_INIT) {
         Vector *vec = init_expr->init.init_expr;
-        if(empty_num) {
+        if(!type->has_array_size) {
             type->array_size = vector_size(vec);
+            type->has_array_size = true;
         }
         if(vector_size(vec) > type->array_size) {
             error_at(token->str, "Too many initializer for array size %d (fed %d)", type->array_size, vector_size(vec));
