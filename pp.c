@@ -905,10 +905,10 @@ static void macro_invocation(PPToken **cur, Vector **arg_vec, int arglen) {
             tail = &head;
         } else {
             if(pp_consume(cur, "(")) {
-                tail = dup_pptoken(tail, *cur);
+                tail = dup_pptoken(tail, (*cur)->prev);
                 paren_level++;
             }else if(pp_consume(cur, ")")) {
-                tail = dup_pptoken(tail, *cur);
+                tail = dup_pptoken(tail, (*cur)->prev);
                 paren_level--;
             }else if(pp_consume_newline(cur)) {
                 // remove newline. newline in macro invocation is processed as normal white space.
