@@ -297,7 +297,28 @@ Token *tokenize(char *p){
 
         if(isdigit(*p)){
             cur = new_token(TK_NUM, cur, p, 1);
-            cur->val = strtol(p, &p, 10);
+            cur->val = strtol(p, &p, 0);
+            if(tolower(*p) == 'u') {
+                p++;
+                cur->suffix = SUF_U;
+                if(tolower(*p) == 'l') {
+                    p++;
+                    cur->suffix = SUF_UL;
+                    if(tolower(*p) == 'l' && p[-1] == p[0]) {
+                        p++;
+                        cur->suffix = SUF_ULL;
+                    }
+                }
+            } else {
+                if(tolower(*p) == 'l') {
+                    p++;
+                    cur->suffix = SUF_L;
+                    if(tolower(*p) == 'l' && p[-1] == p[0]) {
+                        p++;
+                        cur->suffix = SUF_LL;
+                    }
+                }
+            }
             continue;
         }
 

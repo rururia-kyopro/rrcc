@@ -114,6 +114,7 @@ struct Token {
     Token *prev;
     Token *next;
     int val;
+    enum { SUF_NONE, SUF_L, SUF_LL, SUF_U, SUF_UL, SUF_ULL } suffix;
     char *str;
     int len;
     Vector *literal;
