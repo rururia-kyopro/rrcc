@@ -1524,8 +1524,32 @@ int type_sizeof(Type *type) {
     if(type->ty == CHAR) {
         return 1;
     }
+    if(type->ty == SHORT) {
+        return 2;
+    }
     if(type->ty == INT) {
         return 4;
+    }
+    if(type->ty == LONG) {
+        return 8;
+    }
+    if(type->ty == LONGLONG) {
+        return 8;
+    }
+    if(type->ty == FLOAT) {
+        return 4;
+    }
+    if(type->ty == DOUBLE) {
+        return 8;
+    }
+    if(type->ty == LONGDOUBLE) {
+        return 16;
+    }
+    if(type->ty == BOOL) {
+        return 1;
+    }
+    if(type->ty == COMPLEX) {
+        error("Complex is not supported");
     }
     if(type->ty == STRUCT) {
         return type->struct_size;
