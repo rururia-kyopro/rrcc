@@ -954,6 +954,10 @@ Node *constant_fold(Node *node) {
         }
         return node;
     }
+    if(node->kind == ND_CAST) {
+        node->lhs = constant_fold(node->lhs);
+        return node->lhs;
+    }
     return node;
 }
 
