@@ -823,6 +823,27 @@ Node *primary() {
     return node;
 }
 
+Node *constant_fold(Node *node) {
+    if(node->kind == ND_NUM) {
+        return node;
+    }
+    if(node->kind == ND_ADD || node->kind == ND_SUB || node->kind == ND_MUL || node->kind == ND_DIV) {
+        node->lhs = constant_fold(node->lhs);
+        node->rhs = constant_fold(node->rhs);
+        if(node->lhs->kind == ND_NUM && node->rhs->kind == ND_NUM) {
+            switch(node->kind) {
+                case ND_ADD: node->val = node->lhs->val + node->rhs->val;
+                case ND_SUB: node->val = node->lhs->val - node->rhs->val;
+                case ND_MUL: node->val = node->lhs->val * node->rhs->val;
+                case ND_DIV: node->val = node->lhs->val / node->rhs->val;
+            }
+            node->kind = ND_NUM;
+        }
+        return node;
+    }
+    return node;
+}
+
 // Parse type specifier like followings.
 // Right rows are golang-like representation of type.
 // int a               int
@@ -1141,7 +1162,7 @@ void type_array_suffix(Vector *array_suffix_vector) {
     } else if(consume("[")) {
         Node *array = new_node(ND_TYPE_ARRAY, NULL, NULL);
         if(!consume("]")) {
-            Node *expr_node = expr();
+            Node *expr_node = constant_fold(expr());
             array->rhs = expr_node;
             if(expr_node->kind == ND_NUM) {
                 array->type.array.size = expr_node->val;
