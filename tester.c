@@ -303,6 +303,8 @@ int main() {
     assert_file(1, "int main() {int a=1;if(1||(a=2)) {}return a;}");
     assert_file(2, "int main() {int a=1;if(0||(a=2)) {}return a;}");
     assert_file(2, "int main() {int a=(10&3); return a;}");
+    assert_file(11, "int main() {int a=(10|3); return a;}");
+    assert_file(9, "int main() {int a=(10^3); return a;}");
     printf("OK\n");
     return 0;
 }
