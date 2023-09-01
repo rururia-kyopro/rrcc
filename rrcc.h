@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+void print_current_position(char *loc);
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 

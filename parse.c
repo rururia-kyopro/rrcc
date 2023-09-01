@@ -108,8 +108,19 @@ void debug_log(char *fmt, ...) {
 // foo.c:10: x = y + + 5;
 //                   ^ 式ではありません
 void error_at(char *loc, char *fmt, ...) {
+    print_current_position(loc);
+
+    va_list ap;
+    va_start(ap, fmt);
+
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
+    exit(1);
+}
+
+void print_current_position(char *loc) {
     if(*loc == '\0')loc--;
-    // locが含まれている行の開始地点と終了地点を取得
+
     char *line = loc;
     while (user_input < line && line[-1] != '\n')
         line--;
@@ -128,16 +139,10 @@ void error_at(char *loc, char *fmt, ...) {
     int indent = fprintf(stderr, "%s:%d: ", filename, line_num);
     fprintf(stderr, "%.*s\n", (int)(end - line), line);
 
-    va_list ap;
-    va_start(ap, fmt);
-
     // エラー箇所を"^"で指し示して、エラーメッセージを表示
     int pos = loc - line + indent;
     fprintf(stderr, "%*s", pos, " ");
     fprintf(stderr, "^ ");
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
-    exit(1);
 }
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs){
