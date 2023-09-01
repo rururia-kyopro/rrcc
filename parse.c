@@ -392,9 +392,9 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
         node->decl_var.init_expr = init_expr;
     }
 
-    if(type->ty == ARRAY && !type->has_array_size && init_expr == NULL) {
-        error_at(token->str, "Variable with empty array size must has initializer");
-    }
+    // if(type->ty == ARRAY && !type->has_array_size && init_expr == NULL) {
+    //     error_at(token->str, "Variable with empty array size must has initializer");
+    // }
     if(init_expr && init_expr->kind == ND_INIT) {
         Vector *vec = init_expr->init.init_expr;
         if(!type->has_array_size) {
