@@ -662,6 +662,7 @@ Node *mul() {
 //       | "*" unary
 //       | "&" unary
 //       | "sizeof" unary
+//       | "sizeof" "(" type ")"
 //       | primary
 Node *unary() {
     if(consume("+"))
@@ -683,8 +684,21 @@ Node *unary() {
         node->expr_type = node->lhs->expr_type->ptr_to;
         return node;
     }
-    if(consume_kind(TK_SIZEOF))
+    if(consume_kind(TK_SIZEOF)) {
+        bool paren = consume("(");
+        if(paren) {
+            TokenKind kind;
+            if(consume_type_prefix(&kind)) {
+                unget_token();
+                Node *type_node = type_(false, false, true);
+                expect(")");
+                return new_node_num(type_sizeof(type_node->type.type));
+            } else {
+                unget_token();
+            }
+        }
         return new_node_num(type_sizeof(unary()->expr_type));
+    }
     return primary();
 }
 
@@ -841,7 +855,7 @@ Node *primary() {
 //
 // function_arguments = ( ( type_opt_ident "," )* type_opt_ident )?
 //
-Node *type_(bool need_ident, bool is_global, bool is_funcarg) {
+Node *type_(bool need_ident, bool is_global, bool parse_one_type) {
     TypeStorage type_storage = TS_NONE;
     int type_qual = 0;
     TypeBasic type_basic = TB_NONE;
@@ -1052,7 +1066,7 @@ Node *type_(bool need_ident, bool is_global, bool is_funcarg) {
         vector_push(list_node->decl_list.decls, var_node);
 
         // If we are in function argument list, comma should be handled on upper functions.
-        if(is_funcarg) {
+        if(parse_one_type) {
             break;
         }
         if(consume(";")) {
