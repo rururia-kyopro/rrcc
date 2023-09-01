@@ -868,8 +868,8 @@ Node *type_(bool need_ident, bool is_global, bool is_funcarg) {
         }
         tk_count[kind]++;
     }
-    TokenKind base_types[] = {TK_VOID, TK_CHAR, TK_SHORT, TK_INT, TK_FLOAT, TK_DOUBLE, TK_COMPLEX, TK_BOOL, TK_STRUCT, TK_UNION, TK_ENUM, TK_IDENT};
-    TypeBasic basic_base_types[] = {TB_VOID, TB_CHAR, TB_SHORT, TB_INT, TB_FLOAT, TB_DOUBLE, TB_COMPLEX, TB_BOOL, TB_STRUCT, TB_UNION, TB_ENUM, TB_TYPEDEF_NAME};
+    TokenKind base_types[] = {TK_VOID, TK_CHAR, TK_INT, TK_FLOAT, TK_DOUBLE, TK_COMPLEX, TK_BOOL, TK_STRUCT, TK_UNION, TK_ENUM, TK_IDENT};
+    TypeBasic basic_base_types[] = {TB_VOID, TB_CHAR, TB_INT, TB_FLOAT, TB_DOUBLE, TB_COMPLEX, TB_BOOL, TB_STRUCT, TB_UNION, TB_ENUM, TB_TYPEDEF_NAME};
     int base_type_count = 0;
     for(int i = 0; i < sizeof(base_types) / sizeof(base_types[i]); i++) {
         base_type_count += tk_count[base_types[i]];
