@@ -1479,7 +1479,14 @@ Vector *struct_members(size_t *size, bool is_struct) {
 Node *enum_declaration() {
     char *ident;
     int ident_len;
-    expect_ident(&ident, &ident_len);
+    if(!consume_ident(&ident, &ident_len)) {
+        char buf[100];
+        sprintf(buf, "__unnamed_enum_%d", unnamed_struct_count);
+        unnamed_struct_count++;
+        ident = malloc(strlen(buf)+1);
+        memcpy(ident, buf, strlen(buf)+1);
+        ident_len = strlen(buf);
+    }
 
     Node *node = new_node(ND_TYPE_ENUM, NULL, NULL);
 
@@ -1489,7 +1496,7 @@ Node *enum_declaration() {
         for(int i = 0; i < vector_size(enum_registry); i++) {
             EnumRegistryEntry *entry = vector_get(enum_registry, i);
             if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
-                error("Struct name is already defined");
+                error_at(token->str, "Enum name is already defined: %.*s", ident_len, ident);
             }
         }
         EnumRegistryEntry *entry = calloc(1, sizeof(EnumRegistryEntry));
