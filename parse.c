@@ -1100,6 +1100,14 @@ Node *type_(bool need_ident, bool is_global, bool parse_one_type) {
 
 Node *type_pointer(bool need_ident) {
     if(consume("*")) {
+        while(1) {
+            if(consume_kind(TK_CONST)) {
+            } else if(consume_kind(TK_RESTRICT)) {
+            } else if(consume_kind(TK_VOLATILE)) {
+            } else {
+                break;
+            }
+        }
         return new_node(ND_TYPE_POINTER, type_pointer(need_ident), NULL);
     }
     return type_array(need_ident);
