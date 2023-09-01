@@ -1161,9 +1161,11 @@ Node *type_array(bool need_ident) {
 
 void type_array_suffix(Vector *array_suffix_vector) {
     if(consume("(")) {
-        Vector *args = function_arguments();
+        bool is_vararg = false;
+        Vector *args = function_arguments(&is_vararg);
         Node *func_node = new_node(ND_TYPE_FUNC, NULL, NULL);
         func_node->type.func_args.args = args;
+        func_node->type.func_args.is_vararg = is_vararg;
         func_node->lhs = func_node;
         vector_push(array_suffix_vector, func_node);
         return type_array_suffix(array_suffix_vector);
@@ -1210,10 +1212,16 @@ Node *ident_() {
     return node;
 }
 
-Vector *function_arguments() {
+Vector *function_arguments(bool *is_vararg) {
     Vector *args = new_vector();
+    *is_vararg = false;
     if(!consume(")")) {
         while(1) {
+            if(consume("...")) {
+                *is_vararg = true;
+                expect(")");
+                break;
+            }
             expect_type_prefix();
             unget_token();
             Node *type = type_(false, false, true);

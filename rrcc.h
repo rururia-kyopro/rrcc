@@ -218,6 +218,7 @@ struct Node {
             union {
                 struct {
                     Vector *args;
+                    bool is_vararg;
                 } func_args;
                 struct {
                     size_t size;
@@ -292,7 +293,7 @@ Node *type_array(bool need_ident);
 void type_array_suffix(Vector *array_suffix_vector);
 Node *type_ident(bool need_ident);
 Node *ident_();
-Vector *function_arguments();
+Vector *function_arguments(bool *is_vararg);
 Node *struct_declaration(bool is_struct);
 Vector *struct_members(size_t *size, bool is_struct);
 Node *enum_declaration();

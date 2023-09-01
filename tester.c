@@ -287,6 +287,7 @@ int main() {
     assert_file(8, "char *const volatile restrict a;int main(){return sizeof(a);}");
     assert_file(8, "char *const volatile restrict**const* a;int main(){return sizeof(a);}");
     assert_file(8, "char *const volatile restrict**const* (*const a)[1];int main(){return sizeof(a);}");
+    assert_file(0, "int a(int a,...){}int b(...){}int main(){return 0;}");
     printf("OK\n");
     return 0;
 }
