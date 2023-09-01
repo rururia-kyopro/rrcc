@@ -1388,6 +1388,8 @@ char *do_pp() {
     sprintf(buf2, "#define __TIME__ \"%s\"", buf);
     inject_directive(mystrdup(buf2));
 
+    inject_directive("#define __builtin_va_list void*");
+
     user_input = tmp;
     return reconstruct_tokens(pp_parse_file());
 }
