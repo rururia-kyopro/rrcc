@@ -662,6 +662,7 @@ static PPToken *if_group(PPToken **cur) {
         } else {
             tail->next = group_part(cur);
             tail = pp_list_tail(tail);
+            tail = new_pptoken(PPTK_NEWLINE, tail, "\n", 1);
         }
     }
     return head.next;
