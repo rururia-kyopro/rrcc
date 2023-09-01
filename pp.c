@@ -833,10 +833,11 @@ static PPToken *text_line(PPToken **cur) {
                         // *cur points the token immidiately after ')'
 
                         if(vector_size(vec) < vector_size(entry->param_list)) {
-                            error("Argument number in macro invocation too few");
+                            error_at((*cur)->str, "Argument number in macro invocation too few: %.*s", ident_len, ident);
                         }
                         if(!entry->vararg && vector_size(vec) != vector_size(entry->param_list)) {
-                            error("Argument number in macro invocation doesn't match");
+                            error_at((*cur)->str, "Argument number in macro invocation doesn't match: %.*s, supplied %d, expected %d", ident_len, ident,
+                                    vector_size(vec), vector_size(entry->param_list));
                         }
 
                         PPToken *rep_out = scan_replacement_list(entry, vec);
