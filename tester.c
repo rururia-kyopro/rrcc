@@ -290,6 +290,18 @@ int main() {
     assert_file(0, "int a(int a,...){}int b(...){}int main(){return 0;}");
     assert_file(1, "int main(){return __STDC__;}");
     assert_file(1, "#define M(a) a\nint main(){return M((1));}");
+    assert_file(1, "int main() {if(1&&1) {return 1;}else{return 0;}}");
+    assert_file(0, "int main() {if(1&&0) {return 1;}else{return 0;}}");
+    assert_file(0, "int main() {if(0&&1) {return 1;}else{return 0;}}");
+    assert_file(0, "int main() {if(0&&0) {return 1;}else{return 0;}}");
+    assert_file(2, "int main() {int a=1;if(1&&(a=2)) {}return a;}");
+    assert_file(1, "int main() {int a=1;if(0&&(a=2)) {}return a;}");
+    assert_file(1, "int main() {if(1||1) {return 1;}else{return 0;}}");
+    assert_file(1, "int main() {if(1||0) {return 1;}else{return 0;}}");
+    assert_file(1, "int main() {if(0||1) {return 1;}else{return 0;}}");
+    assert_file(0, "int main() {if(0||0) {return 1;}else{return 0;}}");
+    assert_file(1, "int main() {int a=1;if(1||(a=2)) {}return a;}");
+    assert_file(2, "int main() {int a=1;if(0||(a=2)) {}return a;}");
     printf("OK\n");
     return 0;
 }

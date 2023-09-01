@@ -141,25 +141,27 @@ void gen(Node *node){
             gen_return();
             return;
         case ND_IF: {
-            printf("  # if\n");
+            // if statement pushes value of executed statement.
+            printf("  # if cond\n");
             gen(node->lhs);
             printf("  pop rax\n");
-            printf("  push rax\n");
             printf("  test rax,rax\n");
             int label = ++cur_label;
             printf("  jz .L%d\n", label);
+            printf("  # if stmt\n");
             gen(node->rhs);
-            printf("  pop rax\n");
-            if (node->else_stmt) {
-                int label_skip_else = ++cur_label;
-                printf("  jmp .L%d\n", label_skip_else);
-                printf(".L%d:\n", label);
+
+            printf("  # else%s\n", node->else_stmt ? "" : " empty");
+            int label_skip_else = ++cur_label;
+            printf("  jmp .L%d\n", label_skip_else);
+            printf(".L%d:\n", label);
+            if(node->else_stmt) {
                 gen(node->else_stmt);
-                printf("  pop rax\n");
-                printf(".L%d:\n", label_skip_else);
             }else{
-                printf(".L%d:\n", label);
+                printf("  push 0  # dummy else statement\n");
             }
+            printf(".L%d:\n", label_skip_else);
+            printf("  # if end\n");
             return;
         }
         case ND_FOR: {

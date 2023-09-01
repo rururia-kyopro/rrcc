@@ -156,6 +156,8 @@ typedef enum {
     ND_LESS_OR_EQUAL,
     ND_GREATER,
     ND_GREATER_OR_EQUAL,
+    ND_LOGICAL_OR,
+    ND_LOGICAL_AND,
     ND_NUM,
     ND_STRING_LITERAL,
     ND_LVAR,
@@ -283,6 +285,8 @@ Node *initializer();
 Node *stmt();
 Node *expression();
 Node *assignment_expression();
+Node *logical_OR_expression();
+Node *logical_AND_expression();
 Node *equality_expression();
 Node *relational_expression();
 Node *additive_expression();
@@ -369,8 +373,12 @@ struct Type {
 int type_sizeof(Type *type);
 Type *type_arithmetic(Type *type_r, Type *type_l);
 Type *type_comparator(Type *type_r, Type *type_l);
+Type *type_logical(Type *type_r, Type *type_l);
 bool type_implicit_ptr(Type *type);
 bool type_is_int(Type *type);
+bool type_is_floating(Type *type);
+bool type_is_basic(Type *type);
+bool type_is_scalar(Type *type);
 bool type_is_same(Type *type_a, Type *type_b);
 Type *type_new_ptr(Type *type);
 Type *type_new_array(Type *type, bool has_size, int size);

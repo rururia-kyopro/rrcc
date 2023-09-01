@@ -203,6 +203,15 @@ Node *new_node_compare(NodeKind kind, Node *lhs, Node *rhs){
     return node;
 }
 
+Node *new_node_logical(NodeKind kind, Node *lhs, Node *rhs){
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = kind;
+    node->lhs = lhs;
+    node->rhs = rhs;
+    node->expr_type = type_logical(lhs->expr_type, rhs->expr_type);
+    return node;
+}
+
 Node *new_node_num(int val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
@@ -569,14 +578,43 @@ Node *expression() {
     return assignment_expression();
 }
 
-// assign = equality ( "=" assign )?
+// assignment_expression = logical_OR_expression ( "=" assignment_expression )?
 Node *assignment_expression() {
-    Node *node = equality_expression();
+    Node *node = logical_OR_expression();
     if(consume("=")) {
         node = new_node(ND_ASSIGN, node, assignment_expression());
         node->expr_type = node->lhs->expr_type;
     }
     return node;
+}
+
+// logical_OR_expression = logical_AND_expression ( "||" logical_OR_expression )?
+Node *logical_OR_expression() {
+    Node *node = logical_AND_expression();
+
+    while(1) {
+        if(consume("||")) {
+            Node *cond = new_node(ND_EQUAL, node, new_node_num(0));
+            node = new_node(ND_IF, cond, logical_AND_expression());
+            node->else_stmt = new_node_num(1);
+        } else {
+            return node;
+        }
+    }
+}
+
+// logical_AND_expression = equality_expression ( "&&" logical_AND_expression )?
+Node *logical_AND_expression() {
+    Node *node = equality_expression();
+
+    while(1) {
+        if(consume("&&")) {
+            node = new_node(ND_IF, node, equality_expression());
+            node->else_stmt = new_node_num(0);
+        } else {
+            return node;
+        }
+    }
 }
 
 // equality = relational ( "==" relational | "!=" relational )*
@@ -1637,16 +1675,33 @@ Type *type_comparator(Type *type_r, Type *type_l) {
     return &signed_int_type;
 }
 
+Type *type_logical(Type *type_r, Type *type_l) {
+    if(!type_is_scalar(type_r) || !type_is_scalar(type_l)) {
+        error_at(token->str, "Invalid logical evaluation of non scalar type");
+        return NULL;
+    }
+    return &signed_int_type;
+}
+
 bool type_implicit_ptr(Type *type) {
     return type->ty == ARRAY || type->ty == PTR;
 }
 
 bool type_is_int(Type *type) {
-    return type->ty == INT || type->ty == CHAR;
+    return type->ty == CHAR || type->ty == SHORT || type->ty == INT ||
+        type->ty == LONG || type->ty == LONGLONG;
+}
+
+bool type_is_floating(Type *type) {
+    return type->ty == FLOAT || type->ty == DOUBLE || type->ty == LONGDOUBLE;
 }
 
 bool type_is_basic(Type *type) {
-    return type->ty == INT || type->ty == CHAR;
+    return type_is_int(type) || type_is_floating(type);
+}
+
+bool type_is_scalar(Type *type) {
+    return type_is_basic(type) || type->ty == PTR;
 }
 
 bool type_is_same(Type *type_a, Type *type_b) {
