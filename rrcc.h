@@ -149,6 +149,9 @@ typedef enum {
     ND_SUB,
     ND_MUL,
     ND_DIV,
+    ND_OR,
+    ND_XOR,
+    ND_AND,
     ND_ASSIGN,
     ND_EQUAL,
     ND_NOT_EQUAL,
@@ -158,6 +161,7 @@ typedef enum {
     ND_GREATER_OR_EQUAL,
     ND_LOGICAL_OR,
     ND_LOGICAL_AND,
+    ND_CAST,
     ND_NUM,
     ND_STRING_LITERAL,
     ND_LVAR,
@@ -287,10 +291,14 @@ Node *expression();
 Node *assignment_expression();
 Node *logical_OR_expression();
 Node *logical_AND_expression();
+Node *inclusive_OR_expression();
+Node *exclusive_OR_expression();
+Node *AND_expression();
 Node *equality_expression();
 Node *relational_expression();
 Node *additive_expression();
 Node *multiplicative_expression();
+Node *cast_expression();
 Node *unary_expression();
 Node *primary_expression();
 Node *type_(bool need_ident, bool is_global, bool is_funcarg);
@@ -374,6 +382,7 @@ int type_sizeof(Type *type);
 Type *type_arithmetic(Type *type_r, Type *type_l);
 Type *type_comparator(Type *type_r, Type *type_l);
 Type *type_logical(Type *type_r, Type *type_l);
+Type *type_bitwise(Type *type_r, Type *type_l);
 bool type_implicit_ptr(Type *type);
 bool type_is_int(Type *type);
 bool type_is_floating(Type *type);

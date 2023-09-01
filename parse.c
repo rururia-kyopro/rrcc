@@ -212,6 +212,15 @@ Node *new_node_logical(NodeKind kind, Node *lhs, Node *rhs){
     return node;
 }
 
+Node *new_node_bitwise(NodeKind kind, Node *lhs, Node *rhs){
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = kind;
+    node->lhs = lhs;
+    node->rhs = rhs;
+    node->expr_type = type_bitwise(lhs->expr_type, rhs->expr_type);
+    return node;
+}
+
 Node *new_node_num(int val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
@@ -588,29 +597,65 @@ Node *assignment_expression() {
     return node;
 }
 
-// logical_OR_expression = logical_AND_expression ( "||" logical_OR_expression )?
+// logical_OR_expression = logical_AND_expression ( "||" logical_AND_expression )*
 Node *logical_OR_expression() {
     Node *node = logical_AND_expression();
 
+    while(consume("||")) {
+        Node *cond = new_node(ND_EQUAL, node, new_node_num(0));
+        node = new_node(ND_IF, cond, logical_AND_expression());
+        node->else_stmt = new_node_num(1);
+    }
+    return node;
+}
+
+// logical_AND_expression = inclusive_OR_expression ( "&&" inclusive_OR_expression )*
+Node *logical_AND_expression() {
+    Node *node = inclusive_OR_expression();
+
     while(1) {
-        if(consume("||")) {
-            Node *cond = new_node(ND_EQUAL, node, new_node_num(0));
-            node = new_node(ND_IF, cond, logical_AND_expression());
-            node->else_stmt = new_node_num(1);
+        if(consume("&&")) {
+            node = new_node(ND_IF, node, inclusive_OR_expression());
+            node->else_stmt = new_node_num(0);
         } else {
             return node;
         }
     }
 }
 
-// logical_AND_expression = equality_expression ( "&&" logical_AND_expression )?
-Node *logical_AND_expression() {
+// inclusive_OR_expression = exclusive_OR_expression ( "|" exclusive_OR_expression )*
+Node *inclusive_OR_expression() {
+    Node *node = exclusive_OR_expression();
+
+    while(1) {
+        if(consume("|")) {
+            node = new_node_bitwise(ND_OR, node, exclusive_OR_expression());
+        } else {
+            return node;
+        }
+    }
+}
+
+// exclusive_OR_expression = AND_expression ( "^" AND_expression )*
+Node *exclusive_OR_expression() {
+    Node *node = AND_expression();
+
+    while(1) {
+        if(consume("^")) {
+            node = new_node_bitwise(ND_XOR, node, AND_expression());
+        } else {
+            return node;
+        }
+    }
+}
+
+// AND_expression = equality_expression ( "&" equality_expression )*
+Node *AND_expression() {
     Node *node = equality_expression();
 
     while(1) {
-        if(consume("&&")) {
-            node = new_node(ND_IF, node, equality_expression());
-            node->else_stmt = new_node_num(0);
+        if(consume("&")) {
+            node = new_node_bitwise(ND_AND, node, equality_expression());
         } else {
             return node;
         }
@@ -683,16 +728,35 @@ Node *additive_expression() {
 
 // mul = unary ( "*" unary | "/" unary )*
 Node *multiplicative_expression() {
-    Node *node = unary_expression();
+    Node *node = cast_expression();
 
     for(;;){
         if(consume("*"))
-            node = new_node_arithmetic(ND_MUL, node, unary_expression());
+            node = new_node_arithmetic(ND_MUL, node, cast_expression());
         else if(consume("/"))
-            node = new_node_arithmetic(ND_DIV, node, unary_expression());
+            node = new_node_arithmetic(ND_DIV, node, cast_expression());
         else
             return node;
     }
+}
+
+// cast_expression = unary_expression
+//                 | ( type ) cast_expression
+Node *cast_expression() {
+    if(consume("(")) {
+        TokenKind kind;
+        if(consume_type_prefix(&kind)) {
+            unget_token();
+            Node *type_node = type_(false, false, true);
+            consume(")");
+
+            Node *inner = cast_expression();
+            Node *node = new_node(ND_CAST, inner, NULL);
+            return node;
+        }
+        unget_token();
+    }
+    return unary_expression();
 }
 
 // unary = "+" primary
@@ -760,7 +824,7 @@ Node *primary_expression() {
     if(consume_ident(&ident, &ident_len)){
         node = find_symbol(globals, locals, ident, ident_len);
         if(node == NULL) {
-            error("symbol %.*s is not defined.", ident_len, ident);
+            error_at(ident, "symbol %.*s is not defined.", ident_len, ident);
         }
     }else if(consume_kind(TK_STRING_LITERAL)) {
         unget_token();
@@ -1678,6 +1742,14 @@ Type *type_comparator(Type *type_r, Type *type_l) {
 Type *type_logical(Type *type_r, Type *type_l) {
     if(!type_is_scalar(type_r) || !type_is_scalar(type_l)) {
         error_at(token->str, "Invalid logical evaluation of non scalar type");
+        return NULL;
+    }
+    return &signed_int_type;
+}
+
+Type *type_bitwise(Type *type_r, Type *type_l) {
+    if(!type_is_int(type_r) || !type_is_int(type_l)) {
+        error_at(token->str, "Invalid bitwise evaluation of non integer type");
         return NULL;
     }
     return &signed_int_type;

@@ -317,6 +317,9 @@ void gen(Node *node){
                 gen(decl);
             }
             return;
+        case ND_CAST:
+            gen(node->lhs);
+            return;
     }
     gen(node->lhs);
     gen(node->rhs);
