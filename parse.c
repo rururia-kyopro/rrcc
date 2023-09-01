@@ -13,6 +13,7 @@ Vector *globals;
 int global_size;
 Vector *global_string_literals;
 Vector *struct_registry;
+Vector *union_registry;
 Vector *enum_registry;
 Vector *typedef_registry;
 int unnamed_struct_count = 0;
@@ -232,6 +233,7 @@ Node *translation_unit() {
     global_size = 0;
     global_string_literals = new_vector();
     struct_registry = new_vector();
+    union_registry = new_vector();
     enum_registry = new_vector();
     typedef_registry = new_vector();
 
@@ -856,10 +858,9 @@ Node *type_(bool need_ident, bool is_global, bool is_funcarg) {
             break;
         }
         if(kind == TK_STRUCT) {
-            base_type = struct_declaration()->type.type;
+            base_type = struct_declaration(true)->type.type;
         } else if(kind == TK_UNION) {
-            error_at(token->str, "union is unsupported");
-            //cur = struct_declaration()->type.type;
+            base_type = struct_declaration(false)->type.type;
         } else if(kind == TK_ENUM) {
             base_type = enum_declaration()->type.type;
         }
@@ -1188,13 +1189,13 @@ Vector *function_arguments() {
 }
 
 // struct_declaration = "struct" ident? ( "{" struct_members "}" )?
-Node *struct_declaration() {
+Node *struct_declaration(bool is_struct) {
     char *ident;
     int ident_len;
     // ident is optional
     if(!consume_ident(&ident, &ident_len)) {
         char buf[100];
-        sprintf(buf, "__unnamed_struct_%d", unnamed_struct_count);
+        sprintf(buf, "__unnamed_%s_%d", is_struct ? "struct" : "union", unnamed_struct_count);
         unnamed_struct_count++;
         ident = malloc(strlen(buf)+1);
         memcpy(ident, buf, strlen(buf)+1);
@@ -1203,10 +1204,11 @@ Node *struct_declaration() {
 
     Node *node = new_node(ND_TYPE_STRUCT, NULL, NULL);
 
+    Vector *reg = is_struct ? struct_registry : union_registry;
     if(consume("{")) {
         StructRegistryEntry *entry = NULL;
-        for(int i = 0; i < vector_size(struct_registry); i++) {
-            entry = vector_get(struct_registry, i);
+        for(int i = 0; i < vector_size(reg); i++) {
+            entry = vector_get(reg, i);
             if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
                 if(entry->type->struct_complete) {
                     error("Struct name is already defined");
@@ -1221,22 +1223,22 @@ Node *struct_declaration() {
         } else {
             node->type.type = type_new_struct(ident, ident_len);
         }
-        node->type.type->members = struct_members(&node->type.type->struct_size);
+        node->type.type->members = struct_members(&node->type.type->struct_size, is_struct);
         if(entry == NULL) {
             StructRegistryEntry *entry = calloc(1, sizeof(StructRegistryEntry));
             entry->ident = ident;
             entry->ident_len = ident_len;
             entry->type = node->type.type;
             entry->type->struct_complete = true;
-            vector_push(struct_registry, entry);
+            vector_push(reg, entry);
         }
 
         expect("}");
     } else {
         bool found = false;
         StructRegistryEntry *entry;
-        for(int i = 0; i < vector_size(struct_registry); i++) {
-            entry = vector_get(struct_registry, i);
+        for(int i = 0; i < vector_size(reg); i++) {
+            entry = vector_get(reg, i);
             if(compare_ident(entry->ident, entry->ident_len, ident, ident_len)) {
                 found = true;
                 break;
@@ -1249,7 +1251,7 @@ Node *struct_declaration() {
             node->type.type = type_new_struct(ident, ident_len);
             entry->type = node->type.type;
             entry->type->struct_complete = false;
-            vector_push(struct_registry, entry);
+            vector_push(reg, entry);
 
             //error("No struct found for specified name");
         }
@@ -1260,7 +1262,7 @@ Node *struct_declaration() {
 }
 
 // struct_members = ( type_ ";" )*
-Vector *struct_members(size_t *size) {
+Vector *struct_members(size_t *size, bool is_struct) {
     Vector *vec = new_vector();
     while(peek_type_prefix()) {
         Node *decl_list = type_(true, false, false);
@@ -1279,8 +1281,15 @@ Vector *struct_members(size_t *size) {
                 }
             }
             member->node = type_node;
-            member->offset = *size;
-            *size += type_sizeof(type_node->type.type);
+            if(is_struct) {
+                member->offset = *size;
+                *size += type_sizeof(type_node->type.type);
+            }else{
+                member->offset = 0;
+                if(*size < type_sizeof(type_node->type.type)) {
+                    *size = type_sizeof(type_node->type.type);
+                }
+            }
             vector_push(vec, member);
         }
     }

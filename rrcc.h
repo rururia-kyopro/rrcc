@@ -293,8 +293,8 @@ void type_array_suffix(Vector *array_suffix_vector);
 Node *type_ident(bool need_ident);
 Node *ident_();
 Vector *function_arguments();
-Node *struct_declaration();
-Vector *struct_members(size_t *size);
+Node *struct_declaration(bool is_struct);
+Vector *struct_members(size_t *size, bool is_struct);
 Node *enum_declaration();
 Vector *enum_members();
 Node *typedef_declaration(bool is_global, Node *type_node);
@@ -350,17 +350,17 @@ extern Vector *global_string_literals;
 /// Type ///
 
 struct Type {
-    enum { VOID, CHAR, SHORT, INT, LONG, LONGLONG, FLOAT, DOUBLE, LONGDOUBLE, BOOL, COMPLEX, PTR, ARRAY, FUNC, STRUCT, ENUM } ty;
+    enum { VOID, CHAR, SHORT, INT, LONG, LONGLONG, FLOAT, DOUBLE, LONGDOUBLE, BOOL, COMPLEX, PTR, ARRAY, FUNC, STRUCT, UNION, ENUM } ty;
     enum { NOSIGNED, UNSIGNED, SIGNED } signedness;
     Type *ptr_to;
     size_t array_size;
     Vector *args; // func
     bool has_array_size;
-    char *ident; // enum or struct
-    int ident_len; // enum or struct
-    Vector *members; // enum or struct
-    size_t struct_size; // struct
-    bool struct_complete;
+    char *ident; // enum or struct or union
+    int ident_len; // enum or struct or union
+    Vector *members; // enum or struct or union
+    size_t struct_size; // struct or union
+    bool struct_complete; // struct or union
 };
 
 int type_sizeof(Type *type);
@@ -387,6 +387,7 @@ struct StructMember {
 /// Struct Registry Entry ///
 
 struct StructRegistryEntry {
+    bool is_struct; // true: struct, false: union
     Type *type;
     char *ident;
     int ident_len;
