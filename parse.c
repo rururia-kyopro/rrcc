@@ -416,7 +416,7 @@ Node *initializer() {
         node->init.init_expr = new_vector();
         if(!consume("}")) {
             while(1) {
-                vector_push(node->init.init_expr, expr());
+                vector_push(node->init.init_expr, expression());
 
                 if(consume("}")) {
                     break;
@@ -436,7 +436,7 @@ Node *initializer() {
         vector_push(node->init.init_expr, new_node_char(0));
         return node;
     }
-    return expr();
+    return expression();
 }
 
 // stmt    = expr ";"
@@ -451,7 +451,7 @@ Node *stmt() {
     TokenKind kind;
     if(consume_kind(TK_IF)) {
         expect("(");
-        Node *if_expr = expr();
+        Node *if_expr = expression();
         expect(")");
         Node *if_stmt = stmt();
         Node *else_stmt = NULL;
@@ -463,7 +463,7 @@ Node *stmt() {
         return node;
     }else if(consume_kind(TK_WHILE)) {
         expect("(");
-        Node *while_expr = expr();
+        Node *while_expr = expression();
         expect(")");
         Node *while_stmt = stmt();
         return new_node(ND_WHILE, while_expr, while_stmt);
@@ -473,15 +473,15 @@ Node *stmt() {
         Node *for_condition_expr = NULL;
         Node *for_update_expr = NULL;
         if(!consume(";")){
-            for_init_expr = expr();
+            for_init_expr = expression();
             expect(";");
         }
         if(!consume(";")){
-            for_condition_expr = expr();
+            for_condition_expr = expression();
             expect(";");
         }
         if(!consume(")")){
-            for_update_expr = expr();
+            for_update_expr = expression();
             expect(")");
         }
         Node *node = new_node(ND_FOR, for_init_expr, for_condition_expr);
@@ -492,13 +492,13 @@ Node *stmt() {
         Node *do_stmt = stmt();
         expect_kind(TK_WHILE);
         expect("(");
-        Node *do_expr = expr();
+        Node *do_expr = expression();
         expect(")");
         Node *node = new_node(ND_DO, do_stmt, do_expr);
         expect(";");
         return node;
     }else if(consume_kind(TK_RETURN)) {
-        Node *node = new_node(ND_RETURN, expr(), NULL);
+        Node *node = new_node(ND_RETURN, expression(), NULL);
         expect(";");
         return node;
     }else if(consume_type_prefix(&kind)) {
@@ -560,66 +560,66 @@ Node *stmt() {
         }
         return node;
     }
-    Node *node = expr();
+    Node *node = expression();
     expect(";");
     return node;
 }
 
-Node *expr() {
-    return assign();
+Node *expression() {
+    return assignment_expression();
 }
 
 // assign = equality ( "=" assign )?
-Node *assign() {
-    Node *node = equality();
+Node *assignment_expression() {
+    Node *node = equality_expression();
     if(consume("=")) {
-        node = new_node(ND_ASSIGN, node, assign());
+        node = new_node(ND_ASSIGN, node, assignment_expression());
         node->expr_type = node->lhs->expr_type;
     }
     return node;
 }
 
 // equality = relational ( "==" relational | "!=" relational )*
-Node *equality() {
-    Node *node = relational();
+Node *equality_expression() {
+    Node *node = relational_expression();
 
     for(;;){
         if(consume("=="))
-            node = new_node_compare(ND_EQUAL, node, relational());
+            node = new_node_compare(ND_EQUAL, node, relational_expression());
         else if(consume("!="))
-            node = new_node_compare(ND_NOT_EQUAL, node, relational());
+            node = new_node_compare(ND_NOT_EQUAL, node, relational_expression());
         else
             return node;
     }
 }
 
 // relational = add ( "<" add | "<=" add | ">" add | ">=" add )*
-Node *relational() {
-    Node *node = add();
+Node *relational_expression() {
+    Node *node = additive_expression();
 
     for(;;){
         if(consume("<"))
-            node = new_node_compare(ND_LESS, node, add());
+            node = new_node_compare(ND_LESS, node, additive_expression());
         else if(consume("<="))
-            node = new_node_compare(ND_LESS_OR_EQUAL, node, add());
+            node = new_node_compare(ND_LESS_OR_EQUAL, node, additive_expression());
         else if(consume(">"))
-            node = new_node_compare(ND_GREATER, node, add());
+            node = new_node_compare(ND_GREATER, node, additive_expression());
         else if(consume(">="))
-            node = new_node_compare(ND_GREATER_OR_EQUAL, node, add());
+            node = new_node_compare(ND_GREATER_OR_EQUAL, node, additive_expression());
         else
             return node;
     }
 }
 
 // add = mul ( "+" mul | "-" mul )*
-Node *add() {
-    Node *node = mul();
+Node *additive_expression() {
+    Node *node = multiplicative_expression();
 
     for(;;){
         if(consume("+")) {
-            node = new_node_add(node, mul());
+            node = new_node_add(node, multiplicative_expression());
         } else if(consume("-")) {
-            node = new_node(ND_SUB, node, mul());
+            node = new_node(ND_SUB, node, multiplicative_expression());
             if(node->lhs->expr_type->ty == INT){
                 if(node->rhs->expr_type->ty == INT) {
                     // int - int
@@ -644,14 +644,14 @@ Node *add() {
 }
 
 // mul = unary ( "*" unary | "/" unary )*
-Node *mul() {
-    Node *node = unary();
+Node *multiplicative_expression() {
+    Node *node = unary_expression();
 
     for(;;){
         if(consume("*"))
-            node = new_node_arithmetic(ND_MUL, node, unary());
+            node = new_node_arithmetic(ND_MUL, node, unary_expression());
         else if(consume("/"))
-            node = new_node_arithmetic(ND_DIV, node, unary());
+            node = new_node_arithmetic(ND_DIV, node, unary_expression());
         else
             return node;
     }
@@ -664,20 +664,20 @@ Node *mul() {
 //       | "sizeof" unary
 //       | "sizeof" "(" type ")"
 //       | primary
-Node *unary() {
+Node *unary_expression() {
     if(consume("+"))
-        return primary();
+        return primary_expression();
     if(consume("-"))
-        return new_node_arithmetic(ND_SUB, new_node_num(0), primary());
+        return new_node_arithmetic(ND_SUB, new_node_num(0), primary_expression());
     if(consume("&")) {
-        Node *node = new_node(ND_ADDRESS_OF, unary(), NULL);
+        Node *node = new_node(ND_ADDRESS_OF, unary_expression(), NULL);
         node->expr_type = calloc(1, sizeof(Type));
         node->expr_type->ty = PTR;
         node->expr_type->ptr_to = node->lhs->expr_type;
         return node;
     }
     if(consume("*")) {
-        Node *node = new_node(ND_DEREF, unary(), NULL);
+        Node *node = new_node(ND_DEREF, unary_expression(), NULL);
         if(node->lhs->expr_type->ty != PTR && node->lhs->expr_type->ty != ARRAY) {
             error_at(token->str, "Dereference non pointer type");
         }
@@ -697,9 +697,9 @@ Node *unary() {
                 unget_token();
             }
         }
-        return new_node_num(type_sizeof(unary()->expr_type));
+        return new_node_num(type_sizeof(unary_expression()->expr_type));
     }
-    return primary();
+    return primary_expression();
 }
 
 // primary = "(" expr ")"
@@ -710,9 +710,9 @@ Node *unary() {
 //         | primary "->" ident
 //         | num
 //         | string_literal
-Node *primary() {
+Node *primary_expression() {
     if(consume("(")){
-        Node *node = expr();
+        Node *node = expression();
         expect(")");
         return node;
     }
@@ -752,7 +752,7 @@ Node *primary() {
             if(!consume(")")){
                 while(1){
                     NodeList *nodelist = calloc(1, sizeof(NodeList));
-                    nodelist->node = expr();
+                    nodelist->node = expression();
                     arg_tail->next = nodelist;
                     arg_tail = nodelist;
                     if(!consume(",")){
@@ -766,7 +766,7 @@ Node *primary() {
             call_node->call_ident_len = ident_len;
             node = call_node;
         }else if(consume("[")) {
-            Node *expr_node = expr();
+            Node *expr_node = expression();
             expect("]");
 
             Node *added = new_node_add(node, expr_node);
@@ -1172,7 +1172,7 @@ void type_array_suffix(Vector *array_suffix_vector) {
     } else if(consume("[")) {
         Node *array = new_node(ND_TYPE_ARRAY, NULL, NULL);
         if(!consume("]")) {
-            Node *expr_node = constant_fold(expr());
+            Node *expr_node = constant_fold(expression());
             array->rhs = expr_node;
             if(expr_node->kind == ND_NUM) {
                 array->type.array.size = expr_node->val;

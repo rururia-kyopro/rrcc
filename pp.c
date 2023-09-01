@@ -419,25 +419,24 @@ static PPToken *if_group(PPToken **cur);
 static PPToken *control_line(PPToken **cur);
 static PPToken *non_directive(PPToken **cur);
 static PPToken *text_line(PPToken **cur);
-static int constant_expression(PPToken **cur);
-static int conditional_expression(PPToken **cur);
-static int logical_OR_expression(PPToken **cur);
-static int expression(PPToken **cur);
-static int logical_AND_expression(PPToken **cur);
-static int inclusive_OR_expression(PPToken **cur);
-static int exclusive_OR_expression(PPToken **cur);
-static int AND_expression(PPToken **cur);
-static int equality_expression(PPToken **cur);
-static int relational_expression(PPToken **cur);
-static int shift_expression(PPToken **cur);
-static int additive_expression(PPToken **cur);
-static int multiplicative_expression(PPToken **cur);
-static int cast_expression(PPToken **cur);
-static int unary_expression(PPToken **cur);
-static int postfix_expression(PPToken **cur);
-static int primary_expression(PPToken **cur);
-static int expression(PPToken **cur);
-static int assignment_expression(PPToken **cur);
+static int pp_constant_expression(PPToken **cur);
+static int pp_conditional_expression(PPToken **cur);
+static int pp_logical_OR_expression(PPToken **cur);
+static int pp_logical_AND_expression(PPToken **cur);
+static int pp_inclusive_OR_expression(PPToken **cur);
+static int pp_exclusive_OR_expression(PPToken **cur);
+static int pp_AND_expression(PPToken **cur);
+static int pp_equality_expression(PPToken **cur);
+static int pp_relational_expression(PPToken **cur);
+static int pp_shift_expression(PPToken **cur);
+static int pp_additive_expression(PPToken **cur);
+static int pp_multiplicative_expression(PPToken **cur);
+static int pp_cast_expression(PPToken **cur);
+static int pp_unary_expression(PPToken **cur);
+static int pp_postfix_expression(PPToken **cur);
+static int pp_primary_expression(PPToken **cur);
+static int pp_expression(PPToken **cur);
+static int pp_assignment_expression(PPToken **cur);
 
 static void macro_invocation(PPToken **cur, Vector **arg_vec, int arglen);
 
@@ -532,7 +531,7 @@ static bool eval_constant_expression(PPToken **cur) {
     PPToken *mtail = pp_list_tail(macro_replaced_tokens);
     new_pptoken(PPTK_EOF, mtail, (*cur)->prev->str, (*cur)->prev->len);
 
-    int val = constant_expression(&macro_replaced_tokens);
+    int val = pp_constant_expression(&macro_replaced_tokens);
     if(macro_replaced_tokens->next) {
         error_at(macro_replaced_tokens->next->str, "Extra token after constant expression");
     }
@@ -1097,16 +1096,16 @@ static int eval_as_int(PPToken *token) {
 }
 
 
-static int constant_expression(PPToken **cur) {
-    return conditional_expression(cur);
+static int pp_constant_expression(PPToken **cur) {
+    return pp_conditional_expression(cur);
 }
 
-static int conditional_expression(PPToken **cur) {
-    int val = logical_OR_expression(cur);
+static int pp_conditional_expression(PPToken **cur) {
+    int val = pp_logical_OR_expression(cur);
     if(pp_consume(cur, "?")) {
-        int if_true = expression(cur);
+        int if_true = pp_expression(cur);
         pp_consume(cur, ":");
-        int if_false = conditional_expression(cur);
+        int if_false = pp_conditional_expression(cur);
 
         if(val) {
             return if_true;
@@ -1117,57 +1116,57 @@ static int conditional_expression(PPToken **cur) {
     return val;
 }
 
-static int logical_OR_expression(PPToken **cur) {
-    int ret = logical_AND_expression(cur);
+static int pp_logical_OR_expression(PPToken **cur) {
+    int ret = pp_logical_AND_expression(cur);
     while(pp_consume(cur, "||")) {
         // Be careful of short circuit!
-        int val = logical_AND_expression(cur);
+        int val = pp_logical_AND_expression(cur);
         ret = ret || val;
     }
     return ret;
 }
 
-static int logical_AND_expression(PPToken **cur) {
-    int ret = inclusive_OR_expression(cur);
+static int pp_logical_AND_expression(PPToken **cur) {
+    int ret = pp_inclusive_OR_expression(cur);
     while(pp_consume(cur, "&&")) {
         // Be careful of short circuit!
-        int val = inclusive_OR_expression(cur);
+        int val = pp_inclusive_OR_expression(cur);
         ret = ret && val;
     }
     return ret;
 }
 
-static int inclusive_OR_expression(PPToken **cur) {
-    int ret = exclusive_OR_expression(cur);
+static int pp_inclusive_OR_expression(PPToken **cur) {
+    int ret = pp_exclusive_OR_expression(cur);
     while(pp_consume(cur, "|")) {
-        ret = ret | exclusive_OR_expression(cur);
+        ret = ret | pp_exclusive_OR_expression(cur);
     }
     return ret;
 }
 
-static int exclusive_OR_expression(PPToken **cur) {
-    int ret = AND_expression(cur);
+static int pp_exclusive_OR_expression(PPToken **cur) {
+    int ret = pp_AND_expression(cur);
     while(pp_consume(cur, "^")) {
-        ret = ret ^ AND_expression(cur);
+        ret = ret ^ pp_AND_expression(cur);
     }
     return ret;
 }
 
-static int AND_expression(PPToken **cur) {
-    int ret = equality_expression(cur);
+static int pp_AND_expression(PPToken **cur) {
+    int ret = pp_equality_expression(cur);
     while(pp_consume(cur, "&")) {
-        ret = ret & equality_expression(cur);
+        ret = ret & pp_equality_expression(cur);
     }
     return ret;
 }
 
-static int equality_expression(PPToken **cur) {
-    int ret = relational_expression(cur);
+static int pp_equality_expression(PPToken **cur) {
+    int ret = pp_relational_expression(cur);
     while(1) {
         if(pp_consume(cur, "==")) {
-            ret = ret == relational_expression(cur);
+            ret = ret == pp_relational_expression(cur);
         }else if(pp_consume(cur, "!=")) {
-            ret = ret != relational_expression(cur);
+            ret = ret != pp_relational_expression(cur);
         }else {
             break;
         }
@@ -1175,17 +1174,17 @@ static int equality_expression(PPToken **cur) {
     return ret;
 }
 
-static int relational_expression(PPToken **cur) {
-    int ret = shift_expression(cur);
+static int pp_relational_expression(PPToken **cur) {
+    int ret = pp_shift_expression(cur);
     while(1) {
         if(pp_consume(cur, "<")) {
-            ret = ret < shift_expression(cur);
+            ret = ret < pp_shift_expression(cur);
         }else if(pp_consume(cur, ">")) {
-            ret = ret > shift_expression(cur);
+            ret = ret > pp_shift_expression(cur);
         }else if(pp_consume(cur, "<=")) {
-            ret = ret <= shift_expression(cur);
+            ret = ret <= pp_shift_expression(cur);
         }else if(pp_consume(cur, ">=")) {
-            ret = ret >= shift_expression(cur);
+            ret = ret >= pp_shift_expression(cur);
         }else {
             break;
         }
@@ -1193,13 +1192,13 @@ static int relational_expression(PPToken **cur) {
     return ret;
 }
 
-static int shift_expression(PPToken **cur) {
-    int ret = additive_expression(cur);
+static int pp_shift_expression(PPToken **cur) {
+    int ret = pp_additive_expression(cur);
     while(1) {
         if(pp_consume(cur, "<<")) {
-            ret = ret << additive_expression(cur);
+            ret = ret << pp_additive_expression(cur);
         }else if(pp_consume(cur, ">>")) {
-            ret = ret >> additive_expression(cur);
+            ret = ret >> pp_additive_expression(cur);
         }else {
             break;
         }
@@ -1207,13 +1206,13 @@ static int shift_expression(PPToken **cur) {
     return ret;
 }
 
-static int additive_expression(PPToken **cur) {
-    int ret = multiplicative_expression(cur);
+static int pp_additive_expression(PPToken **cur) {
+    int ret = pp_multiplicative_expression(cur);
     while(1) {
         if(pp_consume(cur, "+")) {
-            ret = ret + multiplicative_expression(cur);
+            ret = ret + pp_multiplicative_expression(cur);
         }else if(pp_consume(cur, "-")) {
-            ret = ret - multiplicative_expression(cur);
+            ret = ret - pp_multiplicative_expression(cur);
         }else {
             break;
         }
@@ -1221,19 +1220,19 @@ static int additive_expression(PPToken **cur) {
     return ret;
 }
 
-static int multiplicative_expression(PPToken **cur) {
-    int ret = cast_expression(cur);
+static int pp_multiplicative_expression(PPToken **cur) {
+    int ret = pp_cast_expression(cur);
     while(1) {
         if(pp_consume(cur, "*")) {
-            ret = ret * cast_expression(cur);
+            ret = ret * pp_cast_expression(cur);
         }else if(pp_consume(cur, "/")) {
-            int val = cast_expression(cur);
+            int val = pp_cast_expression(cur);
             if(val == 0) {
                 error("Zero division");
             }
             ret = ret / val;
         }else if(pp_consume(cur, "%")) {
-            int val = cast_expression(cur);
+            int val = pp_cast_expression(cur);
             if(val == 0) {
                 error("Zero division");
             }
@@ -1245,37 +1244,37 @@ static int multiplicative_expression(PPToken **cur) {
     return ret;
 }
 
-static int cast_expression(PPToken **cur) {
+static int pp_cast_expression(PPToken **cur) {
     // no cast on preprocessor
-    return unary_expression(cur);
+    return pp_unary_expression(cur);
 }
 
-static int unary_expression(PPToken **cur) {
+static int pp_unary_expression(PPToken **cur) {
     // no '&', '*', 'sizeof', '++', '--'
     if(pp_consume(cur, "!")) {
-        return ! cast_expression(cur);
+        return ! pp_cast_expression(cur);
     }
     if(pp_consume(cur, "+")) {
-        return + cast_expression(cur);
+        return + pp_cast_expression(cur);
     }
     if(pp_consume(cur, "-")) {
-        return - cast_expression(cur);
+        return - pp_cast_expression(cur);
     }
     if(pp_consume(cur, "~")) {
-        return ~ cast_expression(cur);
+        return ~ pp_cast_expression(cur);
     }
 
-    return postfix_expression(cur);
+    return pp_postfix_expression(cur);
 }
 
-static int postfix_expression(PPToken **cur) {
+static int pp_postfix_expression(PPToken **cur) {
     // no postfix operators
-    return primary_expression(cur);
+    return pp_primary_expression(cur);
 }
 
-static int primary_expression(PPToken **cur) {
+static int pp_primary_expression(PPToken **cur) {
     if(pp_consume(cur, "(")) {
-        int val = expression(cur);
+        int val = pp_expression(cur);
         pp_expect(cur, ")");
         return val;
     }
@@ -1284,14 +1283,14 @@ static int primary_expression(PPToken **cur) {
     return val;
 }
 
-static int expression(PPToken **cur) {
+static int pp_expression(PPToken **cur) {
     // no ',' operator
-    return assignment_expression(cur);
+    return pp_assignment_expression(cur);
 }
 
-static int assignment_expression(PPToken **cur) {
+static int pp_assignment_expression(PPToken **cur) {
     // no assignment operators
-    return conditional_expression(cur);
+    return pp_conditional_expression(cur);
 }
 
 static void append_printf(char **buf, char **tail, int *len, char *fmt, ...) {
