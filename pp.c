@@ -126,34 +126,6 @@ static PPToken *pp_list_tail(PPToken *cur) {
     return cur;
 }
 
-int pp_match_punc(char *p) {
-    // The longer the punctuator, the more it must be placed in front.
-    static const char *punc[] = {
-        // 4 chars
-        "%:%:",
-        // 3 chars
-        "<<=", ">>=", "...",
-        // 2 chars
-        "->", "++", "--",
-        "<<", ">>", "<=",
-        ">=", "==", "!=",
-        "&&", "||", "*=",
-        "/=", "%=", "+=",
-        "-=", "&=", "^=",
-        "|=", "##", "<:",
-        ":>", "<%", "%>"};
-
-    for(int i = 0; i < sizeof(punc) / sizeof(punc[0]); i++){
-        if(strncmp(p, punc[i], strlen(punc[i])) == 0) {
-            return strlen(punc[i]);
-        }
-    }
-    if(strchr("[](){}.%*+-~!/%<>^|?:;=,#", *p)) {
-        return 1;
-    }
-    return 0;
-}
-
 int pp_match_string_literal(char *p, Vector **char_vec) {
     char *b = p;
     if(*p != '"') {
@@ -274,7 +246,7 @@ PPToken *pp_tokenize() {
             continue;
         }
 
-        int punc_len = pp_match_punc(p);
+        int punc_len = match_punc(p);
         if(punc_len) {
             if(punc_len == 1 && *p == '#') {
                 include_state = 1;
@@ -1044,7 +1016,7 @@ static void process_token_concat_operator(PPToken *cur) {
 
                 r->str = p;
                 r->len = len;
-                int punc_len = pp_match_punc(p);
+                int punc_len = match_punc(p);
                 if(p[0] == '.' && isdigit(p[1]) || isdigit(p[0])) {
                     r->kind = PPTK_PPNUMBER;
                 } else if(punc_len == len) {

@@ -15,6 +15,8 @@ char *do_pp();
 void init_include_pathes();
 void append_include_pathes(char *p);
 
+int match_punc(char *p);
+
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct NodeList NodeList;

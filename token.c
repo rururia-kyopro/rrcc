@@ -123,6 +123,36 @@ static bool is_keyword(char *keyword, char *str, int len) {
     return strncmp(str, keyword, len) == 0;
 }
 
+// Called also from preprocessor.
+int match_punc(char *p) {
+    // The longer the punctuator, the more it must be placed in front.
+    static const char *punc[] = {
+        // 4 chars
+        "%:%:",
+        // 3 chars
+        "<<=", ">>=", "...",
+        // 2 chars
+        "->", "++", "--",
+        "<<", ">>", "<=",
+        ">=", "==", "!=",
+        "&&", "||", "*=",
+        "/=", "%=", "+=",
+        "-=", "&=", "^=",
+        "|=", "##", "<:",
+        ":>", "<%", "%>"};
+
+    for(int i = 0; i < sizeof(punc) / sizeof(punc[0]); i++){
+        if(strncmp(p, punc[i], strlen(punc[i])) == 0) {
+            return strlen(punc[i]);
+        }
+    }
+    if(strchr("[](){}.%*+-~!/%<>^|?:;=,#", *p)) {
+        return 1;
+    }
+    return 0;
+}
+
+
 Token *tokenize(char *p){
     Token head;
     head.prev = NULL;
@@ -209,18 +239,10 @@ Token *tokenize(char *p){
             }
         }
 
-        if(strncmp(p, "...", 3) == 0) {
-            cur = new_token(TK_RESERVED, cur, p, 3);
-            p += 3;
-            continue;
-        }
-        if(strncmp(p, "==", 2) == 0 || strncmp(p, "!=", 2) == 0 || strncmp(p, "<=", 2) == 0 || strncmp(p, ">=", 2) == 0 || strncmp(p, "->", 2) == 0){
-            cur = new_token(TK_RESERVED, cur, p, 2);
-            p += 2;
-            continue;
-        }
-        if(strchr("+-*/()><=;{},&[].", *p)){
-            cur = new_token(TK_RESERVED, cur, p++, 1);
+        int punc_len = match_punc(p);
+        if(punc_len) {
+            cur = new_token(TK_RESERVED, cur, p, punc_len);
+            p += punc_len;
             continue;
         }
         if(*p == '_' || isalpha(*p)){
