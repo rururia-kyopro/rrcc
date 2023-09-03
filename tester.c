@@ -317,6 +317,9 @@ int main() {
     assert_file(9, "int main() {int a;a=0;for(int i = 0, j = 1; i < 3; i=i+j){int i;a=a+1;}for(int i = 0, j=3; i < 3; i=i+1){a=a+i*2;}return a;}");
     assert_file(253, "int main() {char a;a=~2;return a;}");
     assert_file(1, "int main() {int a;a=~9;return a==-10;}");
+    assert_file(2, "int main() {int a;a=1;int b;b=a++;return a;}");
+    assert_file(1, "int main() {int a;a=1;int b;b=a++;return b;}");
+    assert_file(2, "int main() {int v[2];v[0]=1;v[1]=2;int *a;a=v;a++;return *a;}");
     printf("OK\n");
     return 0;
 }

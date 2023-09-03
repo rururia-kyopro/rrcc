@@ -178,6 +178,8 @@ typedef enum {
     ND_DO,
     ND_COMPOUND,
     ND_CALL,
+    ND_POSTFIX_INC,
+    ND_POSTFIX_DEC,
     ND_FUNC_DEF,
     ND_FUNC_DECL,
     ND_SCOPE,
@@ -287,6 +289,9 @@ struct Node {
             Vector *childs;
             Vector *locals;
         } scope;
+        struct {
+            size_t value;
+        } incdec;
     };
 };
 

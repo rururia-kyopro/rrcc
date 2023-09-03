@@ -978,6 +978,22 @@ Node *postfix_expression() {
             Node *add = new_node_add(left, new_node_num(mem->offset));
             node = new_node(ND_DEREF, add, NULL);
             node->expr_type = mem->node->type.type;
+        }else if(peek("++") || peek("--")) {
+            bool plus = consume("++");
+            if(!plus) {
+                consume("--");
+            }
+            node = new_node(plus ? ND_POSTFIX_INC : ND_POSTFIX_DEC, node, NULL);
+            node->expr_type = node->lhs->expr_type;
+            // increment integer
+            node->incdec.value = 1;
+            // increment pointer (Adds type size)
+            if(node->expr_type->ty == PTR) {
+                node->incdec.value = type_sizeof(node->expr_type->ptr_to);
+            }
+            if(!plus) {
+                node->incdec.value = -node->incdec.value;
+            }
         }else{
             break;
         }
