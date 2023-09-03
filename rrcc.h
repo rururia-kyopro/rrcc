@@ -256,7 +256,6 @@ struct Node {
             char *ident;
             int ident_len;
             Vector *arg_vec;
-            Vector *lvar_vec;
             Type *type;
             int max_stack_size;
         } func_def;
@@ -285,6 +284,7 @@ struct Node {
             int current;
             Node *parent;
             Vector *childs;
+            Vector *locals;
         } scope;
     };
 };
@@ -338,10 +338,10 @@ struct LVar {
     Type *type;
 };
 
-extern Vector *locals;
 extern int locals_stack_size;
 
-LVar *find_lvar(Vector *locals, char *ident, int ident_len);
+LVar *find_lvar_scope(char *ident, int ident_len);
+LVar *find_lvar_one(Vector *locals, char *ident, int ident_len);
 LVar *new_lvar(Vector *locals, char *ident, int ident_len);
 int lvar_count(Vector *locals);
 int lvar_stack_size(Vector *locals);
@@ -361,7 +361,7 @@ extern int global_size;
 
 GVar *find_gvar(Vector *locals, char *ident, int ident_len);
 GVar *new_gvar(Vector *locals, char *ident, int ident_len, Type *type);
-Node *find_symbol(Vector *globals, Vector *locals, char *ident, int ident_len);
+Node *find_symbol(Vector *globals, char *ident, int ident_len);
 
 /// String Literal ///
 struct StringLiteral {

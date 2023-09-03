@@ -7,7 +7,6 @@
 #include <assert.h>
 #include "rrcc.h"
 
-Vector *locals;
 Node *scope;
 int locals_stack_size;
 int max_stack_size;
@@ -241,6 +240,17 @@ Node *new_node_char(int val) {
     return node;
 }
 
+Node *new_node_scope(Node *parent_scope, Node *lhs) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_SCOPE;
+    node->scope.childs = new_vector();
+    node->scope.locals = new_vector();
+    node->scope.current = 0;
+    node->scope.parent = parent_scope;
+    node->lhs = lhs;
+    return node;
+}
+
 Node *new_node_lvar(LVar *lvar) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
@@ -282,7 +292,6 @@ Node *external_declaration() {
 Node *function_definition(TypeStorage type_storage, Node *type_node) {
     Node *node = new_node(ND_FUNC_DEF, NULL, NULL);
     node->func_def.arg_vec = new_vector();
-    node->func_def.lvar_vec = new_vector();
 
     Type *type = node->func_def.type = type_node->type.type;
     if(!type_find_ident(type_node, &node->func_def.ident, &node->func_def.ident_len)) {
@@ -291,9 +300,7 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
     debug_log("func_def: %.*s %p\n", node->func_def.ident_len, node->func_def.ident, node->func_def.ident);
 
     // ND_FUNC_DEF -> ND_SCOPE -> ND_COMPOUND
-    scope = new_node(ND_SCOPE, NULL, NULL);
-    scope->scope.current = 0;
-    scope->scope.childs = new_vector();
+    scope = new_node_scope(NULL, NULL);
     node->lhs = scope;
 
     // Assigns all space for local variables in function prologue.
@@ -326,16 +333,14 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
         }
 
         vector_push(node->func_def.arg_vec, arg);
-        if(find_lvar(node->func_def.lvar_vec, arg->ident, arg->ident_len)) {
+        if(find_lvar_one(scope->scope.locals, arg->ident, arg->ident_len)) {
             error_at(token->str, "Arguments with same name are defined: %.*s", arg->ident_len, arg->ident);
         }
-        arg->lvar = new_lvar(node->func_def.lvar_vec, arg->ident, arg->ident_len);
+        arg->lvar = new_lvar(scope->scope.locals, arg->ident, arg->ident_len);
         arg->lvar->type = arg->type;
         scope->scope.current += type_sizeof(arg->lvar->type);
         locals_stack_size += type_sizeof(arg->lvar->type);
     }
-
-    locals = node->func_def.lvar_vec;
 
     Node *gvar_def_node = new_node(ND_GVAR_DEF, NULL, NULL);
 
@@ -568,10 +573,10 @@ Node *stmt() {
                 error("Local variable must have identifier");
             }
 
-            if(find_lvar(locals, ident, ident_len) != NULL){
+            if(find_lvar_one(scope->scope.locals, ident, ident_len) != NULL){
                 error("variable with same name is already defined.");
             }
-            node->decl_var.lvar = new_lvar(locals, ident, ident_len);
+            node->decl_var.lvar = new_lvar(scope->scope.locals, ident, ident_len);
             node->decl_var.lvar->type = type_node->type.type;
             scope->scope.current += type_sizeof(node->decl_var.lvar->type);
             locals_stack_size += type_sizeof(node->decl_var.lvar->type);
@@ -604,10 +609,7 @@ Node *stmt() {
         return decl_list;
     }else if(consume("{")) {
         Node *node = new_node(ND_COMPOUND, NULL, NULL);
-        Node *new_scope = new_node(ND_SCOPE, node, NULL);
-        new_scope->scope.current = 0;
-        new_scope->scope.parent = scope;
-        new_scope->scope.childs = new_vector();
+        Node *new_scope = new_node_scope(scope, node);
         vector_push(scope->scope.childs, new_scope);
         scope = new_scope;
         node->compound_stmt_list = new_vector();
@@ -881,7 +883,7 @@ Node *primary_expression() {
     char *ident;
     int ident_len;
     if(consume_ident(&ident, &ident_len)){
-        node = find_symbol(globals, locals, ident, ident_len);
+        node = find_symbol(globals, ident, ident_len);
         if(node == NULL) {
             error_at(ident, "symbol %.*s is not defined.", ident_len, ident);
         }
@@ -1679,8 +1681,19 @@ bool peek_type_prefix() {
 
 /// LVar ///
 
-LVar *find_lvar(Vector *locals, char *ident, int ident_len) {
-    for(int i = 0; i < lvar_count(locals); i++){
+LVar *find_lvar_scope(char *ident, int ident_len) {
+    Node *cur_scope = scope;
+    for(; cur_scope; cur_scope = cur_scope->scope.parent) {
+        LVar *var = find_lvar_one(cur_scope->scope.locals, ident, ident_len);
+        if(var != NULL) {
+            return var;
+        }
+    }
+    return NULL;
+}
+
+LVar *find_lvar_one(Vector *locals, char *ident, int ident_len) {
+    for(int i = 0; i < vector_size(locals); i++){
         LVar *var = vector_get(locals, i);
         if(var->len == ident_len && !memcmp(ident, var->name, var->len)) {
             return var;
@@ -1700,13 +1713,9 @@ LVar *new_lvar(Vector *locals, char *ident, int ident_len) {
     return lvar;
 }
 
-int lvar_count(Vector *locals) {
-    return vector_size(locals);
-}
-
 int lvar_stack_size(Vector *locals) {
     int ret = 0;
-    for(int i = 0; i < lvar_count(locals); i++){
+    for(int i = 0; i < vector_size(locals); i++){
         LVar *var = vector_get(locals, i);
         ret += type_sizeof(var->type);
     }
@@ -1735,8 +1744,8 @@ GVar *new_gvar(Vector *globals, char *ident, int ident_len, Type *type) {
     return gvar;
 }
 
-Node *find_symbol(Vector *globals, Vector *locals, char *ident, int ident_len) {
-    LVar *lvar = find_lvar(locals, ident, ident_len);
+Node *find_symbol(Vector *globals, char *ident, int ident_len) {
+    LVar *lvar = find_lvar_scope(ident, ident_len);
     if(lvar == NULL){
         GVar *gvar = find_gvar(globals, ident, ident_len);
         if(gvar == NULL) {

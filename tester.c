@@ -307,6 +307,11 @@ int main() {
     assert_file(9, "int main() {int a=(10^3); return a;}");
     assert_file(40, "int main() {int a=(10 << 2); return a;}");
     assert_file(2, "int main() {int a=(10 >> 2); return a;}");
+    assert_file(3, "int main() {int a;a=3;if(1){int a;a=4;}return a;}");
+    assert_file(4, "int main() {int a;a=3;if(1){int k;a=4;}return a;}");
+    assert_file(3, "int main() {int a;a=3;if(1){int k;k=4;}return a;}");
+    assert_file(3, "int main() {int a;a=3;if(1){int b;}int b;b=1;return a;}");
+    assert_compile_fail("int main() {int a;if(1){int a;}int a;}");
     printf("OK\n");
     return 0;
 }
