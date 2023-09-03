@@ -871,8 +871,11 @@ Node *unary_expression() {
         node->expr_type = node->lhs->expr_type->ptr_to;
         return node;
     }
-    if(consume("~"))
-        return new_node(ND_BIT_NOT, cast_expression(), NULL);
+    if(consume("~")) {
+        Node *node = new_node(ND_BIT_NOT, cast_expression(), NULL);
+        node->expr_type = node->lhs->expr_type;
+        return node;
+    }
     if(consume_kind(TK_SIZEOF)) {
         bool paren = consume("(");
         if(paren) {
