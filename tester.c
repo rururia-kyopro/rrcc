@@ -314,6 +314,7 @@ int main() {
     assert_compile_fail("int main() {int a;if(1){int a;}int a;}");
     assert_file(3, "int main() {int a;a=0;for(int i = 0; i < 3; i=i+1){a=a+i;}return a;}");
     assert_file(9, "int main() {int a;a=0;for(int i = 0; i < 3; i=i+1){int i;a=a+1;}for(int i = 0; i < 3; i=i+1){a=a+i*2;}return a;}");
+    assert_file(9, "int main() {int a;a=0;for(int i = 0, j = 1; i < 3; i=i+j){int i;a=a+1;}for(int i = 0, j=3; i < 3; i=i+1){a=a+i*2;}return a;}");
     printf("OK\n");
     return 0;
 }
