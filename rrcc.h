@@ -184,6 +184,7 @@ typedef enum {
     ND_DECL_LIST,
     ND_ADDRESS_OF,
     ND_DEREF,
+    ND_BIT_NOT,
     ND_SIZEOF,
     ND_DECL_VAR,
     ND_TYPE,

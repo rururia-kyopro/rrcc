@@ -137,6 +137,12 @@ void gen(Node *node){
             gen(node->lhs);
             load(type_sizeof(node->expr_type));
             return;
+        case ND_BIT_NOT:
+            gen(node->lhs);
+            printf("  pop rax\n");
+            printf("  not rax\n");
+            printf("  push rax\n");
+            return;
         case ND_ASSIGN:
             gen_lvar(node->lhs);
             gen(node->rhs);
