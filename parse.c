@@ -240,15 +240,27 @@ Node *new_node_char(int val) {
     return node;
 }
 
-Node *new_node_scope(Node *parent_scope, Node *lhs) {
+Node *new_node_scope(Node **scope) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_SCOPE;
     node->scope.childs = new_vector();
     node->scope.locals = new_vector();
     node->scope.current = 0;
-    node->scope.parent = parent_scope;
-    node->lhs = lhs;
+    node->scope.parent = *scope;
+    if(*scope) {
+        vector_push((*scope)->scope.childs, node);
+    }
+    *scope = node;
     return node;
+}
+
+void end_scope(Node **scope) {
+    assert(*scope);
+    if(max_stack_size < locals_stack_size) {
+        max_stack_size = locals_stack_size;
+    }
+    locals_stack_size -= (*scope)->scope.current;
+    *scope = (*scope)->scope.parent;
 }
 
 Node *new_node_lvar(LVar *lvar) {
@@ -300,8 +312,8 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
     debug_log("func_def: %.*s %p\n", node->func_def.ident_len, node->func_def.ident, node->func_def.ident);
 
     // ND_FUNC_DEF -> ND_SCOPE -> ND_COMPOUND
-    scope = new_node_scope(NULL, NULL);
-    node->lhs = scope;
+    Node *new_scope = new_node_scope(&scope);
+    node->lhs = new_scope;
 
     // Assigns all space for local variables in function prologue.
     // It also include sub-scope introduced by compound statements.
@@ -355,12 +367,12 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
     if(type_storage == TS_EXTERN) {
         error("extern function cannot have function body");
     }
-    scope->lhs = stmt();
-    if(scope->lhs->kind != ND_SCOPE || scope->lhs->lhs->kind != ND_COMPOUND) {
+    new_scope->lhs = stmt();
+    if(new_scope->lhs->kind != ND_SCOPE || new_scope->lhs->lhs->kind != ND_COMPOUND) {
         error_at(token->str, "Statement of function definition shall be a compound statement.");
     }
+    end_scope(&scope);
     node->func_def.max_stack_size = max_stack_size;
-    locals_stack_size -= scope->scope.current;
 
     return node;
 }
@@ -461,6 +473,57 @@ Node *global_variable_definition(Node *node, char *ident, int ident_len) {
     return node;
 }
 
+Node *local_variable_definition() {
+    Node *decl_list = type_(true, false, false);
+    if(decl_list->kind != ND_DECL_LIST) {
+        error_at(token->str, "Function was defined in non global scope");
+    }
+
+    for(int i = 0; i < vector_size(decl_list->decl_list.decls); i++) {
+        Node *node = vector_get(decl_list->decl_list.decls, i);
+        Node *type_node = node->lhs;
+        char *ident;
+        int ident_len;
+        if(!type_find_ident(node, &ident, &ident_len)) {
+            error("Local variable must have identifier");
+        }
+
+        if(find_lvar_one(scope->scope.locals, ident, ident_len) != NULL){
+            error("variable with same name is already defined.");
+        }
+        node->decl_var.lvar = new_lvar(scope->scope.locals, ident, ident_len);
+        node->decl_var.lvar->type = type_node->type.type;
+        scope->scope.current += type_sizeof(node->decl_var.lvar->type);
+        locals_stack_size += type_sizeof(node->decl_var.lvar->type);
+
+        if(node->decl_var.init_expr) {
+            if(node->decl_var.init_expr->kind == ND_INIT) {
+                Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
+                int n = vector_size(node->decl_var.init_expr->init.init_expr);
+                init_code_node->compound_stmt_list = new_vector();
+                for(int i = 0; i < n; i++){
+                    Node *expr = vector_get(node->decl_var.init_expr->init.init_expr, i);
+                    Node *lvar_node = new_node_lvar(node->decl_var.lvar);
+
+                    Node *deref_node = new_node(ND_DEREF, new_node_add(lvar_node, new_node_num(i)), NULL);
+                    deref_node->expr_type = deref_node->lhs->expr_type->ptr_to;
+                    Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
+
+                    vector_push(init_code_node->compound_stmt_list, assign_node);
+                }
+                node->rhs = init_code_node;
+            }else {
+                Node *expr = node->decl_var.init_expr;
+                Node *lvar_node = new_node_lvar(node->decl_var.lvar);
+
+                Node *assign_node = new_node(ND_ASSIGN, lvar_node, expr);
+                node->rhs = assign_node;
+            }
+        }
+    }
+    return decl_list;
+}
+
 // initializer = expr
 //             | "{" (( expr "," )* expr )? "}"
 Node *initializer() {
@@ -526,8 +589,16 @@ Node *stmt() {
         Node *for_condition_expr = NULL;
         Node *for_update_expr = NULL;
         TokenKind kind;
+
+        // for statement introduce its own scope for variables declared in clause-1.
+        // e.g.
+        // for (int i=0; i < 10; i++){} 
+        // In above example, i lives until ends of for-body.
+        Node *new_scope = new_node_scope(&scope);
+
         if(consume_type_prefix(&kind)) {
-            for_init_expr = type_(true, false, false);
+            unget_token();
+            for_init_expr = local_variable_definition();
         } else if(!consume(";")){
             for_init_expr = expression();
             expect(";");
@@ -543,7 +614,12 @@ Node *stmt() {
         Node *node = new_node(ND_FOR, for_init_expr, for_condition_expr);
         node->for_update_expr = for_update_expr;
         node->for_stmt = stmt();
-        return node;
+
+        scope->lhs = node;
+
+        end_scope(&scope);
+
+        return new_scope;
     }else if(consume_kind(TK_DO)) {
         Node *do_stmt = stmt();
         expect_kind(TK_WHILE);
@@ -559,70 +635,18 @@ Node *stmt() {
         return node;
     }else if(consume_type_prefix(&kind)) {
         unget_token();
-        Node *decl_list = type_(true, false, false);
-        if(decl_list->kind != ND_DECL_LIST) {
-            error_at(token->str, "Function was defined in non global scope");
-        }
-
-        for(int i = 0; i < vector_size(decl_list->decl_list.decls); i++) {
-            Node *node = vector_get(decl_list->decl_list.decls, i);
-            Node *type_node = node->lhs;
-            char *ident;
-            int ident_len;
-            if(!type_find_ident(node, &ident, &ident_len)) {
-                error("Local variable must have identifier");
-            }
-
-            if(find_lvar_one(scope->scope.locals, ident, ident_len) != NULL){
-                error("variable with same name is already defined.");
-            }
-            node->decl_var.lvar = new_lvar(scope->scope.locals, ident, ident_len);
-            node->decl_var.lvar->type = type_node->type.type;
-            scope->scope.current += type_sizeof(node->decl_var.lvar->type);
-            locals_stack_size += type_sizeof(node->decl_var.lvar->type);
-
-            if(node->decl_var.init_expr) {
-                if(node->decl_var.init_expr->kind == ND_INIT) {
-                    Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
-                    int n = vector_size(node->decl_var.init_expr->init.init_expr);
-                    init_code_node->compound_stmt_list = new_vector();
-                    for(int i = 0; i < n; i++){
-                        Node *expr = vector_get(node->decl_var.init_expr->init.init_expr, i);
-                        Node *lvar_node = new_node_lvar(node->decl_var.lvar);
-
-                        Node *deref_node = new_node(ND_DEREF, new_node_add(lvar_node, new_node_num(i)), NULL);
-                        deref_node->expr_type = deref_node->lhs->expr_type->ptr_to;
-                        Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
-
-                        vector_push(init_code_node->compound_stmt_list, assign_node);
-                    }
-                    node->rhs = init_code_node;
-                }else {
-                    Node *expr = node->decl_var.init_expr;
-                    Node *lvar_node = new_node_lvar(node->decl_var.lvar);
-
-                    Node *assign_node = new_node(ND_ASSIGN, lvar_node, expr);
-                    node->rhs = assign_node;
-                }
-            }
-        }
-        return decl_list;
+        return local_variable_definition();
     }else if(consume("{")) {
         Node *node = new_node(ND_COMPOUND, NULL, NULL);
-        Node *new_scope = new_node_scope(scope, node);
-        vector_push(scope->scope.childs, new_scope);
-        scope = new_scope;
+        Node *new_scope = new_node_scope(&scope);
+        new_scope->lhs = node;
         node->compound_stmt_list = new_vector();
 
         int i = 0;
         while(!consume("}")){
             vector_push(node->compound_stmt_list, stmt());
         }
-        if(max_stack_size < locals_stack_size) {
-            max_stack_size = locals_stack_size;
-        }
-        locals_stack_size -= new_scope->scope.current;
-        scope = scope->scope.parent;
+        end_scope(&scope);
         return new_scope;
     }
     Node *node = expression();
