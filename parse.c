@@ -8,7 +8,9 @@
 #include "rrcc.h"
 
 Vector *locals;
+Node *scope;
 int locals_stack_size;
+int max_stack_size;
 Vector *globals;
 int global_size;
 Vector *global_string_literals;
@@ -278,7 +280,7 @@ Node *external_declaration() {
 
 // function_definition = type ident "(" ( type ident "," )* ( type ident )? ")" stmt
 Node *function_definition(TypeStorage type_storage, Node *type_node) {
-    Node *node = new_node(ND_FUNC_DEF, type_node, NULL);
+    Node *node = new_node(ND_FUNC_DEF, NULL, NULL);
     node->func_def.arg_vec = new_vector();
     node->func_def.lvar_vec = new_vector();
 
@@ -288,7 +290,30 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
     }
     debug_log("func_def: %.*s %p\n", node->func_def.ident_len, node->func_def.ident, node->func_def.ident);
 
-    locals_stack_size = 0;
+    // ND_FUNC_DEF -> ND_SCOPE -> ND_COMPOUND
+    scope = new_node(ND_SCOPE, NULL, NULL);
+    scope->scope.current = 0;
+    scope->scope.childs = new_vector();
+    node->lhs = scope;
+
+    // Assigns all space for local variables in function prologue.
+    // It also include sub-scope introduced by compound statements.
+    // max_stack_size tracks deepest stack size along with all scopes.
+    // This size doesn't add up sub-scopes in the same level,
+    // because they don't use variables simultaneously.
+    // e.g.
+    // int func() {
+    //    if(...){
+    //        int a;
+    //    }
+    //    if(...){
+    //        long b;
+    //    }
+    // }
+    // In above example, variable a and b can share same stack address because both aren't used simultaneously.
+    // So, in this case max_stack_size equals max(sizeof(a), sizeof(b))
+    assert(locals_stack_size == 0);
+    max_stack_size = 0;
 
     for(int i = 0; i < vector_size(type->args); i++) {
         Node *arg_lvar_node = vector_get(type->args, i);
@@ -306,6 +331,7 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
         }
         arg->lvar = new_lvar(node->func_def.lvar_vec, arg->ident, arg->ident_len);
         arg->lvar->type = arg->type;
+        scope->scope.current += type_sizeof(arg->lvar->type);
         locals_stack_size += type_sizeof(arg->lvar->type);
     }
 
@@ -324,10 +350,12 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
     if(type_storage == TS_EXTERN) {
         error("extern function cannot have function body");
     }
-    node->lhs = stmt();
-    if(node->lhs->kind != ND_COMPOUND) {
+    scope->lhs = stmt();
+    if(scope->lhs->kind != ND_SCOPE || scope->lhs->lhs->kind != ND_COMPOUND) {
         error_at(token->str, "Statement of function definition shall be a compound statement.");
     }
+    node->func_def.max_stack_size = max_stack_size;
+    locals_stack_size -= scope->scope.current;
 
     return node;
 }
@@ -492,7 +520,10 @@ Node *stmt() {
         Node *for_init_expr = NULL;
         Node *for_condition_expr = NULL;
         Node *for_update_expr = NULL;
-        if(!consume(";")){
+        TokenKind kind;
+        if(consume_type_prefix(&kind)) {
+            for_init_expr = type_(true, false, false);
+        } else if(!consume(";")){
             for_init_expr = expression();
             expect(";");
         }
@@ -542,6 +573,7 @@ Node *stmt() {
             }
             node->decl_var.lvar = new_lvar(locals, ident, ident_len);
             node->decl_var.lvar->type = type_node->type.type;
+            scope->scope.current += type_sizeof(node->decl_var.lvar->type);
             locals_stack_size += type_sizeof(node->decl_var.lvar->type);
 
             if(node->decl_var.init_expr) {
@@ -572,13 +604,24 @@ Node *stmt() {
         return decl_list;
     }else if(consume("{")) {
         Node *node = new_node(ND_COMPOUND, NULL, NULL);
+        Node *new_scope = new_node(ND_SCOPE, node, NULL);
+        new_scope->scope.current = 0;
+        new_scope->scope.parent = scope;
+        new_scope->scope.childs = new_vector();
+        vector_push(scope->scope.childs, new_scope);
+        scope = new_scope;
         node->compound_stmt_list = new_vector();
 
         int i = 0;
         while(!consume("}")){
             vector_push(node->compound_stmt_list, stmt());
         }
-        return node;
+        if(max_stack_size < locals_stack_size) {
+            max_stack_size = locals_stack_size;
+        }
+        locals_stack_size -= new_scope->scope.current;
+        scope = scope->scope.parent;
+        return new_scope;
     }
     Node *node = expression();
     expect(";");
@@ -1650,6 +1693,7 @@ LVar *new_lvar(Vector *locals, char *ident, int ident_len) {
     LVar *lvar = calloc(1, sizeof(LVar));
     lvar->name = ident;
     lvar->len = ident_len;
+    // Offset from rbp set by function prologue
     lvar->offset = locals_stack_size;
     vector_push(locals, lvar);
 

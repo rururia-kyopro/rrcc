@@ -180,6 +180,7 @@ typedef enum {
     ND_CALL,
     ND_FUNC_DEF,
     ND_FUNC_DECL,
+    ND_SCOPE,
     ND_DECL_LIST,
     ND_ADDRESS_OF,
     ND_DEREF,
@@ -257,6 +258,7 @@ struct Node {
             Vector *arg_vec;
             Vector *lvar_vec;
             Type *type;
+            int max_stack_size;
         } func_def;
         struct {
             char *ident;
@@ -279,6 +281,11 @@ struct Node {
         struct {
             Vector *decls;
         } decl_list;
+        struct {
+            int current;
+            Node *parent;
+            Vector *childs;
+        } scope;
     };
 };
 

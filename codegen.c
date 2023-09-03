@@ -7,6 +7,12 @@
 int cur_label = 0;
 static const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
+int stack_base = 0;
+
+int stack_align(int size) {
+    return (size + 7) & ~7;
+}
+
 char *access_size(int size) {
     if(size == 1) return "byte ptr";
     if(size == 2) return "word ptr";
@@ -37,6 +43,7 @@ int get_stack_sub_offset(LVar *lvar) {
 
 void gen_lvar(Node *node) {
     if(node->kind == ND_LVAR) {
+        printf("  // access %.*s\n", node->lvar->len, node->lvar->name);
         printf("  mov rax, rbp\n");
         printf("  sub rax,%d\n", get_stack_sub_offset(node->lvar));
         printf("  push rax\n");
@@ -260,7 +267,7 @@ void gen(Node *node){
             printf("  push r15\n");
             printf("  push rbx\n");
             printf("  mov rbp,rsp\n");
-            printf("  sub rsp,%d\n", (lvar_stack_size(node->func_def.lvar_vec)+7)/8*8);
+            printf("  sub rsp,%d\n", stack_align(node->func_def.max_stack_size));
             for(int i = 0; i < size; i++){
                 FuncDefArg *arg = vector_get(node->func_def.arg_vec, i);
                 printf("  lea rax, [rbp-%d]\n", get_stack_sub_offset(arg->lvar));
@@ -272,6 +279,9 @@ void gen(Node *node){
             gen(node->lhs);
             gen_return();
             return;
+        case ND_SCOPE: {
+            gen(node->lhs);
+            return; }
         case ND_DECL_VAR: {
             // Dummy element
             if(node->rhs) {
