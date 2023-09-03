@@ -313,6 +313,7 @@ Node *additive_expression();
 Node *multiplicative_expression();
 Node *cast_expression();
 Node *unary_expression();
+Node *postfix_expression();
 Node *primary_expression();
 Node *type_(bool need_ident, bool is_global, bool is_funcarg);
 Node *type_pointer(bool need_ident);

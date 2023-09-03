@@ -853,9 +853,9 @@ Node *cast_expression() {
 //       | primary
 Node *unary_expression() {
     if(consume("+"))
-        return primary_expression();
+        return cast_expression();
     if(consume("-"))
-        return new_node_binop(ND_SUB, new_node_num(0), primary_expression());
+        return new_node_binop(ND_SUB, new_node_num(0), cast_expression());
     if(consume("&")) {
         Node *node = new_node(ND_ADDRESS_OF, unary_expression(), NULL);
         node->expr_type = calloc(1, sizeof(Type));
@@ -891,50 +891,17 @@ Node *unary_expression() {
         }
         return new_node_num(type_sizeof(unary_expression()->expr_type));
     }
-    return primary_expression();
+    return postfix_expression();
 }
 
-// primary = "(" expr ")"
-//         | ident
-//         | primary ("(" ( (expr ",")* expr )? ")")?
-//         | primary "[" expr "]"
-//         | primary "." ident
-//         | primary "->" ident
-//         | num
-//         | string_literal
-Node *primary_expression() {
-    if(consume("(")){
-        Node *node = expression();
-        expect(")");
-        return node;
-    }
-    Node *node;
-    char *ident;
-    int ident_len;
-    if(consume_ident(&ident, &ident_len)){
-        node = find_symbol(globals, ident, ident_len);
-        if(node == NULL) {
-            error_at(ident, "symbol %.*s is not defined.", ident_len, ident);
-        }
-    }else if(consume_kind(TK_STRING_LITERAL)) {
-        unget_token();
-        StringLiteral *literal = calloc(1, sizeof(StringLiteral));
-        literal->str = token->str;
-        literal->len = token->len;
-        literal->char_vec = token->literal;
-        literal->vec_len = token->literal_len;
-        literal->index = vector_size(global_string_literals);
-        vector_push(global_string_literals, literal);
-        next_token();
-
-        node = new_node(ND_STRING_LITERAL, NULL, NULL);
-        node->expr_type = calloc(1, sizeof(Type));
-        node->expr_type->ptr_to = &char_type;
-        node->expr_type->ty = PTR;
-        node->string_literal.literal = literal;
-    }else {
-        node = new_node_num(expect_number());
-    }
+// postfix_expression = "(" expr ")"
+//         | primary_expression
+//         | postfix_expression "(" ( (expr ",")* expr )? ")"
+//         | postfix_expression "[" expression "]"
+//         | postfix_expression "." ident
+//         | postfix_expression "->" ident
+Node *postfix_expression() {
+    Node *node = primary_expression();
     while(1) {
         if(consume("(")){
             Node *call_node = new_node(ND_CALL, node, NULL);
@@ -954,8 +921,11 @@ Node *primary_expression() {
                 }
             }
 
-            call_node->call_ident = ident;
-            call_node->call_ident_len = ident_len;
+            if(node->kind != ND_GVAR) {
+                error_at(token->str, "Function call for non-ident is not supported");
+            }
+            call_node->call_ident = node->gvar.gvar->name;
+            call_node->call_ident_len = node->gvar.gvar->len;
             node = call_node;
         }else if(consume("[")) {
             Node *expr_node = expression();
@@ -1011,6 +981,46 @@ Node *primary_expression() {
         }else{
             break;
         }
+    }
+    return node;
+}
+
+// primary_expression = identifier
+//                    | constant
+//                    | string-literal
+//                    | "(" expression ")"
+Node *primary_expression() {
+    if(consume("(")){
+        Node *node = expression();
+        expect(")");
+        return node;
+    }
+    Node *node;
+    char *ident;
+    int ident_len;
+    if(consume_ident(&ident, &ident_len)){
+        node = find_symbol(globals, ident, ident_len);
+        if(node == NULL) {
+            error_at(ident, "symbol %.*s is not defined.", ident_len, ident);
+        }
+    }else if(consume_kind(TK_STRING_LITERAL)) {
+        unget_token();
+        StringLiteral *literal = calloc(1, sizeof(StringLiteral));
+        literal->str = token->str;
+        literal->len = token->len;
+        literal->char_vec = token->literal;
+        literal->vec_len = token->literal_len;
+        literal->index = vector_size(global_string_literals);
+        vector_push(global_string_literals, literal);
+        next_token();
+
+        node = new_node(ND_STRING_LITERAL, NULL, NULL);
+        node->expr_type = calloc(1, sizeof(Type));
+        node->expr_type->ptr_to = &char_type;
+        node->expr_type->ty = PTR;
+        node->string_literal.literal = literal;
+    }else {
+        node = new_node_num(expect_number());
     }
     return node;
 }
