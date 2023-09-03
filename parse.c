@@ -1043,10 +1043,10 @@ Node *constant_fold(Node *node) {
         node->rhs = constant_fold(node->rhs);
         if(node->lhs->kind == ND_NUM && node->rhs->kind == ND_NUM) {
             switch(node->kind) {
-                case ND_ADD: node->val = node->lhs->val + node->rhs->val;
-                case ND_SUB: node->val = node->lhs->val - node->rhs->val;
-                case ND_MUL: node->val = node->lhs->val * node->rhs->val;
-                case ND_DIV: node->val = node->lhs->val / node->rhs->val;
+                case ND_ADD: node->val = node->lhs->val + node->rhs->val; break;
+                case ND_SUB: node->val = node->lhs->val - node->rhs->val; break;
+                case ND_MUL: node->val = node->lhs->val * node->rhs->val; break;
+                case ND_DIV: node->val = node->lhs->val / node->rhs->val; break;
             }
             node->kind = ND_NUM;
         }
