@@ -966,7 +966,7 @@ Node *postfix_expression() {
                 }
             }
             if(!found) {
-                error("No member name found");
+                error_at(token->str, "No member name found: %.*s", ident_len, ident);
             }
             Node *left = NULL;
             if(dot){
