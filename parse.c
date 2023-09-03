@@ -956,16 +956,9 @@ Node *postfix_expression() {
                 error("Access struct member for non struct variable");
             }
             vec = struct_type->members;
-            bool found = false;
-            StructMember *mem;
-            for(int i = 0; i < vector_size(vec); i++) {
-                mem = vector_get(vec, i);
-                if(compare_ident(ident, ident_len, mem->ident, mem->ident_len)) {
-                    found = true;
-                    break;
-                }
-            }
-            if(!found) {
+            size_t offset = 0;
+            StructMember *mem = find_struct_member(struct_type->members, ident, ident_len, &offset);
+            if(!mem) {
                 error_at(token->str, "No member name found: %.*s", ident_len, ident);
             }
             Node *left = NULL;
@@ -975,9 +968,9 @@ Node *postfix_expression() {
                 left = node;
             }
             left->expr_type = type_new_ptr(&char_type);
-            Node *add = new_node_add(left, new_node_num(mem->offset));
+            Node *add = new_node_add(left, new_node_num(offset));
             node = new_node(ND_DEREF, add, NULL);
-            node->expr_type = mem->node->type.type;
+            node->expr_type = mem->type;
         }else if(peek("++") || peek("--")) {
             bool plus = consume("++");
             if(!plus) {
@@ -1261,6 +1254,7 @@ Node *type_(bool need_ident, bool is_global, bool parse_one_type) {
     }
 
     Node *list_node = new_node(ND_DECL_LIST, NULL, NULL);
+    list_node->decl_list.base_type = base_type;
     list_node->decl_list.decls = new_vector();
     if(consume(";")) {
         // struct definition.
@@ -1548,28 +1542,45 @@ Vector *struct_members(size_t *size, bool is_struct) {
         if(decl_list->kind != ND_DECL_LIST) {
             error_at(token->str, "Invalid declaration of struct member");
         }
-        for(int i = 0; i < vector_size(decl_list->decl_list.decls); i++){
-            Node *decl_node = vector_get(decl_list->decl_list.decls, i);
-            Node *type_node = decl_node->lhs;
+        if(vector_size(decl_list->decl_list.decls) == 0) {
+            // unnamed member
             StructMember *member = calloc(1, sizeof(StructMember));
-            type_find_ident(type_node, &member->ident, &member->ident_len);
-            for(int i = 0; i < vector_size(vec); i++) {
-                StructMember *member2 = vector_get(vec, i);
-                if(member->ident_len == member2->ident_len && memcmp(member->ident, member2->ident, member->ident_len) == 0) {
-                    error("Struct member with same name is already defined: %.*s", member->ident_len, member->ident);
-                }
-            }
-            member->node = type_node;
+            member->type = decl_list->decl_list.base_type;
+            member->unnamed = true;
             if(is_struct) {
                 member->offset = *size;
-                *size += type_sizeof(type_node->type.type);
+                *size += type_sizeof(member->type);
             }else{
                 member->offset = 0;
-                if(*size < type_sizeof(type_node->type.type)) {
-                    *size = type_sizeof(type_node->type.type);
+                if(*size < type_sizeof(member->type)) {
+                    *size = type_sizeof(member->type);
                 }
             }
             vector_push(vec, member);
+        }else{
+            for(int i = 0; i < vector_size(decl_list->decl_list.decls); i++){
+                Node *decl_node = vector_get(decl_list->decl_list.decls, i);
+                Node *type_node = decl_node->lhs;
+                StructMember *member = calloc(1, sizeof(StructMember));
+                type_find_ident(type_node, &member->ident, &member->ident_len);
+                for(int i = 0; i < vector_size(vec); i++) {
+                    StructMember *member2 = vector_get(vec, i);
+                    if(member->ident_len == member2->ident_len && memcmp(member->ident, member2->ident, member->ident_len) == 0) {
+                        error("Struct member with same name is already defined: %.*s", member->ident_len, member->ident);
+                    }
+                }
+                member->type = type_node->type.type;
+                if(is_struct) {
+                    member->offset = *size;
+                    *size += type_sizeof(type_node->type.type);
+                }else{
+                    member->offset = 0;
+                    if(*size < type_sizeof(type_node->type.type)) {
+                        *size = type_sizeof(type_node->type.type);
+                    }
+                }
+                vector_push(vec, member);
+            }
         }
     }
     return vec;
@@ -1991,6 +2002,28 @@ bool type_find_ident(Node *node, char **ident, int *ident_len) {
         }
     }
     return false;
+}
+
+StructMember *find_struct_member(Vector *member_list, char *ident, int ident_len, size_t *offset) {
+    StructMember *mem;
+    for(int i = 0; i < vector_size(member_list); i++) {
+        mem = vector_get(member_list, i);
+        if(mem->unnamed) {
+            // Recursively examine unnamed member.
+            size_t rec_offset = 0;
+            StructMember *memr = find_struct_member(mem->type->members, ident, ident_len, &rec_offset);
+            if(memr) {
+                *offset = rec_offset + mem->offset;
+                return memr;
+            }
+            continue;
+        }
+        if(compare_ident(ident, ident_len, mem->ident, mem->ident_len)) {
+            *offset = mem->offset;
+            return mem;
+        }
+    }
+    return NULL;
 }
 
 void print_indent(int level, const char *fmt, ...) {

@@ -281,6 +281,7 @@ struct Node {
             Vector *init_expr;
         } init;
         struct {
+            Type *base_type;
             Vector *decls;
         } decl_list;
         struct {
@@ -415,13 +416,15 @@ Type *type_new_func(Type *type, Vector *args);
 Type *type_new_struct(char *ident, int ident_len);
 Type *type_new_enum(char *ident, int ident_len);
 bool type_find_ident(Node *node, char **ident, int *ident_len);
+StructMember *find_struct_member(Vector *member_list, char *ident, int ident_len, size_t *offset);
 
 /// StructMember ///
 struct StructMember {
-    Node *node;
+    Type *type;
     int offset;
     char *ident;
     int ident_len;
+    bool unnamed;
 };
 
 /// Struct Registry Entry ///

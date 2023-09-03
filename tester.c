@@ -320,6 +320,7 @@ int main() {
     assert_file(2, "int main() {int a;a=1;int b;b=a++;return a;}");
     assert_file(1, "int main() {int a;a=1;int b;b=a++;return b;}");
     assert_file(2, "int main() {int v[2];v[0]=1;v[1]=2;int *a;a=v;a++;return *a;}");
+    assert_file(10, "struct A{int a;struct {int b;};};int main() {struct A f;f.b=10;f.a=9;return f.b;}");
     printf("OK\n");
     return 0;
 }
