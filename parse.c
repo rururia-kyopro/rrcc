@@ -367,14 +367,14 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
 
     GVar *gvar = find_gvar(globals, node->func_def.ident, node->func_def.ident_len);
     if(gvar != NULL) {
-        error("A global variable with same name is already defined");
+        error_at(token->str, "A global variable with same name is already defined");
     }
 
     gvar = new_gvar(globals, node->func_def.ident, node->func_def.ident_len, type_node->type.type);
     gvar_def_node->gvar_def.gvar = gvar;
 
     if(type_storage == TS_EXTERN) {
-        error("extern function cannot have function body");
+        error_at(token->str, "extern function cannot have function body");
     }
     new_scope->lhs = stmt();
     if(new_scope->lhs->kind != ND_SCOPE || new_scope->lhs->lhs->kind != ND_COMPOUND) {
