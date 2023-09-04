@@ -201,6 +201,7 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
         case ND_SUB:
         case ND_MUL:
         case ND_DIV:
+        case ND_MOD:
             node->expr_type = type_arithmetic(lhs->expr_type, rhs->expr_type);
             break;
         case ND_EQUAL:
@@ -659,10 +660,34 @@ Node *expression() {
 // assignment_expression = logical_OR_expression ( "=" assignment_expression )?
 Node *assignment_expression() {
     Node *node = logical_OR_expression();
+    Node *rhs = NULL;
     if(consume("=")) {
-        node = new_node(ND_ASSIGN, node, assignment_expression());
-        node->expr_type = node->lhs->expr_type;
+        rhs = assignment_expression();
+    }else if(consume("*=")) {
+        rhs = new_node_binop(ND_MUL, node, assignment_expression());
+    }else if(consume("/=")) {
+        rhs = new_node_binop(ND_DIV, node, assignment_expression());
+    }else if(consume("%=")) {
+        rhs = new_node_binop(ND_MOD, node, assignment_expression());
+    }else if(consume("+=")) {
+        rhs = new_node_binop(ND_ADD, node, assignment_expression());
+    }else if(consume("-=")) {
+        rhs = new_node_binop(ND_SUB, node, assignment_expression());
+    }else if(consume("<<=")) {
+        rhs = new_node_binop(ND_LSHIFT, node, assignment_expression());
+    }else if(consume(">>=")) {
+        rhs = new_node_binop(ND_RSHIFT, node, assignment_expression());
+    }else if(consume("&=")) {
+        rhs = new_node_binop(ND_AND, node, assignment_expression());
+    }else if(consume("^=")) {
+        rhs = new_node_binop(ND_XOR, node, assignment_expression());
+    }else if(consume("|=")) {
+        rhs = new_node_binop(ND_OR, node, assignment_expression());
+    }else {
+        return node;
     }
+    node = new_node(ND_ASSIGN, node, rhs);
+    node->expr_type = node->lhs->expr_type;
     return node;
 }
 

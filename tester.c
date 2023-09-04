@@ -324,6 +324,12 @@ int main() {
     assert_file(2, "int main() {char a[10-sizeof(int*)];return sizeof(a);}");
     assert_file(12, "int main() {return sizeof(int [3]);}");
     assert_file(24, "int main() {return sizeof(int *[3]);}");
+    assert_file(2, "int main() {int a=3;a ^= 1;return a;}");
+    assert_file(8, "int main() {int a=3;a += 5;return a;}");
+    assert_file(12, "int main() {int a=4;a *= 3;return a;}");
+    assert_file(2, "int main() {int a=7;a &= 10;return a;}");
+    assert_file(15, "int main() {int a=7;a |= 10;return a;}");
+    assert_file(15, "int main() {int a=7,b=0;b = a |= 10;return b;}");
     printf("OK\n");
     return 0;
 }
