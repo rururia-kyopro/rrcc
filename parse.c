@@ -367,7 +367,7 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
 
     GVar *gvar = find_gvar(globals, node->func_def.ident, node->func_def.ident_len);
     if(gvar != NULL) {
-        error_at(token->str, "A global variable with same name is already defined");
+        //error_at(token->str, "A global variable with same name is already defined");
     }
 
     gvar = new_gvar(globals, node->func_def.ident, node->func_def.ident_len, type_node->type.type);
