@@ -279,6 +279,7 @@ Token *tokenize(char *p){
                 { "case", TK_CASE },
                 { "default", TK_DEFAULT },
                 { "break", TK_BREAK },
+                { "continue", TK_CONTINUE },
                 { "while", TK_WHILE },
                 { "for", TK_FOR },
                 { "do", TK_DO },

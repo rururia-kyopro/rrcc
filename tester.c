@@ -366,6 +366,8 @@ int main() {
     assert_file_inc(3, "#include <tmpinc.h>\nint main() { return func(); }", "\n\nint func(){return __LINE__;}\n");
     assert_stdout(0, "main", "int printf(...);int main(){printf(\"%s\", __func__);return 0;}");
     assert_stdout(0, "myfunc", "int printf(...);int myfunc(){printf(\"%s\", __func__);}int main(){myfunc();return 0;}");
+    assert_file(12, "int main(){int a = 0;for(int i = 0; i < 10; i++){if(i==3){i=8;continue;}a += i;}return a;}");
+    assert_file(20, "int main(){int a = 0;int i = 0;while(i < 10){if(i==3){i=8;continue;}a+=i;i++;}return a;}");
     printf("OK\n");
     return 0;
 }

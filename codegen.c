@@ -11,6 +11,7 @@ static const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 int stack_base = 0;
 int switch_number = 0;
 int current_break_target = 0;
+int current_continue_target = 0;
 
 int stack_align(int size) {
     return (size + 7) & ~7;
@@ -257,19 +258,29 @@ void gen(Node *node){
             printf("  jmp .Lbreak_%d\n", current_break_target);
             return;
         }
+        case ND_CONTINUE: {
+            printf("  jmp .Lcontinue_%d\n", current_continue_target);
+            return;
+        }
         case ND_FOR: {
             int break_target = ++current_break_target;
+            int continue_targets = ++current_continue_target;
+            // clause-1
             gen(node->lhs);
             printf("  pop rax\n");
             int label_for = ++cur_label;
             printf(".L%d:\n", label_for);
+            // condition
             gen(node->rhs);
             printf("  pop rax\n");
             printf("  test rax,rax\n");
             int label = ++cur_label;
             printf("  jz .L%d\n", label);
+            // body
             gen(node->for_stmt);
             printf("  pop rax\n");
+            // update expression
+            printf("  .Lcontinue_%d:\n", continue_targets);
             gen(node->for_update_expr);
             printf("  pop rax\n");
             printf("  jmp .L%d\n", label_for);
@@ -280,9 +291,11 @@ void gen(Node *node){
         }
         case ND_WHILE: {
             int break_target = ++current_break_target;
+            int continue_targets = ++current_continue_target;
             int label_while = ++cur_label;
             int label_while_end = ++cur_label;
             printf(".L%d:\n", label_while);
+            printf(".Lcontinue_%d:\n", continue_targets);
             gen(node->lhs);
             printf("  pop rax\n");
             printf("  test rax,rax\n");
@@ -297,8 +310,10 @@ void gen(Node *node){
         }
         case ND_DO: {
             int break_target = ++current_break_target;
+            int continue_targets = ++current_continue_target;
             int label_do = ++cur_label;
             printf(".L%d:\n", label_do);
+            printf(".Lcontinue_%d:\n", continue_targets);
             gen(node->lhs);
             printf("  pop rax\n");
             gen(node->rhs);

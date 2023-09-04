@@ -19,6 +19,7 @@ Vector *enum_registry;
 Vector *typedef_registry;
 Vector *switch_stack;
 Vector *break_targets;
+Vector *continue_targets;
 Node *current_func;
 int unnamed_struct_count = 0;
 
@@ -303,6 +304,7 @@ Node *translation_unit() {
     typedef_registry = new_vector();
     switch_stack = new_vector();
     break_targets = new_vector();
+    continue_targets = new_vector();
 
     define_builtins();
 
@@ -664,14 +666,23 @@ Node *stmt() {
         Node *node = new_node(ND_BREAK, NULL, NULL);
         expect(";");
         return node;
+    }else if(consume_kind(TK_CONTINUE)) {
+        if(vector_size(continue_targets) == 0) {
+            error_at(token->str, "break must be in a switch statement.");
+        }
+        Node *node = new_node(ND_CONTINUE, NULL, NULL);
+        expect(";");
+        return node;
     }else if(consume_kind(TK_WHILE)) {
         expect("(");
         Node *while_expr = expression();
         expect(")");
         Node *node = new_node(ND_WHILE, while_expr, NULL);
         vector_push(break_targets, node);
+        vector_push(continue_targets, node);
         node->rhs = stmt();
         vector_pop(break_targets);
+        vector_pop(continue_targets);
         return node;
     }else if(consume_kind(TK_FOR)) {
         expect("(");
@@ -704,8 +715,10 @@ Node *stmt() {
         Node *node = new_node(ND_FOR, for_init_expr, for_condition_expr);
         node->for_update_expr = for_update_expr;
         vector_push(break_targets, node);
+        vector_push(continue_targets, node);
         node->for_stmt = stmt();
         vector_pop(break_targets);
+        vector_pop(continue_targets);
 
         scope->lhs = node;
 
@@ -715,8 +728,10 @@ Node *stmt() {
     }else if(consume_kind(TK_DO)) {
         Node *node = new_node(ND_DO, NULL, NULL);
         vector_push(break_targets, node);
+        vector_push(continue_targets, node);
         node->lhs = stmt();
         vector_pop(break_targets);
+        vector_pop(continue_targets);
         expect_kind(TK_WHILE);
         expect("(");
         node->rhs = expression();
