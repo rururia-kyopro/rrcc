@@ -364,6 +364,8 @@ int main() {
     assert_stdout(0, "tmp.c:2", "int printf(...);int main(){\nprintf(\"%s:%d\", __FILE__, __LINE__);return 0;}");
     assert_stdout(0, "tmp.c:3", "int printf(...);int main(){\n\nprintf(\"%s:%d\", __FILE__, __LINE__);return 0;}");
     assert_file_inc(3, "#include <tmpinc.h>\nint main() { return func(); }", "\n\nint func(){return __LINE__;}\n");
+    assert_stdout(0, "main", "int printf(...);int main(){printf(\"%s\", __func__);return 0;}");
+    assert_stdout(0, "myfunc", "int printf(...);int myfunc(){printf(\"%s\", __func__);}int main(){myfunc();return 0;}");
     printf("OK\n");
     return 0;
 }

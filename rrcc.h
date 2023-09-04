@@ -355,6 +355,7 @@ bool consume_type_prefix(TokenKind *kind);
 TokenKind expect_type_prefix();
 bool peek_type_prefix();
 Node *constant_fold(Node *node);
+Node *create_func_name_literal();
 
 /// LVar ///
 

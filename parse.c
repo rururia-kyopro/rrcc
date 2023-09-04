@@ -19,6 +19,7 @@ Vector *enum_registry;
 Vector *typedef_registry;
 Vector *switch_stack;
 Vector *break_targets;
+Node *current_func;
 int unnamed_struct_count = 0;
 
 Type void_type = { VOID };
@@ -313,6 +314,7 @@ Node *external_declaration() {
 // function_definition = type ident "(" ( type ident "," )* ( type ident )? ")" stmt
 Node *function_definition(TypeStorage type_storage, Node *type_node) {
     Node *node = new_node(ND_FUNC_DEF, NULL, NULL);
+    current_func = node;
     node->func_def.arg_vec = new_vector();
 
     Type *type = node->func_def.type = type_node->type.type;
@@ -1162,9 +1164,13 @@ Node *primary_expression() {
     char *ident;
     int ident_len;
     if(consume_ident(&ident, &ident_len)){
-        node = find_symbol(globals, ident, ident_len);
-        if(node == NULL) {
-            error_at(ident, "symbol %.*s is not defined.", ident_len, ident);
+        if(compare_slice(ident, ident_len, "__func__")) {
+            node = create_func_name_literal();
+        } else {
+            node = find_symbol(globals, ident, ident_len);
+            if(node == NULL) {
+                error_at(ident, "symbol %.*s is not defined.", ident_len, ident);
+            }
         }
     }else if(consume_kind(TK_STRING_LITERAL)) {
         unget_token();
@@ -1901,6 +1907,32 @@ bool peek_type_prefix() {
         }
     }
     return false;
+}
+
+Node *create_func_name_literal() {
+    Node *node = new_node(ND_STRING_LITERAL, NULL, NULL);
+    node->string_literal.literal = calloc(1, sizeof(StringLiteral));
+    if(current_func == NULL) {
+        error_at(token->str, "Cannot use __func__ out of function");
+    }
+    
+    int len = current_func->func_def.ident_len;
+    char *p = malloc(len + 3);
+    p[0] = '"';
+    memcpy(p + 1, current_func->func_def.ident, len);
+    p[len + 1] = '"';
+    p[len + 2] = '\0';
+    node->string_literal.literal->str = p + 1;
+    node->string_literal.literal->len = len;
+    node->string_literal.literal->char_vec = new_vector();
+    for(int i = 0; i < len; i++) {
+        vector_push(node->string_literal.literal->char_vec, (void *)(long)p[i + 1]);
+    }
+    node->string_literal.literal->vec_len = vector_size(node->string_literal.literal->char_vec);
+    node->string_literal.literal->index = vector_size(global_string_literals);
+    vector_push(global_string_literals, node->string_literal.literal);
+
+    return node;
 }
 
 /// LVar ///
