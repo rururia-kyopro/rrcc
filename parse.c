@@ -370,7 +370,7 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
         //error_at(token->str, "A global variable with same name is already defined");
     }
 
-    gvar = new_gvar(globals, node->func_def.ident, node->func_def.ident_len, type_node->type.type);
+    gvar = new_gvar(globals, node->func_def.ident, node->func_def.ident_len, type_node->type.type, true);
     gvar_def_node->gvar_def.gvar = gvar;
 
     new_scope->lhs = stmt();
@@ -410,7 +410,7 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
         if(!type_find_ident(node, &ident, &ident_len)) {
             error("No identifier on extern variable");
         }
-        global_variable_definition(node, ident, ident_len);
+        global_variable_definition(node, ident, ident_len, false);
 
         return new_node(ND_TYPE_EXTERN, node, NULL);
     }
@@ -428,7 +428,7 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
         for(; cur != NULL; cur = cur->lhs) {
             if(cur->kind == ND_IDENT) {
                 found = true;
-                global_variable_definition(node, cur->ident.ident, cur->ident.ident_len);
+                global_variable_definition(node, cur->ident.ident, cur->ident.ident_len, true);
                 break;
             }
         }
@@ -466,14 +466,18 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
 }
 
 // global_variable_definition = type ("=" initializer)? ";"
-Node *global_variable_definition(Node *node, char *ident, int ident_len) {
+Node *global_variable_definition(Node *node, char *ident, int ident_len, bool has_definition) {
     GVar *gvar = find_gvar(globals, ident, ident_len);
     if(gvar != NULL) {
+        if(!gvar->has_definition) {
+            node->gvar_def.gvar = gvar;
+            return NULL;
+        }
         error_at(ident, "A global variable with same name is already defined");
     }
     // debug_log("global def: %p", node->lhs->type.type);
 
-    gvar = new_gvar(globals, ident, ident_len, node->lhs->type.type);
+    gvar = new_gvar(globals, ident, ident_len, node->lhs->type.type, has_definition);
     node->gvar_def.gvar = gvar;
     return node;
 }
@@ -1420,7 +1424,7 @@ Node *type_(bool need_ident, bool is_global, bool parse_one_type) {
             }
             GVar *gvar = find_gvar(globals, ident, ident_len);
             if(gvar == NULL) {
-                gvar = new_gvar(globals, ident, ident_len, node->type.type);
+                gvar = new_gvar(globals, ident, ident_len, node->type.type, false);
             }
 
             var_node = new_node(ND_FUNC_DECL, node, NULL);
@@ -1776,7 +1780,7 @@ Vector *enum_members() {
             num = constant_fold(constant_expression())->val;
         }
 
-        gvar = new_gvar(globals, ident, ident_len, &signed_int_type);
+        gvar = new_gvar(globals, ident, ident_len, &signed_int_type, true);
         gvar->is_enum = true;
         gvar->enum_num = num;
         member->gvar = gvar;
@@ -1923,11 +1927,12 @@ GVar *find_gvar(Vector *globals, char *ident, int ident_len) {
     return NULL;
 }
 
-GVar *new_gvar(Vector *globals, char *ident, int ident_len, Type *type) {
+GVar *new_gvar(Vector *globals, char *ident, int ident_len, Type *type, bool has_definition) {
     GVar *gvar = calloc(1, sizeof(GVar));
     gvar->name = ident;
     gvar->len = ident_len;
     gvar->type = type;
+    gvar->has_definition = has_definition;
     vector_push(globals, gvar);
 
     return gvar;

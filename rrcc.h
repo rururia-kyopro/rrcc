@@ -317,7 +317,7 @@ extern Node *code[100];
 Node *translation_unit();
 Node *external_declaration();
 Node *function_definition(TypeStorage type_storage, Node *type_node);
-Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len);
+Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len, bool has_definition);
 Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_storage);
 Node *initializer();
 Node *stmt();
@@ -381,13 +381,14 @@ struct GVar {
     Type *type;
     bool is_enum;
     int enum_num;
+    bool has_definition;
 };
 
 extern Vector *globals;
 extern int global_size;
 
 GVar *find_gvar(Vector *locals, char *ident, int ident_len);
-GVar *new_gvar(Vector *locals, char *ident, int ident_len, Type *type);
+GVar *new_gvar(Vector *locals, char *ident, int ident_len, Type *type, bool has_definition);
 Node *find_symbol(Vector *globals, char *ident, int ident_len);
 
 /// String Literal ///
