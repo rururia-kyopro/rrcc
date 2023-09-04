@@ -26,6 +26,10 @@ void *vector_get(Vector *vec, int i) {
     return vec->ptr[i];
 }
 
+void vector_set(Vector *vec, int i, void *x) {
+    vec->ptr[i] = x;
+}
+
 int vector_size(Vector *vec) {
     return vec->size;
 }

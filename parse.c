@@ -399,7 +399,7 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
             error("extern variable cannot have initializer");
         }
         init_expr = initializer();
-        if((init_expr->kind == ND_INIT) != (type->ty == ARRAY)) {
+        if((init_expr->kind == ND_INIT) != (type->ty == ARRAY || type->ty == STRUCT)) {
             error_at(token->str, "Initializer type does not match");
         }
     }
@@ -447,17 +447,33 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
     // }
     if(init_expr && init_expr->kind == ND_INIT) {
         Vector *vec = init_expr->init.init_expr;
-        if(!type->has_array_size) {
-            type->array_size = vector_size(vec);
-            type->has_array_size = true;
-        }
-        if(vector_size(vec) > type->array_size) {
-            error_at(token->str, "Too many initializer for array size %d (fed %d)", type->array_size, vector_size(vec));
-        }
-        for(int i = 0; i < vector_size(vec); i++) {
-            Node *elem_node = vector_get(vec, i);
-            if(!type_is_same(elem_node->expr_type, type->ptr_to)) {
-                error_at(token->str, "Not compatible type");
+        if(type->ty == ARRAY) {
+            if(!type->has_array_size) {
+                type->array_size = vector_size(vec);
+                type->has_array_size = true;
+            }
+            if(vector_size(vec) > type->array_size) {
+                error_at(token->str, "Too many initializer for array size %d (fed %d)", type->array_size, vector_size(vec));
+            }
+            for(int i = 0; i < vector_size(vec); i++) {
+                Node *elem_node = vector_get(vec, i);
+                if(!type_is_same(elem_node->expr_type, type->ptr_to)) {
+                    error_at(token->str, "Not compatible type");
+                }
+            }
+        } else if(type->ty == STRUCT) {
+            int member_num = vector_size(type->members);
+            if(vector_size(vec) > member_num) {
+                error_at(token->str, "Too many initializer for struct");
+            }
+            for(int i = 0; i < vector_size(vec); i++) {
+                Node *elem_node = vector_get(vec, i);
+                StructMember *member = vector_get(type->members, i);
+                elem_node = constant_fold(elem_node);
+                vector_set(vec, i, elem_node);
+                if(!type_is_compatible(elem_node->expr_type, member->type)) {
+                    error_at(token->str, "Not compatible type");
+                }
             }
         }
     }
@@ -2064,7 +2080,7 @@ bool type_implicit_ptr(Type *type) {
 
 bool type_is_int(Type *type) {
     return type->ty == CHAR || type->ty == SHORT || type->ty == INT ||
-        type->ty == LONG || type->ty == LONGLONG;
+        type->ty == LONG || type->ty == LONGLONG || type->ty == ENUM;
 }
 
 bool type_is_floating(Type *type) {
@@ -2093,6 +2109,16 @@ bool type_is_same(Type *type_a, Type *type_b) {
         type_a = type_a->ptr_to;
         type_b = type_b->ptr_to;
     }
+}
+
+bool type_is_compatible(Type *type_a, Type *type_b) {
+    if(type_is_same(type_a, type_b)) {
+        return true;
+    }
+    if(type_is_int(type_a) && type_is_int(type_b)) {
+        return true;
+    }
+    return false;
 }
 
 Type *type_new_ptr(Type *type) {

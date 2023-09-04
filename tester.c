@@ -359,6 +359,7 @@ int main() {
     assert_file(6, "int main(){int a=0;int i=0;do{if(i==4){break;}a+=i;i++;}while(1);return a;}");
     assert_file(0, "int main(){int a=1;return !a;}");
     assert_file(1, "int main(){int a=0;return !a;}");
+    assert_file(70, "struct A {int a;char b;};struct A p = {30, 40};int main(){return p.a+p.b;}");
     printf("OK\n");
     return 0;
 }

@@ -430,6 +430,7 @@ bool type_is_floating(Type *type);
 bool type_is_basic(Type *type);
 bool type_is_scalar(Type *type);
 bool type_is_same(Type *type_a, Type *type_b);
+bool type_is_compatible(Type *type_a, Type *type_b);
 Type *type_new_ptr(Type *type);
 Type *type_new_array(Type *type, bool has_size, int size);
 Type *type_new_func(Type *type, Vector *args);

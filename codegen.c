@@ -389,18 +389,36 @@ void gen(Node *node){
             printf(".data\n");
             printf(".globl %.*s\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
             printf("%.*s:\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
-            int zero_size = type_sizeof(node->gvar_def.gvar->type);
+            Type *type = node->gvar_def.gvar->type;
+            int zero_size = type_sizeof(type);
             if(node->gvar_def.init_expr) {
-                if(type_is_scalar(node->gvar_def.gvar->type)) {
-                    int size = type_sizeof(node->gvar_def.gvar->type);
+                Vector *init_expr = node->gvar_def.init_expr->init.init_expr;
+                if(type_is_scalar(type)) {
+                    int size = type_sizeof(type);
                     int64_t val = node->gvar_def.init_expr->val;
                     char *buf = (char *)&val;
                     for(int i = 0; i < size; i++){
                         printf("  .byte %d\n", (unsigned char)buf[i]);
                     }
                     zero_size -= size;
+                }else if(type->ty == STRUCT) {
+                    for(int i = 0; i < vector_size(init_expr); i++) {
+                        Node *node = vector_get(init_expr, i);
+                        StructMember *member = vector_get(type->members, i);
+                        int s = type_sizeof(member->type);
+
+                        if(node->kind != ND_NUM) {
+                            error("Cannot use non constant expression as initializer element.");
+                        }
+                        int64_t val = node->val;
+                        char *buf = (char *)&val;
+                        for(int i = 0; i < s; i++){
+                            printf("  .byte %d\n", (unsigned char)buf[i]);
+                        }
+                        zero_size -= s;
+                    }
                 }else {
-                    int size = type_sizeof(node->gvar_def.gvar->type->ptr_to);
+                    int size = type_sizeof(type->ptr_to);
                     int len = vector_size(node->gvar_def.init_expr->init.init_expr);
                     char *buf = dump_initializer(size, node->gvar_def.init_expr->init.init_expr);
                     for(int i = 0; i < size*len; i++){
