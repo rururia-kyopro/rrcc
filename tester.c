@@ -360,6 +360,10 @@ int main() {
     assert_file(0, "int main(){int a=1;return !a;}");
     assert_file(1, "int main(){int a=0;return !a;}");
     assert_file(70, "struct A {int a;char b;};struct A p = {30, 40};int main(){return p.a+p.b;}");
+    assert_stdout(0, "tmp.c:1", "int printf(...);int main(){printf(\"%s:%d\", __FILE__, __LINE__);return 0;}");
+    assert_stdout(0, "tmp.c:2", "int printf(...);int main(){\nprintf(\"%s:%d\", __FILE__, __LINE__);return 0;}");
+    assert_stdout(0, "tmp.c:3", "int printf(...);int main(){\n\nprintf(\"%s:%d\", __FILE__, __LINE__);return 0;}");
+    assert_file_inc(3, "#include <tmpinc.h>\nint main() { return func(); }", "\n\nint func(){return __LINE__;}\n");
     printf("OK\n");
     return 0;
 }
