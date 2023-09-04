@@ -309,7 +309,6 @@ Node *function_definition(TypeStorage type_storage, Node *type_node) {
     if(!type_find_ident(type_node, &node->func_def.ident, &node->func_def.ident_len)) {
         error_at(token->str, "Function definition must have identifier");
     }
-    debug_log("func_def: %.*s %p\n", node->func_def.ident_len, node->func_def.ident, node->func_def.ident);
 
     // ND_FUNC_DEF -> ND_SCOPE -> ND_COMPOUND
     Node *new_scope = new_node_scope(&scope);
@@ -422,7 +421,6 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
         for(; cur != NULL; cur = cur->lhs) {
             if(cur->kind == ND_IDENT) {
                 found = true;
-                debug_log("global var add: %.*s", cur->ident.ident_len, cur->ident.ident);
                 global_variable_definition(node, cur->ident.ident, cur->ident.ident_len);
                 break;
             }
