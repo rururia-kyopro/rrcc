@@ -883,8 +883,10 @@ Node *unary_expression() {
             if(consume_type_prefix(&kind)) {
                 unget_token();
                 Node *type_node = type_(false, false, true);
+                // type is returned in list of a ND_DECL_VAR.
+                Node *var_node = vector_get(type_node->decl_list.decls, 0);
                 expect(")");
-                return new_node_num(type_sizeof(type_node->type.type));
+                return new_node_num(type_sizeof(var_node->lhs->type.type));
             } else {
                 unget_token();
             }
