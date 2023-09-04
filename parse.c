@@ -281,16 +281,25 @@ Node *new_node_lvar(LVar *lvar) {
     return node;
 }
 
-void define_builtins() {
+void define_builtin_one(char *funcname, Type *type) {
     GVar *gvar = calloc(1, sizeof(GVar));
-    gvar->name = "__builtin_va_start";
+    gvar->name = funcname;
     gvar->len = strlen(gvar->name);
     gvar->has_definition = true;
+    gvar->type = type;
+    vector_push(globals, gvar);
+}
+
+void define_builtins() {
     Vector *args = new_vector();
     vector_push(args, type_new_ptr(&void_type));
     vector_push(args, type_new_ptr(&void_type));
-    gvar->type = type_new_func(&void_type, args);
-    vector_push(globals, gvar);
+    define_builtin_one("__builtin_va_start", type_new_func(&void_type, args));
+
+    args = new_vector();
+    define_builtin_one("__builtin_va_list", type_new_func(&void_type, args));
+    args = new_vector();
+    define_builtin_one("__builtin_va_end", type_new_func(&void_type, args));
 }
 
 // translation_unit = function_definition*
