@@ -341,6 +341,7 @@ int main() {
     assert_file(3, "int main() {int a=0;switch(2) {case 3: a+=3; case 2: a+=2; case 1: a+=1; } return a;}");
     assert_file(0, "int main() {int a=0;switch(4) {case 3: a+=3; case 2: a+=2; case 1: a+=1; } return a;}");
     assert_file(1, "int main() {int a=0;switch(4) {case 3: a+=3; case 2: a+=2; default: case 1: a+=1; } return a;}");
+    assert_file(3, "int main() {int a=0;switch(3) {case 3: a+=3; break; case 2: a+=2; default: case 1: a+=1; } return a;}");
     printf("OK\n");
     return 0;
 }

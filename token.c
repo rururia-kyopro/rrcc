@@ -278,6 +278,7 @@ Token *tokenize(char *p){
                 { "switch", TK_SWITCH },
                 { "case", TK_CASE },
                 { "default", TK_DEFAULT },
+                { "break", TK_BREAK },
                 { "while", TK_WHILE },
                 { "for", TK_FOR },
                 { "do", TK_DO },

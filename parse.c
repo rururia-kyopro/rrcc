@@ -18,6 +18,7 @@ Vector *union_registry;
 Vector *enum_registry;
 Vector *typedef_registry;
 Vector *switch_stack;
+Vector *break_targets;
 int unnamed_struct_count = 0;
 
 Type void_type = { VOID };
@@ -288,6 +289,7 @@ Node *translation_unit() {
     enum_registry = new_vector();
     typedef_registry = new_vector();
     switch_stack = new_vector();
+    break_targets = new_vector();
 
     Node *node = new_node(ND_TRANS_UNIT, NULL, NULL);
     node->trans_unit.decl = new_vector();
@@ -591,8 +593,10 @@ Node *stmt() {
         Node *node = new_node(ND_SWITCH, switch_expr, NULL);
         node->switch_.cases = new_vector();
         vector_push(switch_stack, node);
+        vector_push(break_targets, node);
         node->rhs = stmt();
         vector_pop(switch_stack);
+        vector_pop(break_targets);
         return node;
     }else if(consume_kind(TK_CASE)) {
         if(vector_size(switch_stack) == 0) {
@@ -619,6 +623,13 @@ Node *stmt() {
             error_at(token->str, "Duplicate default statement");
         }
         switch_node->switch_.default_stmt = node;
+        return node;
+    }else if(consume_kind(TK_BREAK)) {
+        if(vector_size(break_targets) == 0) {
+            error_at(token->str, "break must be in a switch statement.");
+        }
+        Node *node = new_node(ND_BREAK, NULL, NULL);
+        expect(";");
         return node;
     }else if(consume_kind(TK_WHILE)) {
         expect("(");

@@ -10,6 +10,7 @@ static const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 int stack_base = 0;
 int switch_number = 0;
+int current_break_target = 0;
 
 int stack_align(int size) {
     return (size + 7) & ~7;
@@ -198,6 +199,7 @@ void gen(Node *node){
             // TODO: Check stack position for jump target?
             // condition expression
             int cur = ++switch_number;
+            int break_target = ++current_break_target;
             printf("  // switch %d\n", cur);
             gen(node->lhs);
             printf("  pop rax\n");
@@ -215,6 +217,7 @@ void gen(Node *node){
             gen(node->rhs);
             printf("  pop rax\n");
             printf("  .Lswitch_%d_end:\n", cur);
+            printf("  .Lbreak_%d:\n", break_target);
             printf("  push rax\n");
 
             return;
@@ -227,6 +230,10 @@ void gen(Node *node){
         case ND_DEFAULT: {
             printf("  .Lswitch_%d_default:\n", switch_number);
             gen(node->lhs);
+            return;
+        }
+        case ND_BREAK: {
+            printf("  jmp .Lbreak_%d\n", current_break_target);
             return;
         }
         case ND_FOR: {
