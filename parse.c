@@ -801,6 +801,7 @@ Node *conditional_expression() {
         expect(":");
         Node *lhs = conditional_expression();
         node = new_node(ND_IF, node, expr);
+        node->expr_type = lhs->expr_type;
         node->else_stmt = lhs;
     }
     return node;
@@ -813,6 +814,7 @@ Node *logical_OR_expression() {
     while(consume("||")) {
         Node *cond = new_node(ND_EQUAL, node, new_node_num(0));
         node = new_node(ND_IF, cond, logical_AND_expression());
+        node->expr_type = &signed_int_type;
         node->else_stmt = new_node_num(1);
     }
     return node;
@@ -825,6 +827,7 @@ Node *logical_AND_expression() {
     while(1) {
         if(consume("&&")) {
             node = new_node(ND_IF, node, inclusive_OR_expression());
+            node->expr_type = &signed_int_type;
             node->else_stmt = new_node_num(0);
         } else {
             return node;
@@ -2126,7 +2129,7 @@ bool type_implicit_ptr(Type *type) {
 
 bool type_is_int(Type *type) {
     return type->ty == CHAR || type->ty == SHORT || type->ty == INT ||
-        type->ty == LONG || type->ty == LONGLONG || type->ty == ENUM;
+        type->ty == LONG || type->ty == LONGLONG || type->ty == ENUM || type->ty == BOOL;
 }
 
 bool type_is_floating(Type *type) {
