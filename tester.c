@@ -351,6 +351,9 @@ int main() {
     assert_file(3, "int main(){return 1,2,3;}");
     assert_file(5, "int main(){int a=0;return a=1,a=2,a+3;}");
     assert_file(12, "int a=10;int main(){a+=2;return a;}");
+    assert_file(1, "#define a a\nint main(){int a=1;return a;}");
+    assert_file(1, "int a=1;int b=2;\n#define a b\n#define b a\nint main(){return a;}");
+    assert_file(8, "int g(int c,int d){return c*d;}int a=1;int b=2;\n#define f(a,b) g(a,b) + b\n#define g(a,b) f(a,b)\nint main(){return g(3,2);}");
     printf("OK\n");
     return 0;
 }

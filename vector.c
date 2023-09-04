@@ -50,3 +50,13 @@ void vector_remove(Vector *vec, void *x) {
         }
     }
 }
+
+Vector *vector_dup(Vector *orig) {
+    Vector *vec = new_vector();
+    vec->size = orig->size;
+    if(vec->size) {
+        vec->ptr = calloc(1, orig->size * sizeof(void *));
+        memcpy(vec->ptr, orig->ptr, orig->size * sizeof(void *));
+    }
+    return vec;
+}
