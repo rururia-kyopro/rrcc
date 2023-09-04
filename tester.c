@@ -350,6 +350,7 @@ int main() {
     assert_file(3, "int main(){int a=2;int b=3;int c=0;return c ? a : b;}");
     assert_file(3, "int main(){return 1,2,3;}");
     assert_file(5, "int main(){int a=0;return a=1,a=2,a+3;}");
+    assert_file(12, "int a=10;int main(){a+=2;return a;}");
     printf("OK\n");
     return 0;
 }

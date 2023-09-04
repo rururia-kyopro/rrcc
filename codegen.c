@@ -385,13 +385,23 @@ void gen(Node *node){
             printf("%.*s:\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
             int zero_size = type_sizeof(node->gvar_def.gvar->type);
             if(node->gvar_def.init_expr) {
-                int size = type_sizeof(node->gvar_def.gvar->type->ptr_to);
-                int len = vector_size(node->gvar_def.init_expr->init.init_expr);
-                char *buf = dump_initializer(size, node->gvar_def.init_expr->init.init_expr);
-                for(int i = 0; i < size*len; i++){
-                    printf("  .byte %d\n", (unsigned char)buf[i]);
+                if(type_is_scalar(node->gvar_def.gvar->type)) {
+                    int size = type_sizeof(node->gvar_def.gvar->type);
+                    int64_t val = node->gvar_def.init_expr->val;
+                    char *buf = (char *)&val;
+                    for(int i = 0; i < size; i++){
+                        printf("  .byte %d\n", (unsigned char)buf[i]);
+                    }
+                    zero_size -= size;
+                }else {
+                    int size = type_sizeof(node->gvar_def.gvar->type->ptr_to);
+                    int len = vector_size(node->gvar_def.init_expr->init.init_expr);
+                    char *buf = dump_initializer(size, node->gvar_def.init_expr->init.init_expr);
+                    for(int i = 0; i < size*len; i++){
+                        printf("  .byte %d\n", (unsigned char)buf[i]);
+                    }
+                    zero_size -= size * len;
                 }
-                zero_size -= size * len;
             }
             if(zero_size) {
                 printf("  .zero %d\n", zero_size);
