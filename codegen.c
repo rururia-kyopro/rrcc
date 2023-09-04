@@ -147,6 +147,7 @@ void gen(Node *node){
             printf("  push rax\n");
             return;
         case ND_POSTFIX_INC:
+        case ND_POSTFIX_DEC:
             gen_lvar(node->lhs);
             printf("  pop rax\n");
             printf("  mov rsi, rax\n");
@@ -155,6 +156,22 @@ void gen(Node *node){
             printf("  pop rax\n");
             printf("  mov rcx, rax\n");
             printf("  add rax, %ld\n", node->incdec.value);
+            printf("  push rsi\n");
+            printf("  push rax\n");
+            store(type_sizeof(node->expr_type));
+            printf("  pop rax\n");
+            printf("  push rcx\n");
+            return;
+        case ND_PREFIX_INC:
+        case ND_PREFIX_DEC:
+            gen_lvar(node->lhs);
+            printf("  pop rax\n");
+            printf("  mov rsi, rax\n");
+            printf("  push rax\n");
+            load(type_sizeof(node->expr_type));
+            printf("  pop rax\n");
+            printf("  add rax, %ld\n", node->incdec.value);
+            printf("  mov rcx, rax\n");
             printf("  push rsi\n");
             printf("  push rax\n");
             store(type_sizeof(node->expr_type));

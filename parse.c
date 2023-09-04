@@ -959,6 +959,24 @@ Node *unary_expression() {
         node->expr_type = node->lhs->expr_type;
         return node;
     }
+    if(peek("++") || peek("--")) {
+        bool plus = consume("++");
+        if(!plus) {
+            consume("--");
+        }
+        Node *node = new_node(plus ? ND_PREFIX_INC : ND_PREFIX_DEC, unary_expression(), NULL);
+        node->expr_type = node->lhs->expr_type;
+        // increment integer
+        node->incdec.value = 1;
+        // increment pointer (Adds type size)
+        if(node->expr_type->ty == PTR) {
+            node->incdec.value = type_sizeof(node->expr_type->ptr_to);
+        }
+        if(!plus) {
+            node->incdec.value = -node->incdec.value;
+        }
+        return node;
+    }
     if(consume_kind(TK_SIZEOF)) {
         bool paren = consume("(");
         if(paren) {

@@ -189,6 +189,8 @@ typedef enum {
     ND_CALL,
     ND_POSTFIX_INC,
     ND_POSTFIX_DEC,
+    ND_PREFIX_INC,
+    ND_PREFIX_DEC,
     ND_FUNC_DEF,
     ND_FUNC_DECL,
     ND_SCOPE,
