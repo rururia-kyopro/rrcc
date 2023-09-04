@@ -986,6 +986,14 @@ Node *unary_expression() {
         node->expr_type = node->lhs->expr_type;
         return node;
     }
+    if(consume("!")) {
+        Node *node = new_node(ND_EQUAL, cast_expression(), new_node_num(0));
+        if(!type_is_scalar(node->lhs->expr_type)) {
+            error_at(token->str, "Not operator expect scalar type operand.");
+        }
+        node->expr_type = node->lhs->expr_type;
+        return node;
+    }
     if(peek("++") || peek("--")) {
         bool plus = consume("++");
         if(!plus) {

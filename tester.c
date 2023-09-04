@@ -357,6 +357,8 @@ int main() {
     assert_file(6, "int main(){int a=0;for(int i = 0; i < 10; i++){if(i==4){break;}a+=i;}return a;}");
     assert_file(6, "int main(){int a=0;int i=0;while(1){if(i==4){break;}a+=i;i++;}return a;}");
     assert_file(6, "int main(){int a=0;int i=0;do{if(i==4){break;}a+=i;i++;}while(1);return a;}");
+    assert_file(0, "int main(){int a=1;return !a;}");
+    assert_file(1, "int main(){int a=0;return !a;}");
     printf("OK\n");
     return 0;
 }
