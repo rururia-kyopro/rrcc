@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
@@ -8,6 +9,7 @@ int cur_label = 0;
 static const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 int stack_base = 0;
+int switch_number = 0;
 
 int stack_align(int size) {
     return (size + 7) & ~7;
@@ -190,6 +192,41 @@ void gen(Node *node){
             }
             printf(".L%d:\n", label_skip_else);
             printf("  # if end\n");
+            return;
+        }
+        case ND_SWITCH: {
+            // TODO: Check stack position for jump target?
+            // condition expression
+            int cur = ++switch_number;
+            printf("  // switch %d\n", cur);
+            gen(node->lhs);
+            printf("  pop rax\n");
+            for(int i = 0; i < vector_size(node->switch_.cases); i++){
+                Node *case_node = vector_get(node->switch_.cases, i);
+                int64_t v = case_node->rhs->val;
+                printf("  cmp rax, %ld\n", v);
+                printf("  jz .Lswitch_%d_%ld\n", cur, v);
+            }
+            if(node->switch_.default_stmt) {
+                printf("  jmp .Lswitch_%d_default\n", cur);
+            }else {
+                printf("  jmp .Lswitch_%d_end\n", cur);
+            }
+            gen(node->rhs);
+            printf("  pop rax\n");
+            printf("  .Lswitch_%d_end:\n", cur);
+            printf("  push rax\n");
+
+            return;
+        }
+        case ND_CASE: {
+            printf("  .Lswitch_%d_%d:\n", switch_number, node->rhs->val);
+            gen(node->lhs);
+            return;
+        }
+        case ND_DEFAULT: {
+            printf("  .Lswitch_%d_default:\n", switch_number);
+            gen(node->lhs);
             return;
         }
         case ND_FOR: {

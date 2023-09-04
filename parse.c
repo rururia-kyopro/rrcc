@@ -17,6 +17,7 @@ Vector *struct_registry;
 Vector *union_registry;
 Vector *enum_registry;
 Vector *typedef_registry;
+Vector *switch_stack;
 int unnamed_struct_count = 0;
 
 Type void_type = { VOID };
@@ -286,6 +287,7 @@ Node *translation_unit() {
     union_registry = new_vector();
     enum_registry = new_vector();
     typedef_registry = new_vector();
+    switch_stack = new_vector();
 
     Node *node = new_node(ND_TRANS_UNIT, NULL, NULL);
     node->trans_unit.decl = new_vector();
@@ -580,6 +582,43 @@ Node *stmt() {
         }
         Node *node = new_node(ND_IF, if_expr, if_stmt);
         node->else_stmt = else_stmt;
+        return node;
+    }else if(consume_kind(TK_SWITCH)) {
+        expect("(");
+        Node *switch_expr = expression();
+        expect(")");
+
+        Node *node = new_node(ND_SWITCH, switch_expr, NULL);
+        node->switch_.cases = new_vector();
+        vector_push(switch_stack, node);
+        node->rhs = stmt();
+        vector_pop(switch_stack);
+        return node;
+    }else if(consume_kind(TK_CASE)) {
+        if(vector_size(switch_stack) == 0) {
+            error_at(token->str, "case statement can only be appeared in switch statement.");
+        }
+        Node *expr = expression();
+        expect(":");
+        expr = constant_fold(expr);
+        if(expr->kind != ND_NUM) {
+            error_at(token->str, "case statement must have constant expression");
+        }
+        Node *node = new_node(ND_CASE, stmt(), expr);
+        Node *switch_node = vector_get(switch_stack, vector_size(switch_stack) - 1);
+        vector_push(switch_node->switch_.cases, node);
+        return node;
+    }else if(consume_kind(TK_DEFAULT)) {
+        if(vector_size(switch_stack) == 0) {
+            error_at(token->str, "default statement can only be appeared in switch statement.");
+        }
+        expect(":");
+        Node *node = new_node(ND_DEFAULT, stmt(), NULL);
+        Node *switch_node = vector_get(switch_stack, vector_size(switch_stack) - 1);
+        if(switch_node->switch_.default_stmt != NULL) {
+            error_at(token->str, "Duplicate default statement");
+        }
+        switch_node->switch_.default_stmt = node;
         return node;
     }else if(consume_kind(TK_WHILE)) {
         expect("(");

@@ -62,6 +62,9 @@ typedef enum {
     TK_RETURN,
     TK_IF,
     TK_ELSE,
+    TK_SWITCH,
+    TK_CASE,
+    TK_DEFAULT,
     TK_WHILE,
     TK_FOR,
     TK_DO,
@@ -174,6 +177,9 @@ typedef enum {
     ND_IDENT,
     ND_RETURN,
     ND_IF,
+    ND_SWITCH,
+    ND_CASE,
+    ND_DEFAULT,
     ND_WHILE,
     ND_FOR,
     ND_DO,
@@ -294,6 +300,10 @@ struct Node {
         struct {
             size_t value;
         } incdec;
+        struct {
+            Vector *cases;
+            Node *default_stmt;
+        } switch_;
     };
 };
 
@@ -337,6 +347,7 @@ Node *typedef_declaration(bool is_global, Node *type_node);
 bool consume_type_prefix(TokenKind *kind);
 TokenKind expect_type_prefix();
 bool peek_type_prefix();
+Node *constant_fold(Node *node);
 
 /// LVar ///
 
