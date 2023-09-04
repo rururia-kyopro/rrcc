@@ -1022,7 +1022,7 @@ Node *postfix_expression() {
     while(1) {
         if(consume("(")){
             Node *call_node = new_node(ND_CALL, node, NULL);
-            call_node->expr_type = &signed_int_type;
+            call_node->expr_type = node->expr_type->ptr_to;
 
             NodeList *arg_tail = &call_node->call_arg_list;
             if(!consume(")")){
@@ -1418,7 +1418,7 @@ Node *type_(bool need_ident, bool is_global, bool parse_one_type) {
             }
             GVar *gvar = find_gvar(globals, ident, ident_len);
             if(gvar == NULL) {
-                gvar = new_gvar(globals, ident, ident_len, node->lhs->type.type);
+                gvar = new_gvar(globals, ident, ident_len, node->type.type);
             }
 
             var_node = new_node(ND_FUNC_DECL, node, NULL);
