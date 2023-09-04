@@ -266,13 +266,19 @@ void gen(Node *node){
             int break_target = ++current_break_target;
             int continue_targets = ++current_continue_target;
             // clause-1
-            gen(node->lhs);
-            printf("  pop rax\n");
+            if(node->lhs) {
+                gen(node->lhs);
+                printf("  pop rax\n");
+            }
             int label_for = ++cur_label;
             printf(".L%d:\n", label_for);
             // condition
-            gen(node->rhs);
-            printf("  pop rax\n");
+            if(node->rhs) {
+                gen(node->rhs);
+                printf("  pop rax\n");
+            } else {
+                printf("  mov rax, 1\n");
+            }
             printf("  test rax,rax\n");
             int label = ++cur_label;
             printf("  jz .L%d\n", label);
@@ -281,8 +287,10 @@ void gen(Node *node){
             printf("  pop rax\n");
             // update expression
             printf("  .Lcontinue_%d:\n", continue_targets);
-            gen(node->for_update_expr);
-            printf("  pop rax\n");
+            if(node->for_update_expr) {
+                gen(node->for_update_expr);
+                printf("  pop rax\n");
+            }
             printf("  jmp .L%d\n", label_for);
             printf("  .Lbreak_%d:\n", break_target);
             printf(".L%d:\n", label);
