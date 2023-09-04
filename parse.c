@@ -584,7 +584,7 @@ Node *initializer() {
         node->init.init_expr = new_vector();
         if(!consume("}")) {
             while(1) {
-                vector_push(node->init.init_expr, assignment_expression());
+                vector_push(node->init.init_expr, initializer());
 
                 if(consume("}")) {
                     break;
