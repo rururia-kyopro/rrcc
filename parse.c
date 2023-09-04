@@ -1154,6 +1154,10 @@ Node *primary_expression() {
     return node;
 }
 
+Node *constant_expression() {
+    return conditional_expression();
+}
+
 Node *constant_fold(Node *node) {
     if(node->kind == ND_NUM) {
         return node;
@@ -1770,7 +1774,7 @@ Vector *enum_members() {
         }
 
         if(consume("=")) {
-            num = expect_number();
+            num = constant_fold(constant_expression())->val;
         }
 
         gvar = new_gvar(globals, ident, ident_len, &signed_int_type);

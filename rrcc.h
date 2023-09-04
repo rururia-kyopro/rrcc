@@ -324,6 +324,7 @@ Node *stmt();
 Node *expression();
 Node *assignment_expression();
 Node *conditional_expression();
+Node *constant_expression();
 Node *logical_OR_expression();
 Node *logical_AND_expression();
 Node *inclusive_OR_expression();
