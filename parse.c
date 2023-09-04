@@ -167,9 +167,11 @@ Node *new_node_add(Node *lhs, Node *rhs) {
             node->expr_type->ptr_to = node->rhs->expr_type->ptr_to;
             node->rhs = new_node(ND_CONVERT, node->rhs, NULL);
             node->rhs->expr_type = node->expr_type;
-        }else{
+        }else if(node->rhs->expr_type->ty == PTR) {
             // int + ptr -> ptr
             node->expr_type = node->rhs->expr_type;
+        }else{
+            error_at(token->str, "Invalid add/sub");
         }
     }else{
         if(type_is_int(node->rhs->expr_type)) {
@@ -192,6 +194,9 @@ Node *new_node_add(Node *lhs, Node *rhs) {
 }
 
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
+    if(kind == ND_ADD) {
+        return new_node_add(lhs, rhs);
+    }
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
     node->lhs = lhs;
@@ -504,7 +509,7 @@ Node *local_variable_definition() {
                     Node *expr = vector_get(node->decl_var.init_expr->init.init_expr, i);
                     Node *lvar_node = new_node_lvar(node->decl_var.lvar);
 
-                    Node *deref_node = new_node(ND_DEREF, new_node_add(lvar_node, new_node_num(i)), NULL);
+                    Node *deref_node = new_node(ND_DEREF, new_node_binop(ND_ADD, lvar_node, new_node_num(i)), NULL);
                     deref_node->expr_type = deref_node->lhs->expr_type->ptr_to;
                     Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
 
@@ -808,7 +813,7 @@ Node *additive_expression() {
 
     for(;;){
         if(consume("+")) {
-            node = new_node_add(node, multiplicative_expression());
+            node = new_node_binop(ND_ADD, node, multiplicative_expression());
         } else if(consume("-")) {
             node = new_node(ND_SUB, node, multiplicative_expression());
             if(node->lhs->expr_type->ty == INT){
@@ -958,7 +963,7 @@ Node *postfix_expression() {
             Node *expr_node = expression();
             expect("]");
 
-            Node *added = new_node_add(node, expr_node);
+            Node *added = new_node_binop(ND_ADD, node, expr_node);
 
             node = new_node(ND_DEREF, added, NULL);
             node->expr_type = added->expr_type->ptr_to;
@@ -995,7 +1000,7 @@ Node *postfix_expression() {
                 left = node;
             }
             left->expr_type = type_new_ptr(&char_type);
-            Node *add = new_node_add(left, new_node_num(offset));
+            Node *add = new_node_binop(ND_ADD, left, new_node_num(offset));
             node = new_node(ND_DEREF, add, NULL);
             node->expr_type = mem->type;
         }else if(peek("++") || peek("--")) {
