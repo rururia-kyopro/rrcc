@@ -258,6 +258,7 @@ void gen(Node *node){
             return;
         }
         case ND_FOR: {
+            int break_target = ++current_break_target;
             gen(node->lhs);
             printf("  pop rax\n");
             int label_for = ++cur_label;
@@ -272,11 +273,13 @@ void gen(Node *node){
             gen(node->for_update_expr);
             printf("  pop rax\n");
             printf("  jmp .L%d\n", label_for);
+            printf("  .Lbreak_%d:\n", break_target);
             printf(".L%d:\n", label);
             printf("  push rax\n");
             return;
         }
         case ND_WHILE: {
+            int break_target = ++current_break_target;
             int label_while = ++cur_label;
             int label_while_end = ++cur_label;
             printf(".L%d:\n", label_while);
@@ -287,11 +290,13 @@ void gen(Node *node){
             gen(node->rhs);
             printf("  pop rax\n");
             printf("  jmp .L%d\n", label_while);
+            printf("  .Lbreak_%d:\n", break_target);
             printf(".L%d:\n", label_while_end);
             printf("  push rax\n");
             return;
         }
         case ND_DO: {
+            int break_target = ++current_break_target;
             int label_do = ++cur_label;
             printf(".L%d:\n", label_do);
             gen(node->lhs);
@@ -300,6 +305,7 @@ void gen(Node *node){
             printf("  pop rax\n");
             printf("  test rax,rax\n");
             printf("  jnz .L%d\n", label_do);
+            printf("  .Lbreak_%d:\n", break_target);
             printf("  push rax\n");
             return;
         }

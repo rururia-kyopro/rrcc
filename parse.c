@@ -636,8 +636,11 @@ Node *stmt() {
         expect("(");
         Node *while_expr = expression();
         expect(")");
-        Node *while_stmt = stmt();
-        return new_node(ND_WHILE, while_expr, while_stmt);
+        Node *node = new_node(ND_WHILE, while_expr, NULL);
+        vector_push(break_targets, node);
+        node->rhs = stmt();
+        vector_pop(break_targets);
+        return node;
     }else if(consume_kind(TK_FOR)) {
         expect("(");
         Node *for_init_expr = NULL;
@@ -668,7 +671,9 @@ Node *stmt() {
         }
         Node *node = new_node(ND_FOR, for_init_expr, for_condition_expr);
         node->for_update_expr = for_update_expr;
+        vector_push(break_targets, node);
         node->for_stmt = stmt();
+        vector_pop(break_targets);
 
         scope->lhs = node;
 
@@ -676,12 +681,14 @@ Node *stmt() {
 
         return new_scope;
     }else if(consume_kind(TK_DO)) {
-        Node *do_stmt = stmt();
+        Node *node = new_node(ND_DO, NULL, NULL);
+        vector_push(break_targets, node);
+        node->lhs = stmt();
+        vector_pop(break_targets);
         expect_kind(TK_WHILE);
         expect("(");
-        Node *do_expr = expression();
+        node->rhs = expression();
         expect(")");
-        Node *node = new_node(ND_DO, do_stmt, do_expr);
         expect(";");
         return node;
     }else if(consume_kind(TK_RETURN)) {
