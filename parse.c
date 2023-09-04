@@ -715,9 +715,9 @@ Node *expression() {
     return assignment_expression();
 }
 
-// assignment_expression = logical_OR_expression ( "=" assignment_expression )?
+// assignment_expression = conditional_expression ( "=" assignment_expression )?
 Node *assignment_expression() {
-    Node *node = logical_OR_expression();
+    Node *node = conditional_expression();
     Node *rhs = NULL;
     if(consume("=")) {
         rhs = assignment_expression();
@@ -746,6 +746,18 @@ Node *assignment_expression() {
     }
     node = new_node(ND_ASSIGN, node, rhs);
     node->expr_type = node->lhs->expr_type;
+    return node;
+}
+
+Node *conditional_expression() {
+    Node *node = logical_OR_expression();
+    if(consume("?")) {
+        Node *expr = expression();
+        expect(":");
+        Node *lhs = conditional_expression();
+        node = new_node(ND_IF, node, expr);
+        node->else_stmt = lhs;
+    }
     return node;
 }
 

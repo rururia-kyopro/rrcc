@@ -346,6 +346,8 @@ int main() {
     assert_file(1, "int main(){int a=0;int b=++a;return b;}");
     assert_file(1, "int main(){int a=0;int b=++a;return a;}");
     assert_file(1, "int main(){int a=2;int b=--a;return b;}");
+    assert_file(2, "int main(){int a=2;int b=3;int c=1;return c ? a : b;}");
+    assert_file(3, "int main(){int a=2;int b=3;int c=0;return c ? a : b;}");
     printf("OK\n");
     return 0;
 }
