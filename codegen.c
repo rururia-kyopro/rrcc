@@ -402,6 +402,11 @@ void gen(Node *node){
             printf("  cqto\n");
             printf("  div rsi\n");
             break;
+        case ND_MOD:
+            printf("  cqto\n");
+            printf("  div rsi\n");
+            printf("  mov rax, rdx\n");
+            break;
         case ND_EQUAL:
             printf("  cmp rax,rsi\n");
             printf("  sete al\n");

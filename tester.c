@@ -330,6 +330,11 @@ int main() {
     assert_file(2, "int main() {int a=7;a &= 10;return a;}");
     assert_file(15, "int main() {int a=7;a |= 10;return a;}");
     assert_file(15, "int main() {int a=7,b=0;b = a |= 10;return b;}");
+    assert_file(2, "int main() {return 12 % 5;}");
+    assert_file(0, "int main() {return 20 % 5;}");
+    assert_file(0, "int main() {return 2 % 1;}");
+    assert_file(4, "int main() {return 100 % 12;}");
+    assert_file(1, "int main() {int a=10,b=3;int c = a %= b; return c;}");
     printf("OK\n");
     return 0;
 }

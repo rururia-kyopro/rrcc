@@ -843,6 +843,8 @@ Node *multiplicative_expression() {
             node = new_node_binop(ND_MUL, node, cast_expression());
         else if(consume("/"))
             node = new_node_binop(ND_DIV, node, cast_expression());
+        else if(consume("%"))
+            node = new_node_binop(ND_MOD, node, cast_expression());
         else
             return node;
     }
