@@ -339,7 +339,7 @@ Node *cast_expression();
 Node *unary_expression();
 Node *postfix_expression();
 Node *primary_expression();
-Node *type_(bool need_ident, bool is_global, bool is_funcarg);
+Node *type_(bool need_ident, bool is_global, bool parse_one_type);
 Node *type_pointer(bool need_ident);
 Node *type_array(bool need_ident);
 void type_array_suffix(Vector *array_suffix_vector);
