@@ -173,6 +173,7 @@ typedef enum {
     ND_CAST,
     ND_NUM,
     ND_STRING_LITERAL,
+    ND_COMMA_EXPR,
     ND_LVAR,
     ND_GVAR,
     ND_IDENT,

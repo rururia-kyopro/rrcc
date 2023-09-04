@@ -519,6 +519,9 @@ void gen(Node *node){
             printf("  mov rcx,rsi\n");
             printf("  shr rax,cl\n");
             break;
+        case ND_COMMA_EXPR:
+            printf("  mov rax, rsi\n");
+            break;
     }
     printf("  push rax\n");
 }

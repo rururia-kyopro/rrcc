@@ -540,7 +540,7 @@ Node *initializer() {
         node->init.init_expr = new_vector();
         if(!consume("}")) {
             while(1) {
-                vector_push(node->init.init_expr, expression());
+                vector_push(node->init.init_expr, assignment_expression());
 
                 if(consume("}")) {
                     break;
@@ -560,7 +560,7 @@ Node *initializer() {
         vector_push(node->init.init_expr, new_node_char(0));
         return node;
     }
-    return expression();
+    return assignment_expression();
 }
 
 // stmt    = expr ";"
@@ -712,7 +712,12 @@ Node *stmt() {
 }
 
 Node *expression() {
-    return assignment_expression();
+    Node *node = assignment_expression();
+    while(consume(",")) {
+        node = new_node(ND_COMMA_EXPR, node, assignment_expression());
+        node->expr_type = node->rhs->expr_type;
+    }
+    return node;
 }
 
 // assignment_expression = conditional_expression ( "=" assignment_expression )?
@@ -1026,7 +1031,7 @@ Node *postfix_expression() {
             if(!consume(")")){
                 while(1){
                     NodeList *nodelist = calloc(1, sizeof(NodeList));
-                    nodelist->node = expression();
+                    nodelist->node = assignment_expression();
                     arg_tail->next = nodelist;
                     arg_tail = nodelist;
                     if(!consume(",")){
