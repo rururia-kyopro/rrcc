@@ -342,6 +342,7 @@ int main() {
     assert_file(0, "int main() {int a=0;switch(4) {case 3: a+=3; case 2: a+=2; case 1: a+=1; } return a;}");
     assert_file(1, "int main() {int a=0;switch(4) {case 3: a+=3; case 2: a+=2; default: case 1: a+=1; } return a;}");
     assert_file(3, "int main() {int a=0;switch(3) {case 3: a+=3; break; case 2: a+=2; default: case 1: a+=1; } return a;}");
+    assert_file(6, "void fun(int *a){for(int i = 0; i < 10; i++){if(i==4){return;}*a+=i;}return;}int main() {int v=0;fun(&v);return v;}");
     printf("OK\n");
     return 0;
 }

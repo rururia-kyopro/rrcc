@@ -684,9 +684,12 @@ Node *stmt() {
         expect(";");
         return node;
     }else if(consume_kind(TK_RETURN)) {
-        Node *node = new_node(ND_RETURN, expression(), NULL);
-        expect(";");
-        return node;
+        Node *expr = NULL;
+        if(!consume(";")) {
+            expr = expression();
+            expect(";");
+        }
+        return new_node(ND_RETURN, expr, NULL);
     }else if(consume_type_prefix(&kind)) {
         unget_token();
         return local_variable_definition();

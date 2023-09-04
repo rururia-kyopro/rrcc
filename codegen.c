@@ -168,7 +168,11 @@ void gen(Node *node){
             store(type_sizeof(node->lhs->expr_type));
             return;
         case ND_RETURN:
-            gen(node->lhs);
+            if(node->lhs) {
+                gen(node->lhs);
+            }else {
+                printf("  push 0\n");
+            }
             gen_return();
             return;
         case ND_IF: {
