@@ -280,6 +280,18 @@ Node *new_node_lvar(LVar *lvar) {
     return node;
 }
 
+void define_builtins() {
+    GVar *gvar = calloc(1, sizeof(GVar));
+    gvar->name = "__builtin_va_start";
+    gvar->len = strlen(gvar->name);
+    gvar->has_definition = true;
+    Vector *args = new_vector();
+    vector_push(args, type_new_ptr(&void_type));
+    vector_push(args, type_new_ptr(&void_type));
+    gvar->type = type_new_func(&void_type, args);
+    vector_push(globals, gvar);
+}
+
 // translation_unit = function_definition*
 Node *translation_unit() {
     globals = new_vector();
@@ -291,6 +303,8 @@ Node *translation_unit() {
     typedef_registry = new_vector();
     switch_stack = new_vector();
     break_targets = new_vector();
+
+    define_builtins();
 
     Node *node = new_node(ND_TRANS_UNIT, NULL, NULL);
     node->trans_unit.decl = new_vector();
