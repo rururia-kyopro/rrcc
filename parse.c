@@ -354,6 +354,7 @@ Node *function_definition(TypeStorage type_storage, Node *type_node, bool is_inl
     current_func = node;
     node->func_def.arg_vec = new_vector();
     node->func_def.is_inline = is_inline;
+    node->func_def.type_storage = type_storage;
 
     Type *type = node->func_def.type = type_node->type.type;
     if(!type_find_ident(type_node, &node->func_def.ident, &node->func_def.ident_len)) {

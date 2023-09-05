@@ -280,6 +280,7 @@ struct Node {
             Type *type;
             int max_stack_size;
             bool is_inline;
+            TypeStorage type_storage;
         } func_def;
         struct {
             char *ident;

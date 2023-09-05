@@ -406,7 +406,9 @@ void gen(Node *node){
             return;
         case ND_FUNC_DEF:
             printf(".text\n");
-            printf(".globl %.*s\n", node->func_def.ident_len, node->func_def.ident);
+            if(node->func_def.type_storage != TS_STATIC) {
+                printf(".globl %.*s\n", node->func_def.ident_len, node->func_def.ident);
+            }
             printf("%.*s:\n", node->func_def.ident_len, node->func_def.ident);
             int size = vector_size(node->func_def.arg_vec);
             printf("  push rbp\n");
