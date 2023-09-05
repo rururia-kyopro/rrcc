@@ -498,6 +498,8 @@ static PPToken *preprocessing_file(PPToken **cur) {
         // pp_dump_token(tail);
         tail = pp_list_tail(tail);
         tail = new_pptoken(PPTK_NEWLINE, tail, (*cur)->str, (*cur)->len);
+        tail->filename = (*cur)->filename;
+        tail->line_number = (*cur)->line_number;
     }
     return head.next;
 }
@@ -690,6 +692,8 @@ static PPToken *if_group(PPToken **cur) {
             tail->next = group_part(cur);
             tail = pp_list_tail(tail);
             tail = new_pptoken(PPTK_NEWLINE, tail, "\n", 1);
+            tail->filename = (*cur)->filename;
+            tail->line_number = (*cur)->line_number;
         }
     }
     return head.next;
