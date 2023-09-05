@@ -1,4 +1,5 @@
 #include "vector.h"
+#include "util.h"
 #include <stddef.h>
 #include <stdbool.h>
 
@@ -451,6 +452,7 @@ Type *type_new_func(Type *type, Vector *args, bool is_vararg);
 Type *type_new_struct(char *ident, int ident_len);
 Type *type_new_enum(char *ident, int ident_len);
 bool type_find_ident(Node *node, char **ident, int *ident_len);
+int type_dump(Type *type, char **out);
 StructMember *find_struct_member(Vector *member_list, char *ident, int ident_len, size_t *offset);
 
 /// StructMember ///

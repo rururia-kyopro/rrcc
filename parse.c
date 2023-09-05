@@ -2319,6 +2319,44 @@ bool type_find_ident(Node *node, char **ident, int *ident_len) {
     return false;
 }
 
+int type_dump(Type *type, char **out) {
+    Buffer *buf = init_buffer();
+    for(; type; type = type->ptr_to) {
+        if(type->ty == PTR) {
+            append_printf(buf, "* ");
+        }else if(type->ty == FUNC) {
+            append_printf(buf, "() ");
+        }else if(type->ty == ARRAY) {
+            if(type->has_array_size) {
+                append_printf(buf, "[%ld] ", type->array_size);
+            }else{
+                append_printf(buf, "[] ");
+            }
+        }else{
+            if(type->signedness == UNSIGNED) {
+                append_printf(buf, "unsigned ");
+            }else if(type->signedness == SIGNED) {
+                append_printf(buf, "signed ");
+            }
+            switch(type->ty) {
+                case VOID: append_printf(buf, "void"); break;
+                case CHAR: append_printf(buf, "char"); break;
+                case SHORT: append_printf(buf, "short"); break;
+                case INT: append_printf(buf, "int"); break;
+                case LONG: append_printf(buf, "long"); break;
+                case LONGLONG: append_printf(buf, "long long"); break;
+                case FLOAT: append_printf(buf, "foat"); break;
+                case DOUBLE: append_printf(buf, "double"); break;
+                case LONGDOUBLE: append_printf(buf, "long double"); break;
+                case BOOL: append_printf(buf, "_Bool"); break;
+                case COMPLEX: append_printf(buf, "_Complex"); break;
+            }
+        }
+    }
+    *out = buf->buf;
+    return buf->len;
+}
+
 StructMember *find_struct_member(Vector *member_list, char *ident, int ident_len, size_t *offset) {
     StructMember *mem;
     for(int i = 0; i < vector_size(member_list); i++) {

@@ -1,6 +1,6 @@
 CFLAGS=-std=c11 -g -static -fsanitize=undefined
 LDFLAGS=-fsanitize=undefined
-SRCS=main.c parse.c codegen.c token.c vector.c pp.c token_common.c
+SRCS=main.c parse.c codegen.c token.c vector.c pp.c token_common.c util.c
 OBJS=$(SRCS:.c=.o)
 OBJS_2=$(SRCS:.c=_2.o)
 RRCCFLAGS=-I/usr/lib/gcc/x86_64-linux-gnu/11/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include

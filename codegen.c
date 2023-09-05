@@ -472,6 +472,9 @@ void gen(Node *node){
                 printf("  lea rax, [rbp-%d]\n", get_stack_sub_offset(arg->lvar));
                 printf("  push rax\n");
                 printf("  push %s\n", args_regs[i]);
+                char *out;
+                type_dump(arg->type, &out);
+                printf("  // type: %s\n", out);
                 store(type_sizeof(arg->type));
                 printf("  pop rax\n");
             }

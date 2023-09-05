@@ -215,6 +215,9 @@ PPToken *pp_tokenize() {
             p++;
             continue;
         }
+        if(pp_debug) {
+            debug_log("Parsing %c", *p);
+        }
         prev_include_state = include_state;
         include_state = 0;
 
@@ -1441,54 +1444,31 @@ static int pp_assignment_expression(PPToken **cur) {
     return pp_conditional_expression(cur);
 }
 
-static void append_printf(char **buf, char **tail, int *len, char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    int appendlen = vsnprintf(NULL, 0, fmt, ap);
-    va_end(ap);
-    int filled = *tail - *buf;
-    if(filled + appendlen + 1 > *len) {
-        int newlen = filled + appendlen + 1;
-        if(newlen < *len * 2) {
-            newlen = *len * 2;
-        }
-        *buf = realloc(*buf, newlen);
-        *tail = *buf + filled;
-        *len = newlen;
-    }
-    va_start(ap, fmt);
-    vsnprintf(*tail, *len - filled, fmt, ap);
-    va_end(ap);
-    (*tail) += appendlen;
-}
-
 static char *reconstruct_tokens(PPToken *cur) {
-    char *buf = calloc(1, 1);
-    char *tail = buf;
-    int len = 1;
+    Buffer *buf = init_buffer();
 
     for(; cur; cur = cur->next) {
         if(cur->preceded_by_space) {
-            append_printf(&buf, &tail, &len, " ");
+            append_printf(buf, " ");
         }
         if(cur->kind == PPTK_CHAR_CONST) {
-            append_printf(&buf, &tail, &len, "%.*s", cur->len + 1, cur->str);
+            append_printf(buf, "%.*s", cur->len + 1, cur->str);
         }else if(cur->kind == PPTK_IDENT) {
-            append_printf(&buf, &tail, &len, "%.*s", cur->len, cur->str);
+            append_printf(buf, "%.*s", cur->len, cur->str);
         }else if(cur->kind == PPTK_PUNC) {
-            append_printf(&buf, &tail, &len, "%.*s", cur->len, cur->str);
+            append_printf(buf, "%.*s", cur->len, cur->str);
         }else if(cur->kind == PPTK_STRING_LITERAL) {
-            append_printf(&buf, &tail, &len, "%.*s", cur->len + 2, cur->str - 1);
+            append_printf(buf, "%.*s", cur->len + 2, cur->str - 1);
         }else if(cur->kind == PPTK_PPNUMBER) {
-            append_printf(&buf, &tail, &len, "%.*s", cur->len, cur->str);
+            append_printf(buf, "%.*s", cur->len, cur->str);
         }else if(cur->kind == PPTK_OTHER) {
-            append_printf(&buf, &tail, &len, "%.*s", cur->len, cur->str);
+            append_printf(buf, "%.*s", cur->len, cur->str);
         }else if(cur->kind == PPTK_NEWLINE) {
-            append_printf(&buf, &tail, &len, "\n");
-            append_printf(&buf, &tail, &len, "// %s:%d\n", cur->filename, cur->line_number);
+            append_printf(buf, "\n");
+            append_printf(buf, "// %s:%d\n", cur->filename, cur->line_number);
         }
     }
-    return buf;
+    return buf->buf;
 }
 
 static void inject_directive(char *directive) {
