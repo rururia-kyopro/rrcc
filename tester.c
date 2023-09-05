@@ -372,6 +372,7 @@ int main() {
     assert_file(107, "struct A {int a; char *b;};struct A a={10, \"abc\"};int main(){return a.a + a.b[0];}");
     assert_file(110, "struct A {int a; char b[10];};struct A a[]={{10, \"abc\"}, {3, \"def\"}};int main(){return a[0].a + a[1].b[0];}");
     assert_file(110, "struct A {int a; char *b;};struct A a[]={{10, \"abc\"}, {3, \"def\"}};int main(){return a[0].a + a[1].b[0];}");
+    assert_file(134, "struct A {int a; char *b;};struct A a[]={{10, \"abc\"}, {3, \"def\"},};int main(){return a[0].a + a[1].b[0] + sizeof(a);}");
     printf("OK\n");
     return 0;
 }

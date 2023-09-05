@@ -588,6 +588,10 @@ Node *initializer(Type *type) {
                     break;
                 }
                 expect(",");
+                // Trailing comma
+                if(consume("}")) {
+                    break;
+                }
                 i++;
             }
         }
