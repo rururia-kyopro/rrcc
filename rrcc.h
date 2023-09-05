@@ -154,6 +154,7 @@ Token *tokenize(char *p);
 typedef enum {
     ND_TRANS_UNIT,
     ND_ADD,
+    ND_ADD_RAW,
     ND_SUB,
     ND_MUL,
     ND_DIV,
@@ -376,6 +377,7 @@ LVar *find_lvar_one(Vector *locals, char *ident, int ident_len);
 LVar *new_lvar(Vector *locals, char *ident, int ident_len);
 int lvar_count(Vector *locals);
 int lvar_stack_size(Vector *locals);
+Node *lvar_initializer_node(LVar *base_var, size_t offset, Node *init_expr, Type *type);
 
 /// GVar ///
 

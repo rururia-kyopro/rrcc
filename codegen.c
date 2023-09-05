@@ -484,6 +484,10 @@ void gen(Node *node){
                 printf("  add rax,rsi\n");
             }
             break;
+        case ND_ADD_RAW:
+            printf("  // add raw\n");
+            printf("  add rax,rsi\n");
+            break;
         case ND_SUB:
             printf("  // sub\n");
             if (node->lhs->expr_type->ty == PTR) {

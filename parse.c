@@ -207,12 +207,18 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
     if(kind == ND_ADD) {
         return new_node_add(lhs, rhs);
     }
+    if(kind == ND_ADD_RAW) {
+        Node *node = new_node_add(lhs, rhs);
+        node->kind = kind;
+        return node;
+    }
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
     node->lhs = lhs;
     node->rhs = rhs;
     switch(kind) {
         case ND_ADD:
+        case ND_ADD_RAW:
         case ND_SUB:
         case ND_MUL:
         case ND_DIV:
@@ -529,29 +535,11 @@ Node *local_variable_definition() {
         scope->scope.current += type_sizeof(node->decl_var.lvar->type);
         locals_stack_size += type_sizeof(node->decl_var.lvar->type);
 
-        if(node->decl_var.init_expr) {
-            if(node->decl_var.init_expr->kind == ND_INIT) {
-                Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
-                int n = vector_size(node->decl_var.init_expr->init.init_expr);
-                init_code_node->compound_stmt_list = new_vector();
-                for(int i = 0; i < n; i++){
-                    Node *expr = vector_get(node->decl_var.init_expr->init.init_expr, i);
-                    Node *lvar_node = new_node_lvar(node->decl_var.lvar);
-
-                    Node *deref_node = new_node(ND_DEREF, new_node_binop(ND_ADD, lvar_node, new_node_num(i)), NULL);
-                    deref_node->expr_type = deref_node->lhs->expr_type->ptr_to;
-                    Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
-
-                    vector_push(init_code_node->compound_stmt_list, assign_node);
-                }
-                node->rhs = init_code_node;
-            }else {
-                Node *expr = node->decl_var.init_expr;
-                Node *lvar_node = new_node_lvar(node->decl_var.lvar);
-
-                Node *assign_node = new_node(ND_ASSIGN, lvar_node, expr);
-                node->rhs = assign_node;
-            }
+        Type *type = node->decl_var.lvar->type;
+        Node *init_expr = node->decl_var.init_expr;
+        if(init_expr) {
+            Node *lvar_init_node = lvar_initializer_node(node->decl_var.lvar, 0, init_expr, type);
+            node->rhs = lvar_init_node;
         }
     }
     return decl_list;
@@ -2025,6 +2013,40 @@ int lvar_stack_size(Vector *locals) {
         ret += type_sizeof(var->type);
     }
     return ret;
+}
+
+Node *lvar_initializer_node(LVar *base_var, size_t offset, Node *init_expr, Type *type) {
+    if(init_expr->kind == ND_INIT) {
+        Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
+        int n = vector_size(init_expr->init.init_expr);
+        init_code_node->compound_stmt_list = new_vector();
+        for(int i = 0; i < n; i++) {
+            Node *expr = vector_get(init_expr->init.init_expr, i);
+            Node *lvar_node = new_node_lvar(base_var);
+            Node *node;
+            if(type->ty == ARRAY) {
+                node = lvar_initializer_node(base_var, offset, expr, type->ptr_to);
+                offset += type_sizeof(type->ptr_to);
+            }else{
+                StructMember *member = vector_get(type->members, i);
+                node = lvar_initializer_node(base_var, offset + member->offset, expr, member->type);
+            }
+
+            vector_push(init_code_node->compound_stmt_list, node);
+        }
+        return init_code_node;
+    }else {
+        Node *expr = init_expr;
+        Node *lvar_node = new_node_lvar(base_var);
+
+        Node *addressof = new_node(ND_ADDRESS_OF, lvar_node, NULL);
+        addressof->expr_type = type_new_ptr(&void_type);
+        Node *deref_node = new_node(ND_DEREF, new_node_binop(ND_ADD_RAW, addressof, new_node_num(offset)), NULL);
+        deref_node->expr_type = type;
+
+        Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
+        return assign_node;
+    }
 }
 
 /// GVar ///
