@@ -8,6 +8,7 @@
 Token *token;
 
 char *user_input;
+int user_input_len;
 
 void next_token() {
     token = token->next;

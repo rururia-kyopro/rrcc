@@ -53,6 +53,8 @@ struct PPToken {
     int literal_len;
     bool preceded_by_space;
     Vector *history;
+    char *filename;
+    int line_number;
 };
 
 struct ExpandHistory {
@@ -114,6 +116,10 @@ static PPToken *new_pptoken(PPTokenKind kind, PPToken *cur, char *str, int len){
     cur->next = tok;
     if(str == user_input || (str[-1] == ' ' || str[-1] == '\t' || str[-1] == '\n')) {
         tok->preceded_by_space = true;
+    }
+    if(str >= user_input && str <= user_input + user_input_len) {
+        tok->filename = filename;
+        tok->line_number = (int)(long)vector_get(line_map, str - user_input);
     }
     return tok;
 }
@@ -741,12 +747,16 @@ static PPToken *control_line(PPToken **cur) {
         debug_log("include %s", p);
         char *tmp_filename = filename;
         char *tmp_user_input = user_input;
+        int tmp_user_input_len = user_input_len;
         Vector *tmp_line_map = line_map;
+
         filename = p;
         line_map = new_vector();
         PPToken *token = pp_parse_file();
+
         filename = tmp_filename;
         user_input = tmp_user_input;
+        user_input_len = tmp_user_input_len;
         line_map = tmp_line_map;
 
         PPToken *tail = pp_list_tail(token);
@@ -1462,6 +1472,7 @@ static char *reconstruct_tokens(PPToken *cur) {
             append_printf(&buf, &tail, &len, "%.*s", cur->len, cur->str);
         }else if(cur->kind == PPTK_NEWLINE) {
             append_printf(&buf, &tail, &len, "\n");
+            append_printf(&buf, &tail, &len, "// %s:%d\n", cur->filename, cur->line_number);
         }
     }
     return buf;
@@ -1469,6 +1480,13 @@ static char *reconstruct_tokens(PPToken *cur) {
 
 static void inject_directive(char *directive) {
     user_input = directive;
+    user_input_len = strlen(directive);
+    filename = "<builtin>";
+
+    char *processed = calloc(1, strlen(user_input) + 1);
+    line_map = new_vector();
+    pp_phase2(user_input, processed, line_map);
+
     PPToken *cur = pp_tokenize();
     PPToken *tail = pp_list_tail(cur);
     tail = new_pptoken(PPTK_NEWLINE, tail, "\n", 1);
@@ -1478,12 +1496,14 @@ static void inject_directive(char *directive) {
 
 PPToken *pp_parse_file() {
     user_input = read_file(filename);
+    user_input_len = strlen(user_input);
     // debug_log("read file: '%s'\n", user_input);
     char *processed = calloc(1, strlen(user_input) + 1);
     pp_phase2(user_input, processed, line_map);
     // debug_log("processed file: '%s'\n", processed);
 
     user_input = processed;
+    user_input_len = strlen(user_input);
 
     PPToken *pptoken = pp_tokenize();
     //pp_dump_token(pptoken);
@@ -1494,6 +1514,7 @@ PPToken *pp_parse_file() {
 char *do_pp() {
     macro_registry = new_vector();
     char *tmp = user_input;
+    char *tmp_filename = filename;
     inject_directive("#define __STDC__ 1");
     inject_directive("#define __STDC_HOSTED__ 1");
     inject_directive("#define __STDC_MB_MIGHT_NEQ_WC__ 1");
@@ -1529,6 +1550,7 @@ char *do_pp() {
 
     user_input = tmp;
     line_map = new_vector();
+    filename = tmp_filename;
     return reconstruct_tokens(pp_parse_file());
 }
 

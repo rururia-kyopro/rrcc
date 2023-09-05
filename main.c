@@ -43,10 +43,12 @@ int main(int argc, char **argv) {
   }
 
   user_input = read_file(filename);
+  user_input_len = strlen(user_input);
 
   bool use_pp = true;
   if(use_pp) {
     user_input = do_pp();
+    user_input_len = strlen(user_input);
     // debug_log("Preprocessed:\n%s", user_input);
   }
 

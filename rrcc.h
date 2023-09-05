@@ -130,6 +130,7 @@ struct Token {
 extern Token *token;
 
 extern char *user_input;
+extern int user_input_len;
 extern char *filename;
 extern int debug_parse;
 

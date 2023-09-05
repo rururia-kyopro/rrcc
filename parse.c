@@ -134,11 +134,17 @@ void print_current_position(char *loc) {
     while (*end != '\n')
         end++;
 
+    char *last_line = line - 1;
+    while (user_input < last_line && last_line[-1] != '\n')
+        last_line--;
+
     // 見つかった行が全体の何行目なのかを調べる
     int line_num = 1;
     for (char *p = user_input; p < line; p++)
         if (*p == '\n')
             line_num++;
+
+    fprintf(stderr, "%.*s", (int)(line - last_line), last_line);
 
     // 見つかった行を、ファイル名と行番号と一緒に表示
     int indent = fprintf(stderr, "%s:%d: ", filename, line_num);
