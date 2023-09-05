@@ -368,6 +368,10 @@ int main() {
     assert_stdout(0, "myfunc", "int printf(...);int myfunc(){printf(\"%s\", __func__);}int main(){myfunc();return 0;}");
     assert_file(12, "int main(){int a = 0;for(int i = 0; i < 10; i++){if(i==3){i=8;continue;}a += i;}return a;}");
     assert_file(20, "int main(){int a = 0;int i = 0;while(i < 10){if(i==3){i=8;continue;}a+=i;i++;}return a;}");
+    assert_file(107, "struct A {int a; char b[10];};struct A a={10, \"abc\"};int main(){return a.a + a.b[0];}");
+    assert_file(107, "struct A {int a; char *b;};struct A a={10, \"abc\"};int main(){return a.a + a.b[0];}");
+    assert_file(110, "struct A {int a; char b[10];};struct A a[]={{10, \"abc\"}, {3, \"def\"}};int main(){return a[0].a + a[1].b[0];}");
+    assert_file(110, "struct A {int a; char *b;};struct A a[]={{10, \"abc\"}, {3, \"def\"}};int main(){return a[0].a + a[1].b[0];}");
     printf("OK\n");
     return 0;
 }

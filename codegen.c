@@ -25,18 +25,52 @@ char *access_size(int size) {
     return "unknown";
 }
 
-char *dump_initializer(int size, Vector *init_expr) {
-    char *buf = calloc(1, size * vector_size(init_expr));
-    char *p = buf;
-    for(int i = 0; i < vector_size(init_expr); i++){
-        Node *expr = vector_get(init_expr, i);
-        if(type_is_int(expr->expr_type)) {
-            long long val = expr->val;
-            memcpy(p, &val, size);
-            p += size;
+void gen_initexpr(Type *type, Node *init_expr_node) {
+    int zero_size = type_sizeof(type);
+    debug_log("zero size: %d\n", zero_size);
+    if(init_expr_node) {
+        if(type_is_scalar(type)) {
+            int size = type_sizeof(type);
+            if(init_expr_node->kind == ND_NUM) {
+                int64_t val = init_expr_node->val;
+                char *buf = (char *)&val;
+                debug_log("int: %d  - %d\n", zero_size, size);
+                for(int i = 0; i < size; i++){
+                    printf("  .byte %d\n", (unsigned char)buf[i]);
+                }
+            }else if(init_expr_node->kind == ND_STRING_LITERAL) {
+                debug_log("literal: %d  - 8\n", zero_size);
+                printf("  .quad .L_S_%d\n", init_expr_node->string_literal.literal->index);
+            }
+            zero_size -= size;
+        }else if(type->ty == STRUCT) {
+            if(init_expr_node->kind != ND_INIT) {
+                error("Initializer type mismatch.");
+            }
+            Vector *init_expr = init_expr_node->init.init_expr;
+            for(int i = 0; i < vector_size(init_expr); i++) {
+                Node *node = vector_get(init_expr, i);
+                StructMember *member = vector_get(type->members, i);
+                int s = type_sizeof(member->type);
+
+                gen_initexpr(member->type, node);
+                zero_size -= s;
+            }
+        }else {
+            Vector *init_expr = init_expr_node->init.init_expr;
+            int len = vector_size(init_expr);
+            for(int i = 0; i < len; i++) {
+                Node *node = vector_get(init_expr, i);
+
+                gen_initexpr(type->ptr_to, node);
+            }
+            int s = type_sizeof(type->ptr_to);
+            zero_size -= s * len;
         }
     }
-    return buf;
+    if(zero_size) {
+        printf("  .zero %d\n", zero_size);
+    }
 }
 
 // lvar->offset indicates storage size in byte which the variables above this variable occupy.
@@ -413,46 +447,7 @@ void gen(Node *node){
             printf(".globl %.*s\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
             printf("%.*s:\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
             Type *type = node->gvar_def.gvar->type;
-            int zero_size = type_sizeof(type);
-            if(node->gvar_def.init_expr) {
-                Vector *init_expr = node->gvar_def.init_expr->init.init_expr;
-                if(type_is_scalar(type)) {
-                    int size = type_sizeof(type);
-                    int64_t val = node->gvar_def.init_expr->val;
-                    char *buf = (char *)&val;
-                    for(int i = 0; i < size; i++){
-                        printf("  .byte %d\n", (unsigned char)buf[i]);
-                    }
-                    zero_size -= size;
-                }else if(type->ty == STRUCT) {
-                    for(int i = 0; i < vector_size(init_expr); i++) {
-                        Node *node = vector_get(init_expr, i);
-                        StructMember *member = vector_get(type->members, i);
-                        int s = type_sizeof(member->type);
-
-                        if(node->kind != ND_NUM) {
-                            error("Cannot use non constant expression as initializer element.");
-                        }
-                        int64_t val = node->val;
-                        char *buf = (char *)&val;
-                        for(int i = 0; i < s; i++){
-                            printf("  .byte %d\n", (unsigned char)buf[i]);
-                        }
-                        zero_size -= s;
-                    }
-                }else {
-                    int size = type_sizeof(type->ptr_to);
-                    int len = vector_size(node->gvar_def.init_expr->init.init_expr);
-                    char *buf = dump_initializer(size, node->gvar_def.init_expr->init.init_expr);
-                    for(int i = 0; i < size*len; i++){
-                        printf("  .byte %d\n", (unsigned char)buf[i]);
-                    }
-                    zero_size -= size * len;
-                }
-            }
-            if(zero_size) {
-                printf("  .zero %d\n", zero_size);
-            }
+            gen_initexpr(type, node->gvar_def.init_expr);
             return;
         case ND_CONVERT:
             if(node->lhs->expr_type->ty == ARRAY && node->expr_type->ty == PTR) {

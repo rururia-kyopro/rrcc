@@ -425,7 +425,7 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
         if(type_storage == TS_EXTERN) {
             error("extern variable cannot have initializer");
         }
-        init_expr = initializer();
+        init_expr = initializer(type);
         if((init_expr->kind == ND_INIT) != (type->ty == ARRAY || type->ty == STRUCT)) {
             error_at(token->str, "Initializer type does not match");
         }
@@ -469,38 +469,13 @@ Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_stor
         node->decl_var.init_expr = init_expr;
     }
 
-    // if(type->ty == ARRAY && !type->has_array_size && init_expr == NULL) {
-    //     error_at(token->str, "Variable with empty array size must has initializer");
-    // }
+    // Complete array size
     if(init_expr && init_expr->kind == ND_INIT) {
         Vector *vec = init_expr->init.init_expr;
         if(type->ty == ARRAY) {
             if(!type->has_array_size) {
                 type->array_size = vector_size(vec);
                 type->has_array_size = true;
-            }
-            if(vector_size(vec) > type->array_size) {
-                error_at(token->str, "Too many initializer for array size %d (fed %d)", type->array_size, vector_size(vec));
-            }
-            for(int i = 0; i < vector_size(vec); i++) {
-                Node *elem_node = vector_get(vec, i);
-                if(!type_is_same(elem_node->expr_type, type->ptr_to)) {
-                    error_at(token->str, "Not compatible type");
-                }
-            }
-        } else if(type->ty == STRUCT) {
-            int member_num = vector_size(type->members);
-            if(vector_size(vec) > member_num) {
-                error_at(token->str, "Too many initializer for struct");
-            }
-            for(int i = 0; i < vector_size(vec); i++) {
-                Node *elem_node = vector_get(vec, i);
-                StructMember *member = vector_get(type->members, i);
-                elem_node = constant_fold(elem_node);
-                vector_set(vec, i, elem_node);
-                if(!type_is_compatible(elem_node->expr_type, member->type)) {
-                    error_at(token->str, "Not compatible type");
-                }
             }
         }
     }
@@ -578,30 +553,53 @@ Node *local_variable_definition() {
 
 // initializer = expr
 //             | "{" (( expr "," )* expr )? "}"
-Node *initializer() {
+Node *initializer(Type *type) {
     if(consume("{")) {
         Node *node = new_node(ND_INIT, NULL, NULL);
         node->init.init_expr = new_vector();
+        if(type->ty != ARRAY && type->ty != STRUCT) {
+            error_at(token->str, "initializer list doesn't match to type");
+        }
         if(!consume("}")) {
+            int i = 0;
             while(1) {
-                vector_push(node->init.init_expr, initializer());
+                Type *child_type;
+                if(type->ty == ARRAY){
+                    if(type->has_array_size && i >= type->array_size) {
+                        error_at(token->str, "Too many initializer for array");
+                    }
+                    child_type = type->ptr_to;
+                }else {
+                    if(i >= vector_size(type->members)) {
+                        error_at(token->str, "Too many initializer for struct");
+                    }
+                    StructMember *member = vector_get(type->members, i);
+                    child_type = member->type;
+                }
+                vector_push(node->init.init_expr, initializer(child_type));
 
                 if(consume("}")) {
                     break;
                 }
                 expect(",");
+                i++;
             }
         }
         return node;
     } else if(consume_kind(TK_STRING_LITERAL)) {
         unget_token();
-        Node *node = new_node(ND_INIT, NULL, NULL);
-        node->init.init_expr = new_vector();
-        for(int i = 0; i < vector_size(token->literal); i++) {
-            vector_push(node->init.init_expr, new_node_char((char)(long)vector_get(token->literal, i)));
+        Node *node;
+        if(type->ty == ARRAY) {
+            node = new_node(ND_INIT, NULL, NULL);
+            node->init.init_expr = new_vector();
+            for(int i = 0; i < vector_size(token->literal); i++) {
+                vector_push(node->init.init_expr, new_node_char((char)(long)vector_get(token->literal, i)));
+            }
+            next_token();
+            vector_push(node->init.init_expr, new_node_char(0));
+        }else {
+            node = primary_expression();
         }
-        next_token();
-        vector_push(node->init.init_expr, new_node_char(0));
         return node;
     }
     return assignment_expression();

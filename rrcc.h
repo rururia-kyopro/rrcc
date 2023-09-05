@@ -321,7 +321,7 @@ Node *external_declaration();
 Node *function_definition(TypeStorage type_storage, Node *type_node);
 Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len, bool has_definition);
 Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_storage);
-Node *initializer();
+Node *initializer(Type *type);
 Node *stmt();
 Node *expression();
 Node *assignment_expression();
