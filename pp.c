@@ -13,6 +13,7 @@ typedef struct MacroRegistryEntry MacroRegistryEntry;
 Vector *macro_registry;
 Vector *include_pathes;
 Vector *line_map;
+bool pp_debug;
 
 static void pp_next_token(PPToken **cur);
 static bool pp_expect(PPToken **cur, char *str);
@@ -26,6 +27,7 @@ static void process_token_concat_operator(PPToken *cur);
 static PPToken *make_string(PPToken *token, PPToken *cur);
 static PPToken *pp_new_str_token(PPToken *cur, char *str, int len);
 PPToken *pp_parse_file();
+int pp_length_in_line(PPToken *cur);
 
 typedef enum {
     PPTK_NEWLINE,
@@ -766,6 +768,11 @@ static PPToken *control_line(PPToken **cur) {
         MacroRegistryEntry *entry = calloc(1, sizeof(MacroRegistryEntry));
         pp_expect_ident(cur, &entry->ident, &entry->ident_len);
         entry->rep_list = new_vector();
+
+        if(pp_debug) {
+            PPToken *tmp = (*cur)->prev;
+            debug_log("Process define %s:%d %.*s", (*cur)->filename, (*cur)->line_number, pp_length_in_line(tmp), tmp->str);
+        }
 
         // function-like macro definition must have "(" which is not preceded by space
         if(!(*cur)->preceded_by_space && pp_consume(cur, "(")) {
@@ -1569,5 +1576,10 @@ int pp_main(char *file) {
     printf("%s", output);
 
     return 0;
+}
+
+int pp_length_in_line(PPToken *cur) {
+    char *p = strchr(cur->str, '\n');
+    return p - cur->str;
 }
 

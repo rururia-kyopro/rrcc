@@ -31,6 +31,8 @@ int main(int argc, char **argv) {
           return pp_main(argv[i+1]);
       }else if(strncmp(argv[i], "-d", 2) == 0){
           debug_parse = 1;
+      }else if(strncmp(argv[i], "-t", 2) == 0){
+          pp_debug = 1;
       } else {
           filename = argv[i];
           break;

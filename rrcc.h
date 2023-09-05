@@ -18,6 +18,8 @@ void append_include_pathes(char *p);
 
 int match_punc(char *p);
 
+extern bool pp_debug;
+
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct NodeList NodeList;
