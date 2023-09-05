@@ -299,6 +299,7 @@ void define_builtin_one(char *funcname, Type *type) {
     gvar->len = strlen(gvar->name);
     gvar->has_definition = true;
     gvar->type = type;
+    gvar->is_builtin = true;
     vector_push(globals, gvar);
 }
 
@@ -306,12 +307,12 @@ void define_builtins() {
     Vector *args = new_vector();
     vector_push(args, type_new_ptr(&void_type));
     vector_push(args, type_new_ptr(&void_type));
-    define_builtin_one("__builtin_va_start", type_new_func(&void_type, args));
+    define_builtin_one("__builtin_va_start", type_new_func(&void_type, args, false));
 
     args = new_vector();
-    define_builtin_one("__builtin_va_list", type_new_func(&void_type, args));
+    define_builtin_one("__builtin_va_list", type_new_func(&void_type, args, false));
     args = new_vector();
-    define_builtin_one("__builtin_va_end", type_new_func(&void_type, args));
+    define_builtin_one("__builtin_va_end", type_new_func(&void_type, args, false));
 }
 
 // translation_unit = function_definition*
@@ -400,8 +401,19 @@ Node *function_definition(TypeStorage type_storage, Node *type_node, bool is_inl
         }
         arg->lvar = new_lvar(scope->scope.locals, arg->ident, arg->ident_len);
         arg->lvar->type = arg->type;
-        scope->scope.current += type_sizeof(arg->lvar->type);
-        locals_stack_size += type_sizeof(arg->lvar->type);
+        int size = type_sizeof(arg->lvar->type);
+        if(size < 8) {
+            size = 8;
+        }
+        arg->lvar->stack_size = size;
+
+        scope->scope.current += size;
+        locals_stack_size += size;
+    }
+    // For var arg, 6 arg save spaces are required for `reg_save_area` (AMD64).
+    if(vector_size(type->args) < 6 && type->is_vararg) {
+        scope->scope.current += 8 * (6 - vector_size(type->args));
+        locals_stack_size += 8 * (6 - vector_size(type->args));
     }
 
     Node *gvar_def_node = new_node(ND_GVAR_DEF, NULL, NULL);
@@ -534,8 +546,10 @@ Node *local_variable_definition() {
         }
         node->decl_var.lvar = new_lvar(scope->scope.locals, ident, ident_len);
         node->decl_var.lvar->type = type_node->type.type;
-        scope->scope.current += type_sizeof(node->decl_var.lvar->type);
-        locals_stack_size += type_sizeof(node->decl_var.lvar->type);
+        int size = type_sizeof(node->decl_var.lvar->type);
+        node->decl_var.lvar->stack_size = size;
+        scope->scope.current += size;
+        locals_stack_size += size;
 
         Type *type = node->decl_var.lvar->type;
         Node *init_expr = node->decl_var.init_expr;
@@ -1477,7 +1491,7 @@ Node *type_(bool need_ident, bool is_global, bool parse_one_type) {
             } else if(node_cur->kind == ND_TYPE_ARRAY) {
                 cur = type_new_array(cur, node_cur->type.array.has_size, node_cur->type.array.size);
             } else if(node_cur->kind == ND_TYPE_FUNC) {
-                cur = type_new_func(cur, node_cur->type.func_args.args);
+                cur = type_new_func(cur, node_cur->type.func_args.args, node_cur->type.func_args.is_vararg);
             }
             node_cur->type.type = cur;
         }
@@ -2244,11 +2258,12 @@ Type *type_new_array(Type *type, bool has_size, int size) {
     return array_type;
 }
 
-Type *type_new_func(Type *type, Vector *args) {
+Type *type_new_func(Type *type, Vector *args, bool is_vararg) {
     Type *func_type = calloc(1, sizeof(Type));
     func_type->ty = FUNC;
     func_type->args = args;
     func_type->ptr_to = type;
+    func_type->is_vararg = is_vararg;
     return func_type;
 }
 

@@ -372,6 +372,7 @@ struct LVar {
     int len;
     int offset;
     Type *type;
+    int stack_size;
 };
 
 extern int locals_stack_size;
@@ -392,6 +393,7 @@ struct GVar {
     bool is_enum;
     int enum_num;
     bool has_definition;
+    bool is_builtin;
 };
 
 extern Vector *globals;
@@ -420,6 +422,7 @@ struct Type {
     Type *ptr_to;
     size_t array_size;
     Vector *args; // func
+    bool is_vararg; // func
     bool has_array_size;
     char *ident; // enum or struct or union
     int ident_len; // enum or struct or union
@@ -443,7 +446,7 @@ bool type_is_same(Type *type_a, Type *type_b);
 bool type_is_compatible(Type *type_a, Type *type_b);
 Type *type_new_ptr(Type *type);
 Type *type_new_array(Type *type, bool has_size, int size);
-Type *type_new_func(Type *type, Vector *args);
+Type *type_new_func(Type *type, Vector *args, bool is_vararg);
 Type *type_new_struct(char *ident, int ident_len);
 Type *type_new_enum(char *ident, int ident_len);
 bool type_find_ident(Node *node, char **ident, int *ident_len);

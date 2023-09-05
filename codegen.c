@@ -6,6 +6,7 @@
 #include "rrcc.h"
 
 int cur_label = 0;
+static const int args_reg_len = 6;
 static const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 int stack_base = 0;
@@ -73,7 +74,7 @@ void gen_initexpr(Type *type, Node *init_expr_node) {
 // lvar->offset indicates storage size in byte which the variables above this variable occupy.
 // When we use rbp - (sub offset) to access this variable, we must add the size of this variable.
 int get_stack_sub_offset(LVar *lvar) {
-    return lvar->offset + type_sizeof(lvar->type);
+    return lvar->offset + lvar->stack_size;
 }
 
 void gen_lvar(Node *node) {
@@ -146,6 +147,25 @@ void gen_string_literals() {
         StringLiteral *literal = vector_get(global_string_literals, i);
         printf(".L_S_%d:\n", literal->index);
         printf("  .string \"%.*s\"\n", literal->len, literal->str);
+    }
+}
+
+void gen_builtin_call(Node *node) {
+    GVar *gvar = node->lhs->gvar.gvar;
+    if(strcmp(gvar->name, "__builtin_va_start") == 0) {
+        gen(node->call_arg_list.node);
+        Node *arg2 = node->call_arg_list.next->node;
+        int gp_offset = 0, fp_offset = 0;
+        gp_offset = arg2->lvar->offset;
+        printf("  mov [rax], %d\n", gp_offset);
+        printf("  mov [rax+4], %d\n", fp_offset);
+        printf("  mov [rax+8], rbp+8\n"); // overflow_arg_area
+        printf("  mov [rax+16], rbp-8\n"); // reg_save_area
+        printf("  push rax\n");
+    }else if(strcmp(gvar->name, "__builtin_va_end") == 0) {
+        printf("  push rax\n");
+    }else {
+        error("Unknown builtin call %s\n", gvar->name);
     }
 }
 
@@ -371,6 +391,10 @@ void gen(Node *node){
             printf("  push rax\n");
             return;
         case ND_CALL: {
+            if(node->lhs && node->lhs->kind == ND_GVAR && node->lhs->gvar.gvar->is_builtin) {
+                gen_builtin_call(node);
+                return;
+            }
             NodeList *cur = node->call_arg_list.next;
             int reg_count = sizeof(args_regs) / sizeof(args_regs[0]);
             int i;
@@ -418,11 +442,21 @@ void gen(Node *node){
             printf("  sub rsp,%d\n", stack_align(node->func_def.max_stack_size));
             for(int i = 0; i < size; i++){
                 FuncDefArg *arg = vector_get(node->func_def.arg_vec, i);
+                int size = type_sizeof(arg->lvar->type);
                 printf("  lea rax, [rbp-%d]\n", get_stack_sub_offset(arg->lvar));
                 printf("  push rax\n");
                 printf("  push %s\n", args_regs[i]);
                 store(type_sizeof(arg->type));
                 printf("  pop rax\n");
+            }
+            if(node->func_def.type->is_vararg) {
+                for(int i = size; i < args_reg_len; i++) {
+                    printf("  lea rax, [rbp-%d]\n", i * 8 + 8);
+                    printf("  push rax\n");
+                    printf("  push %s\n", args_regs[i]);
+                    store(8);
+                    printf("  pop rax\n");
+                }
             }
             gen(node->lhs);
             gen_return();
