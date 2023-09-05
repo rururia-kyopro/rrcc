@@ -349,10 +349,11 @@ Node *external_declaration() {
 }
 
 // function_definition = type ident "(" ( type ident "," )* ( type ident )? ")" stmt
-Node *function_definition(TypeStorage type_storage, Node *type_node) {
+Node *function_definition(TypeStorage type_storage, Node *type_node, bool is_inline) {
     Node *node = new_node(ND_FUNC_DEF, NULL, NULL);
     current_func = node;
     node->func_def.arg_vec = new_vector();
+    node->func_def.is_inline = is_inline;
 
     Type *type = node->func_def.type = type_node->type.type;
     if(!type_find_ident(type_node, &node->func_def.ident, &node->func_def.ident_len)) {
@@ -1454,6 +1455,8 @@ Node *type_(bool need_ident, bool is_global, bool parse_one_type) {
         error_at(token->str, "Cannot parse type specifier");
     }
 
+    bool is_inline = tk_count[TK_INLINE];
+
     Node *list_node = new_node(ND_DECL_LIST, NULL, NULL);
     list_node->decl_list.base_type = base_type;
     list_node->decl_list.decls = new_vector();
@@ -1486,7 +1489,7 @@ Node *type_(bool need_ident, bool is_global, bool parse_one_type) {
                 error_at(token->str, "typedef cannot have function body");
             }
             // function definition
-            return function_definition(type_storage, node);
+            return function_definition(type_storage, node, is_inline);
         }
         // declaration
         Node *var_node;

@@ -277,6 +277,7 @@ struct Node {
             Vector *arg_vec;
             Type *type;
             int max_stack_size;
+            bool is_inline;
         } func_def;
         struct {
             char *ident;
@@ -320,7 +321,7 @@ extern Node *code[100];
 
 Node *translation_unit();
 Node *external_declaration();
-Node *function_definition(TypeStorage type_storage, Node *type_node);
+Node *function_definition(TypeStorage type_storage, Node *type_node, bool is_inline);
 Node *global_variable_definition(Node *type_prefix, char *ident, int ident_len, bool has_definition);
 Node *variable_definition(bool is_global, Node *type_node, TypeStorage type_storage);
 Node *initializer(Type *type);
