@@ -34,12 +34,10 @@ void gen_initexpr(Type *type, Node *init_expr_node) {
             if(init_expr_node->kind == ND_NUM) {
                 int64_t val = init_expr_node->val;
                 char *buf = (char *)&val;
-                debug_log("int: %d  - %d\n", zero_size, size);
                 for(int i = 0; i < size; i++){
                     printf("  .byte %d\n", (unsigned char)buf[i]);
                 }
             }else if(init_expr_node->kind == ND_STRING_LITERAL) {
-                debug_log("literal: %d  - 8\n", zero_size);
                 printf("  .quad .L_S_%d\n", init_expr_node->string_literal.literal->index);
             }
             zero_size -= size;
