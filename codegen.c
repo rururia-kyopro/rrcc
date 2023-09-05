@@ -27,7 +27,6 @@ char *access_size(int size) {
 
 void gen_initexpr(Type *type, Node *init_expr_node) {
     int zero_size = type_sizeof(type);
-    debug_log("zero size: %d\n", zero_size);
     if(init_expr_node) {
         if(type_is_scalar(type)) {
             int size = type_sizeof(type);
