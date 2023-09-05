@@ -375,6 +375,7 @@ int main() {
     assert_file(134, "struct A {int a; char *b;};struct A a[]={{10, \"abc\"}, {3, \"def\"},};int main(){return a[0].a + a[1].b[0] + sizeof(a);}");
     assert_file(134, "struct A {int a; char *b;};int main(){struct A a[]={{10, \"abc\"}, {3, \"def\"},};return a[0].a + a[1].b[0] + sizeof(a);}");
     assert_file(11, "int strlen();int func(int a, char *p, char c, ...) {return a+strlen(p)+c;}int main(){return func(3,\"aaaa\",4);}");
+    assert_stdout(24, "aaaa:99 Hello va_list", "#define va_list __builtin_va_list\n#define va_start __builtin_va_start\n#define va_end __builtin_va_end\nint vprintf();int func(int a, char *p, char c, ...) {va_list ap;va_start(ap, c);vprintf(p, ap);va_end(ap);return sizeof(ap);}int main(){return func(3,\"aaaa:%d %s\",4,99,\"Hello va_list\");}");
     printf("OK\n");
     return 0;
 }

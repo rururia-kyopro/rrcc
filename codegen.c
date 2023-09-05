@@ -13,6 +13,7 @@ int stack_base = 0;
 int switch_number = 0;
 int current_break_target = 0;
 int current_continue_target = 0;
+int reserverd_stack_size = 0;
 
 int stack_align(int size) {
     return (size + 7) & ~7;
@@ -74,7 +75,7 @@ void gen_initexpr(Type *type, Node *init_expr_node) {
 // lvar->offset indicates storage size in byte which the variables above this variable occupy.
 // When we use rbp - (sub offset) to access this variable, we must add the size of this variable.
 int get_stack_sub_offset(LVar *lvar) {
-    return lvar->offset + lvar->stack_size;
+    return lvar->offset + type_sizeof(lvar->type) + reserverd_stack_size;
 }
 
 void gen_lvar(Node *node) {
@@ -153,15 +154,16 @@ void gen_string_literals() {
 void gen_builtin_call(Node *node) {
     GVar *gvar = node->lhs->gvar.gvar;
     if(strcmp(gvar->name, "__builtin_va_start") == 0) {
+        printf("  // __builtin_va_start\n");
         gen(node->call_arg_list.next->node);
         Node *arg2 = node->call_arg_list.next->next->node;
         int gp_offset = 0, fp_offset = 0;
-        gp_offset = arg2->lvar->offset;
+        gp_offset = arg2->lvar->func_arg->index * 8 + 8;
         printf("  mov dword ptr[rax], %d\n", gp_offset);
         printf("  mov dword ptr[rax+4], %d\n", fp_offset);
-        printf("  lea rcx, [rbp+8]\n");
+        printf("  lea rcx, [rbp+%d]\n", 4 * 8);
         printf("  mov qword ptr[rax+8], rcx\n"); // overflow_arg_area
-        printf("  lea rcx, [rbp-8]\n");
+        printf("  lea rcx, [rbp-%d]\n", 6 * 8);
         printf("  mov qword ptr[rax+16], rcx\n"); // reg_save_area
         printf("  push rax\n");
     }else if(strcmp(gvar->name, "__builtin_va_end") == 0) {
@@ -441,9 +443,31 @@ void gen(Node *node){
             printf("  push r15\n");
             printf("  push rbx\n");
             printf("  mov rbp,rsp\n");
-            printf("  sub rsp,%d\n", stack_align(node->func_def.max_stack_size));
+
+            /// stack layout: (from upper address to lower address)
+            /// ...
+            /// arg8
+            /// arg7
+            /// return address
+            /// saved rbp
+            /// saved r15
+            /// saved rbx <- rbp points here
+            /// saved arguments for va_list (only used in var arg)
+            /// saved arguments (To use arg as normal local variable)
+            /// local var1
+            /// local var2
+            /// ...
+            /// stack machine
+            ///
+            reserverd_stack_size = 0;
+            if(node->func_def.type->is_vararg) {
+                reserverd_stack_size = args_reg_len * 8;
+            }
+            printf("  // allocate stack\n");
+            printf("  sub rsp,%d\n", stack_align(node->func_def.max_stack_size + reserverd_stack_size));
             for(int i = 0; i < size; i++){
                 FuncDefArg *arg = vector_get(node->func_def.arg_vec, i);
+                printf("  // save argument %d: %.*s\n", i, arg->lvar->len, arg->lvar->name);
                 int size = type_sizeof(arg->lvar->type);
                 printf("  lea rax, [rbp-%d]\n", get_stack_sub_offset(arg->lvar));
                 printf("  push rax\n");
@@ -452,8 +476,9 @@ void gen(Node *node){
                 printf("  pop rax\n");
             }
             if(node->func_def.type->is_vararg) {
-                for(int i = size; i < args_reg_len; i++) {
-                    printf("  lea rax, [rbp-%d]\n", i * 8 + 8);
+                for(int i = 0; i < args_reg_len; i++) {
+                    printf("  // save argument %d for va_list\n", i);
+                    printf("  lea rax, [rbp-%d]\n", (args_reg_len - 1 - i) * 8 + 8);
                     printf("  push rax\n");
                     printf("  push %s\n", args_regs[i]);
                     store(8);

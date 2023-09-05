@@ -315,6 +315,8 @@ StructMember* create_struct_member(Type* type, char* ident, size_t offset) {
 Type* create_va_list_struct() {
     Type* va_list_struct = type_new_struct("__builtin_va_list_tag", strlen("__builtin_va_list_tag"));
     va_list_struct->members = new_vector();
+    va_list_struct->struct_complete = true;
+    va_list_struct->struct_size = 24;
 
     vector_push(va_list_struct->members, create_struct_member(&unsigned_int_type, "gp_offset", 0));
     vector_push(va_list_struct->members, create_struct_member(&unsigned_int_type, "fp_offset", 4));
@@ -336,7 +338,7 @@ void define_builtins() {
     TypedefRegistryEntry *entry = calloc(1, sizeof(TypedefRegistryEntry));
     entry->ident = "__builtin_va_list";
     entry->ident_len = strlen(entry->ident);
-    entry->type = create_va_list_struct();
+    entry->type = type_new_array(create_va_list_struct(), true, 1);
     vector_push(typedef_registry, entry);
 }
 
@@ -415,6 +417,7 @@ Node *function_definition(TypeStorage type_storage, Node *type_node, bool is_inl
         Node *arg_type_node = arg_lvar_node->lhs;
         Type *arg_type = arg_type_node->type.type;
         FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
+        arg->index = i;
         arg->type = arg_type;
         if(!type_find_ident(arg_type_node, &arg->ident, &arg->ident_len)) {
             error_at(token->str, "Function argument must have identifier");
@@ -425,20 +428,17 @@ Node *function_definition(TypeStorage type_storage, Node *type_node, bool is_inl
             error_at(token->str, "Arguments with same name are defined: %.*s", arg->ident_len, arg->ident);
         }
         arg->lvar = new_lvar(scope->scope.locals, arg->ident, arg->ident_len);
+        arg->lvar->func_arg = arg;
+
+        // Array in function argument is treated as pointer.
         arg->lvar->type = arg->type;
-        int size = type_sizeof(arg->lvar->type);
-        if(size < 8) {
-            size = 8;
+        if(arg->lvar->type->ty == ARRAY) {
+            arg->lvar->type = type_new_ptr(arg->lvar->type->ptr_to);
         }
-        arg->lvar->stack_size = size;
+        int size = type_sizeof(arg->lvar->type);
 
         scope->scope.current += size;
         locals_stack_size += size;
-    }
-    // For var arg, 6 arg save spaces are required for `reg_save_area` (AMD64).
-    if(vector_size(type->args) < 6 && type->is_vararg) {
-        scope->scope.current += 8 * (6 - vector_size(type->args));
-        locals_stack_size += 8 * (6 - vector_size(type->args));
     }
 
     Node *gvar_def_node = new_node(ND_GVAR_DEF, NULL, NULL);
@@ -572,7 +572,6 @@ Node *local_variable_definition() {
         node->decl_var.lvar = new_lvar(scope->scope.locals, ident, ident_len);
         node->decl_var.lvar->type = type_node->type.type;
         int size = type_sizeof(node->decl_var.lvar->type);
-        node->decl_var.lvar->stack_size = size;
         scope->scope.current += size;
         locals_stack_size += size;
 

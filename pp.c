@@ -1547,8 +1547,6 @@ char *do_pp() {
     sprintf(buf2, "#define __TIME__ \"%s\"", buf);
     inject_directive(mystrdup(buf2));
 
-    inject_directive("#define __builtin_va_list void*");
-
     MacroRegistryEntry *file_entry = calloc(1, sizeof(MacroRegistryEntry));
     file_entry->is_file_macro = true;
     file_entry->ident = "__FILE__";

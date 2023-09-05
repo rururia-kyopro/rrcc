@@ -230,6 +230,7 @@ struct FuncDefArg {
     int ident_len;
     LVar *lvar;
     Type *type;
+    int index;
 };
 
 struct Node {
@@ -372,7 +373,7 @@ struct LVar {
     int len;
     int offset;
     Type *type;
-    int stack_size;
+    FuncDefArg *func_arg; // When this LVar is a function argument.
 };
 
 extern int locals_stack_size;
