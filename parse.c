@@ -303,6 +303,27 @@ void define_builtin_one(char *funcname, Type *type) {
     vector_push(globals, gvar);
 }
 
+StructMember* create_struct_member(Type* type, char* ident, size_t offset) {
+    StructMember* member = calloc(1, sizeof(StructMember));
+    member->type = type;
+    member->ident = ident;
+    member->ident_len = strlen(ident);
+    member->offset = offset;
+    return member;
+}
+
+Type* create_va_list_struct() {
+    Type* va_list_struct = type_new_struct("__builtin_va_list_tag", strlen("__builtin_va_list_tag"));
+    va_list_struct->members = new_vector();
+
+    vector_push(va_list_struct->members, create_struct_member(&unsigned_int_type, "gp_offset", 0));
+    vector_push(va_list_struct->members, create_struct_member(&unsigned_int_type, "fp_offset", 4));
+    vector_push(va_list_struct->members, create_struct_member(type_new_ptr(&void_type), "overflow_arg_area", 8));
+    vector_push(va_list_struct->members, create_struct_member(type_new_ptr(&void_type), "reg_save_area", 16));
+
+    return va_list_struct;
+}
+
 void define_builtins() {
     Vector *args = new_vector();
     vector_push(args, type_new_ptr(&void_type));
@@ -310,9 +331,13 @@ void define_builtins() {
     define_builtin_one("__builtin_va_start", type_new_func(&void_type, args, false));
 
     args = new_vector();
-    define_builtin_one("__builtin_va_list", type_new_func(&void_type, args, false));
-    args = new_vector();
     define_builtin_one("__builtin_va_end", type_new_func(&void_type, args, false));
+
+    TypedefRegistryEntry *entry = calloc(1, sizeof(TypedefRegistryEntry));
+    entry->ident = "__builtin_va_list";
+    entry->ident_len = strlen(entry->ident);
+    entry->type = create_va_list_struct();
+    vector_push(typedef_registry, entry);
 }
 
 // translation_unit = function_definition*
