@@ -153,14 +153,16 @@ void gen_string_literals() {
 void gen_builtin_call(Node *node) {
     GVar *gvar = node->lhs->gvar.gvar;
     if(strcmp(gvar->name, "__builtin_va_start") == 0) {
-        gen(node->call_arg_list.node);
-        Node *arg2 = node->call_arg_list.next->node;
+        gen(node->call_arg_list.next->node);
+        Node *arg2 = node->call_arg_list.next->next->node;
         int gp_offset = 0, fp_offset = 0;
         gp_offset = arg2->lvar->offset;
-        printf("  mov [rax], %d\n", gp_offset);
-        printf("  mov [rax+4], %d\n", fp_offset);
-        printf("  mov [rax+8], rbp+8\n"); // overflow_arg_area
-        printf("  mov [rax+16], rbp-8\n"); // reg_save_area
+        printf("  mov dword ptr[rax], %d\n", gp_offset);
+        printf("  mov dword ptr[rax+4], %d\n", fp_offset);
+        printf("  lea rcx, [rbp+8]\n");
+        printf("  mov qword ptr[rax+8], rcx\n"); // overflow_arg_area
+        printf("  lea rcx, [rbp-8]\n");
+        printf("  mov qword ptr[rax+16], rcx\n"); // reg_save_area
         printf("  push rax\n");
     }else if(strcmp(gvar->name, "__builtin_va_end") == 0) {
         printf("  push rax\n");
