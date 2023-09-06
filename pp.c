@@ -739,9 +739,13 @@ static PPToken *control_line(PPToken **cur) {
             strcpy(p, d);
             strcat(p, "/");
             strcat(p, file);
-            debug_log("File check %s", p);
+            if(pp_debug) {
+                debug_log("File check %s", p);
+            }
             if(file_exists(p)) {
-                debug_log("Found %s", p);
+                if(pp_debug) {
+                    debug_log("Found %s", p);
+                }
                 found = true;
                 break;
             }
@@ -756,7 +760,9 @@ static PPToken *control_line(PPToken **cur) {
             }
         }
 
-        debug_log("include %s", p);
+        if(pp_debug) {
+            debug_log("include %s", p);
+        }
         char *tmp_filename = filename;
         char *tmp_user_input = user_input;
         int tmp_user_input_len = user_input_len;
