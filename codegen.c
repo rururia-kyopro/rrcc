@@ -430,6 +430,7 @@ void gen(Node *node){
             return;
         }
         case ND_COMPOUND:
+            printf("  // compound %d\n", vector_size(node->compound_stmt_list));
             for(int i = 0; i < vector_size(node->compound_stmt_list); i++){
                 gen(vector_get(node->compound_stmt_list, i));
                 printf("  pop rax\n");
@@ -534,6 +535,7 @@ void gen(Node *node){
             gen_return();
             return;
         case ND_SCOPE: {
+            printf("  // scope\n");
             gen(node->lhs);
             return; }
         case ND_DECL_VAR: {
