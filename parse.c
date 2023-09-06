@@ -2118,12 +2118,30 @@ int lvar_stack_size(Vector *locals) {
 }
 
 Node *lvar_initializer_node(LVar *base_var, size_t offset, Node *init_expr, Type *type) {
-    if(init_expr->kind == ND_INIT) {
+    if(init_expr->kind == ND_INIT && !type_is_scalar(type)) {
         Node *init_code_node = new_node(ND_COMPOUND, NULL, NULL);
-        int n = vector_size(init_expr->init.init_expr);
         init_code_node->compound_stmt_list = new_vector();
+        int n = vector_size(init_expr->init.init_expr);
+        if(type->ty == ARRAY) {
+            if(type->has_array_size && n < type->array_size) {
+                n = type->array_size;
+            }
+        }else if(type->ty == STRUCT) {
+            if(n < vector_size(type->members)) {
+                n = vector_size(type->members);
+            }
+        }else {
+            error_at(token->str, "Unsupported type for initializer");
+        }
         for(int i = 0; i < n; i++) {
-            Node *expr = vector_get(init_expr->init.init_expr, i);
+            Node *expr = NULL;
+            if(i < vector_size(init_expr->init.init_expr)) {
+                expr = vector_get(init_expr->init.init_expr, i);
+            } else {
+                // Initialize remaining entries with dummy empty list.
+                expr = new_node(ND_INIT, NULL, NULL);
+                expr->init.init_expr = new_vector();
+            }
             Node *lvar_node = new_node_lvar(base_var);
             Node *node;
             if(type->ty == ARRAY) {
@@ -2139,6 +2157,13 @@ Node *lvar_initializer_node(LVar *base_var, size_t offset, Node *init_expr, Type
         return init_code_node;
     }else {
         Node *expr = init_expr;
+        if(expr->kind == ND_INIT) {
+            if(vector_size(expr->init.init_expr)) {
+                expr = vector_get(expr->init.init_expr, 0);
+            }else {
+                expr = new_node_num(0);
+            }
+        }
         Node *lvar_node = new_node_lvar(base_var);
 
         Node *addressof = new_node(ND_ADDRESS_OF, lvar_node, NULL);
