@@ -1280,7 +1280,9 @@ Node *constant_fold(Node *node) {
     if(node->kind == ND_NUM) {
         return node;
     }
-    if(node->kind == ND_ADD || node->kind == ND_SUB || node->kind == ND_MUL || node->kind == ND_DIV) {
+    if(node->kind == ND_ADD || node->kind == ND_SUB || node->kind == ND_MUL || node->kind == ND_DIV
+            || node->kind == ND_LSHIFT || node->kind == ND_RSHIFT || node->kind == ND_AND || node->kind == ND_OR || node->kind == ND_XOR
+            || node->kind == ND_GREATER || node->kind == ND_GREATER_OR_EQUAL || node->kind == ND_LESS || node->kind == ND_LESS_OR_EQUAL) {
         node->lhs = constant_fold(node->lhs);
         node->rhs = constant_fold(node->rhs);
         if(node->lhs->kind == ND_NUM && node->rhs->kind == ND_NUM) {
@@ -1289,6 +1291,15 @@ Node *constant_fold(Node *node) {
                 case ND_SUB: node->val = node->lhs->val - node->rhs->val; break;
                 case ND_MUL: node->val = node->lhs->val * node->rhs->val; break;
                 case ND_DIV: node->val = node->lhs->val / node->rhs->val; break;
+                case ND_LSHIFT: node->val = node->lhs->val << node->rhs->val; break;
+                case ND_RSHIFT: node->val = node->lhs->val >> node->rhs->val; break;
+                case ND_AND: node->val = (node->lhs->val & node->rhs->val); break;
+                case ND_OR: node->val = (node->lhs->val | node->rhs->val); break;
+                case ND_XOR: node->val = (node->lhs->val ^ node->rhs->val); break;
+                case ND_GREATER: node->val = (node->lhs->val > node->rhs->val); break;
+                case ND_GREATER_OR_EQUAL: node->val = (node->lhs->val >= node->rhs->val); break;
+                case ND_LESS: node->val = (node->lhs->val < node->rhs->val); break;
+                case ND_LESS_OR_EQUAL: node->val = (node->lhs->val <= node->rhs->val); break;
             }
             node->kind = ND_NUM;
         }
@@ -1297,6 +1308,17 @@ Node *constant_fold(Node *node) {
     if(node->kind == ND_CAST) {
         node->lhs = constant_fold(node->lhs);
         return node->lhs;
+    }
+    if(node->kind == ND_IF) {
+        node->lhs = constant_fold(node->lhs);
+        if(node->lhs->kind == ND_NUM) {
+            if(node->lhs->val) {
+                node->rhs = constant_fold(node->rhs);
+                return node->rhs;
+            }
+            node->else_stmt = constant_fold(node->else_stmt);
+            return node->else_stmt;
+        }
     }
     return node;
 }
