@@ -145,6 +145,7 @@ void gen_return() {
 }
 
 void gen_string_literals() {
+    printf(".data\n");
     for(int i = 0; i < vector_size(global_string_literals); i++) {
         StringLiteral *literal = vector_get(global_string_literals, i);
         printf(".L_S_%d:\n", literal->index);
