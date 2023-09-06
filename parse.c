@@ -2404,13 +2404,21 @@ bool type_find_ident(Node *node, char **ident, int *ident_len) {
     return false;
 }
 
-int type_dump(Type *type, char **out) {
-    Buffer *buf = init_buffer();
+static int type_dump_inner(Type *type, Buffer *buf) {
     for(; type; type = type->ptr_to) {
         if(type->ty == PTR) {
             append_printf(buf, "* ");
         }else if(type->ty == FUNC) {
-            append_printf(buf, "() ");
+            append_printf(buf, "(");
+            for(int i = 0; i < vector_size(type->args); i++) {
+                Node *decl_var_node = vector_get(type->args, i);
+                Node *type_node = decl_var_node->lhs;
+                type_dump_inner(type_node->type.type, buf);
+                if(i != vector_size(type->args) - 1) {
+                    append_printf(buf, ", ");
+                }
+            }
+            append_printf(buf, ") ");
         }else if(type->ty == ARRAY) {
             if(type->has_array_size) {
                 append_printf(buf, "[%ld] ", type->array_size);
@@ -2418,11 +2426,11 @@ int type_dump(Type *type, char **out) {
                 append_printf(buf, "[] ");
             }
         }else if(type->ty == STRUCT) {
-            append_printf(buf, "struct %.*s ", type->ident_len, type->ident);
+            append_printf(buf, "struct %.*s", type->ident_len, type->ident);
         }else if(type->ty == UNION) {
-            append_printf(buf, "union %.*s ", type->ident_len, type->ident);
+            append_printf(buf, "union %.*s", type->ident_len, type->ident);
         }else if(type->ty == ENUM) {
-            append_printf(buf, "enum %.*s ", type->ident_len, type->ident);
+            append_printf(buf, "enum %.*s", type->ident_len, type->ident);
         }else{
             if(type->signedness == UNSIGNED) {
                 append_printf(buf, "unsigned ");
@@ -2441,9 +2449,15 @@ int type_dump(Type *type, char **out) {
                 case LONGDOUBLE: append_printf(buf, "long double"); break;
                 case BOOL: append_printf(buf, "_Bool"); break;
                 case COMPLEX: append_printf(buf, "_Complex"); break;
+                default: append_printf(buf, "unknown"); break;
             }
         }
     }
+}
+
+int type_dump(Type *type, char **out) {
+    Buffer *buf = init_buffer();
+    type_dump_inner(type, buf);
     *out = buf->buf;
     return buf->len;
 }
@@ -2509,7 +2523,6 @@ void dumpnodes_inner(Node *node, int level) {
     }else if(node->kind == ND_GVAR_DEF){
         print_indent(level, "ND_GVAR_DEF: %.*s\n", node->gvar_def.gvar->len, node->gvar_def.gvar->name);
     }else if(node->kind == ND_DECL_LIST){
-        print_indent(level, "ND_DECL_LIST:\n");
         for(int i = 0; i < vector_size(node->decl_list.decls); i++) {
             Node *decl = vector_get(node->decl_list.decls, i);
 
@@ -2518,7 +2531,10 @@ void dumpnodes_inner(Node *node, int level) {
     }else if(node->kind == ND_TYPE){
         char *out;
         type_dump(node->type.type, &out);
-        print_indent(level, "%s\n", out);
+        print_indent(level+1, "%s\n", out);
+        dumpnodes_inner(node->lhs, level+1);
+    }else if(node->kind == ND_IDENT){
+        print_indent(level+1, "ident: %.*s\n", node->ident.ident_len, node->ident.ident);
     }else if(node->kind == ND_TYPE_ARRAY){
         if(node->type.array.has_size) {
             print_indent(level, " size: %ld\n", node->type.array.size);
@@ -2530,7 +2546,7 @@ void dumpnodes_inner(Node *node, int level) {
     }else if(node->kind == ND_NUM){
         print_indent(level, " value: %d\n", node->val);
     }else if(node->kind == ND_STRING_LITERAL){
-        print_indent(level, " value: %.*s\n", node->string_literal.literal->len, node->string_literal.literal->str);
+        print_indent(level, " value: \"%.*s\"\n", node->string_literal.literal->len, node->string_literal.literal->str);
     }else if(node->kind == ND_IF){
         print_indent(level, " // if condition\n");
         dumpnodes_inner(node->lhs, level + 1);
@@ -2558,6 +2574,13 @@ void dumpnodes_inner(Node *node, int level) {
             print_indent(level, " // call arg\n");
             dumpnodes_inner(cur->node, level + 1);
         }
+    }else if(node->kind == ND_FUNC_DEF){
+        char *out;
+        type_dump(node->func_def.type, &out);
+        print_indent(level, " name: %.*s %s\n", node->func_def.ident_len, node->func_def.ident, out);
+
+        dumpnodes_inner(node->lhs, level + 1);
+        dumpnodes_inner(node->rhs, level + 1);
     }else{
         dumpnodes_inner(node->lhs, level + 1);
         dumpnodes_inner(node->rhs, level + 1);
