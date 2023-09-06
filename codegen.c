@@ -570,7 +570,9 @@ void gen(Node *node){
             for(int i = 0; i < vector_size(node->decl_list.decls); i++) {
                 Node *decl = vector_get(node->decl_list.decls, i);
                 gen(decl);
+                printf("  pop rax\n");
             }
+            printf("  push rax\n");
             return;
         case ND_CAST:
             gen(node->lhs);
