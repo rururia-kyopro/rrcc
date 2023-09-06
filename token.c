@@ -98,11 +98,12 @@ bool at_eof() {
     return token->kind == TK_EOF;
 }
 
-static Token *new_token(TokenKind kind, Token *cur, char *str, int len){
+static Token *new_token(TokenKind kind, Token *cur, char *str, int len, LineInfo *line_info){
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
     tok->str = str;
     tok->len = len;
+    tok->line_info = line_info;
     tok->prev = cur;
     cur->next = tok;
     return tok;
@@ -159,6 +160,10 @@ Token *tokenize(char *p){
     head.prev = NULL;
     head.next = NULL;
     Token *cur = &head;
+    LineInfo *current_line_info = calloc(1, sizeof(LineInfo));
+    current_line_info->filename = "<dummy>";
+    current_line_info->filename_len = strlen(current_line_info->filename);
+    current_line_info->line_number = 0;
 
     while(*p){
         if(isspace(*p)){
@@ -167,6 +172,18 @@ Token *tokenize(char *p){
         }
 
         if(strncmp(p, "//", 2) == 0) {
+            // Line number information passed from preprocessor.
+            if(strstr(p, "// file:")) {
+                char *debug_filename = p + strlen("// file:");
+                char *line_number = strchr(debug_filename, ':');
+                if(line_number) {
+                    line_number++;
+                    current_line_info = calloc(1, sizeof(LineInfo));
+                    current_line_info->filename = debug_filename;
+                    current_line_info->filename_len = line_number - debug_filename - 1;
+                    current_line_info->line_number = strtol(line_number, NULL, 10);
+                }
+            }
             p += 2;
             while(*p != '\n' && *p){
                 p++;
@@ -198,7 +215,7 @@ Token *tokenize(char *p){
             if(*p != '\''){
                 error("expect ' (single quote)");
             }
-            cur = new_token(TK_NUM, cur, q, p - q);
+            cur = new_token(TK_NUM, cur, q, p - q, current_line_info);
             cur->val = c;
             p++;
             continue;
@@ -231,7 +248,7 @@ Token *tokenize(char *p){
             int len = p - literal;
             if(*p == '"') {
                 p++;
-                cur = new_token(TK_STRING_LITERAL, cur, literal, len);
+                cur = new_token(TK_STRING_LITERAL, cur, literal, len, current_line_info);
                 cur->literal = char_vec;
                 cur->literal_len = vector_size(char_vec);
                 continue;
@@ -242,7 +259,7 @@ Token *tokenize(char *p){
 
         int punc_len = match_punc(p);
         if(punc_len) {
-            cur = new_token(TK_RESERVED, cur, p, punc_len);
+            cur = new_token(TK_RESERVED, cur, p, punc_len, current_line_info);
             p += punc_len;
             continue;
         }
@@ -289,20 +306,20 @@ Token *tokenize(char *p){
             bool found = false;
             for(int i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++){
                 if(is_keyword(keywords[i].name, p, len)) {
-                    cur = new_token(keywords[i].kind, cur, p, len);
+                    cur = new_token(keywords[i].kind, cur, p, len, current_line_info);
                     found = true;
                     break;
                 }
             }
             if(!found) {
-                cur = new_token(TK_IDENT, cur, p, len);
+                cur = new_token(TK_IDENT, cur, p, len, current_line_info);
             }
             p += len;
             continue;
         }
 
         if(isdigit(*p)){
-            cur = new_token(TK_NUM, cur, p, 1);
+            cur = new_token(TK_NUM, cur, p, 1, current_line_info);
             cur->val = strtol(p, &p, 0);
             if(tolower(*p) == 'u') {
                 p++;
@@ -331,6 +348,6 @@ Token *tokenize(char *p){
         error_at(p, "Tokenize error");
     }
 
-    new_token(TK_EOF, cur, p, 0);
+    new_token(TK_EOF, cur, p, 0, current_line_info);
     return head.next;
 }

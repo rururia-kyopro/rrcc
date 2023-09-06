@@ -106,6 +106,7 @@ void pp_phase2(char *user_input, char *processed, Vector *vec) {
         vector_push(vec, (void *)(long)line);
     }
     *out = '\0';
+    vector_push(vec, (void *)(long)line);
 }
 
 static PPToken *new_pptoken(PPTokenKind kind, PPToken *cur, char *str, int len){
@@ -1447,6 +1448,7 @@ static int pp_assignment_expression(PPToken **cur) {
 static char *reconstruct_tokens(PPToken *cur) {
     Buffer *buf = init_buffer();
 
+    append_printf(buf, "// file:%s:%d\n", cur->filename, cur->line_number);
     for(; cur; cur = cur->next) {
         if(cur->preceded_by_space) {
             append_printf(buf, " ");
@@ -1465,7 +1467,7 @@ static char *reconstruct_tokens(PPToken *cur) {
             append_printf(buf, "%.*s", cur->len, cur->str);
         }else if(cur->kind == PPTK_NEWLINE) {
             append_printf(buf, "\n");
-            append_printf(buf, "// %s:%d\n", cur->filename, cur->line_number);
+            append_printf(buf, "// file:%s:%d\n", cur->filename, cur->line_number);
         }
     }
     return buf->buf;

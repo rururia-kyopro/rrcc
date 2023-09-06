@@ -14,6 +14,7 @@ int switch_number = 0;
 int current_break_target = 0;
 int current_continue_target = 0;
 int reserverd_stack_size = 0;
+Vector *file_no_vec;
 
 int stack_align(int size) {
     return (size + 7) & ~7;
@@ -174,6 +175,28 @@ void gen_builtin_call(Node *node) {
 }
 
 void gen(Node *node){
+    if(node->line_info) {
+        if(file_no_vec == NULL) {
+            file_no_vec = new_vector();
+        }
+        bool found = false;
+        int file_no = 0;
+        for(int i = 0; i < vector_size(file_no_vec); i++) {
+            LineInfo *info = vector_get(file_no_vec, i);
+            if(compare_ident(info->filename, info->filename_len, node->line_info->filename, node->line_info->filename_len)) {
+                found = true;
+                file_no = i;
+                break;
+            }
+        }
+        if(!found) {
+            file_no = vector_size(file_no_vec);
+            vector_push(file_no_vec, node->line_info);
+            printf("  .file %d \"%.*s\"\n", file_no + 1, node->line_info->filename_len, node->line_info->filename);
+        }
+        printf("  .loc %d %d\n", file_no + 1, node->line_info->line_number);
+        printf("  // %.*s:%d\n", node->line_info->filename_len, node->line_info->filename, node->line_info->line_number);
+    }
     switch(node->kind){
         case ND_NUM:
             printf("  push %d\n", node->val);

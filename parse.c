@@ -379,6 +379,7 @@ Node *external_declaration() {
 // function_definition = type ident "(" ( type ident "," )* ( type ident )? ")" stmt
 Node *function_definition(TypeStorage type_storage, Node *type_node, bool is_inline) {
     Node *node = new_node(ND_FUNC_DEF, NULL, NULL);
+    node->line_info = token->line_info;
     current_func = node;
     node->func_def.arg_vec = new_vector();
     node->func_def.is_inline = is_inline;
@@ -653,10 +654,12 @@ Node *initializer(Type *type) {
 //         | "{" stmt* "}"
 //         | type ident ( "[" num "]" )? ( "=" initializer )? ";"
 Node *stmt() {
+    Token *tok = token;
     TokenKind kind;
     if(consume_kind(TK_IF)) {
         expect("(");
         Node *if_expr = expression();
+        if_expr->line_info = tok->line_info;
         expect(")");
         Node *if_stmt = stmt();
         Node *else_stmt = NULL;
@@ -669,6 +672,7 @@ Node *stmt() {
     }else if(consume_kind(TK_SWITCH)) {
         expect("(");
         Node *switch_expr = expression();
+        switch_expr->line_info = tok->line_info;
         expect(")");
 
         Node *node = new_node(ND_SWITCH, switch_expr, NULL);
@@ -769,6 +773,7 @@ Node *stmt() {
         scope->lhs = node;
 
         end_scope(&scope);
+        node->line_info = tok->line_info;
 
         return new_scope;
     }else if(consume_kind(TK_DO)) {
@@ -790,12 +795,17 @@ Node *stmt() {
             expr = expression();
             expect(";");
         }
-        return new_node(ND_RETURN, expr, NULL);
+        Node *node = new_node(ND_RETURN, expr, NULL);
+        node->line_info = tok->line_info;
+        return node;
     }else if(consume_type_prefix(&kind)) {
         unget_token();
-        return local_variable_definition();
+        Node *node = local_variable_definition();
+        node->line_info = tok->line_info;
+        return node;
     }else if(consume("{")) {
         Node *node = new_node(ND_COMPOUND, NULL, NULL);
+        node->line_info = tok->line_info;
         Node *new_scope = new_node_scope(&scope);
         new_scope->lhs = node;
         node->compound_stmt_list = new_vector();
@@ -808,6 +818,7 @@ Node *stmt() {
         return new_scope;
     }
     Node *node = expression();
+    node->line_info = tok->line_info;
     expect(";");
     return node;
 }

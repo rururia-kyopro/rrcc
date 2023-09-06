@@ -34,6 +34,7 @@ typedef struct StructRegistryEntry StructRegistryEntry;
 typedef struct EnumMember EnumMember;
 typedef struct EnumRegistryEntry EnumRegistryEntry;
 typedef struct TypedefRegistryEntry TypedefRegistryEntry;
+typedef struct LineInfo LineInfo;
 
 /// Enums ///
 
@@ -128,6 +129,7 @@ struct Token {
     int len;
     Vector *literal;
     int literal_len;
+    LineInfo *line_info;
 };
 
 extern Token *token;
@@ -239,6 +241,7 @@ struct Node {
     Node *lhs;
     Node *rhs;
     Type *expr_type;
+    LineInfo *line_info;
     union {
         int val;
         LVar *lvar;
@@ -500,6 +503,13 @@ struct TypedefRegistryEntry {
 };
 
 extern Vector *typedef_registry;
+
+/// Source line information ///
+struct LineInfo {
+    char *filename;
+    int filename_len;
+    int line_number;
+};
 
 bool compare_ident(char *ident_a, int ident_a_len, char *ident_b, int ident_b_len);
 bool compare_slice(char *slice, int slice_len, char *null_term_str);
