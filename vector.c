@@ -55,6 +55,11 @@ void vector_remove(Vector *vec, void *x) {
     }
 }
 
+void *vector_last(Vector *vec) {
+    assert(vector_size(vec));
+    return vector_get(vec, vector_size(vec) - 1);
+}
+
 Vector *vector_dup(Vector *orig) {
     Vector *vec = new_vector();
     vec->size = orig->size;

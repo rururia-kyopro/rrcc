@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 
   printf(".intel_syntax noprefix\n");
 
-  gen_string_literals();
+  init_codegen();
   for(int i = 0; i < vector_size(node_trans_unit->trans_unit.decl); i++){
       gen(vector_get(node_trans_unit->trans_unit.decl, i));
   }

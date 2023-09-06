@@ -515,7 +515,7 @@ bool compare_ident(char *ident_a, int ident_a_len, char *ident_b, int ident_b_le
 bool compare_slice(char *slice, int slice_len, char *null_term_str);
 
 Token *tokenize(char *);
-void gen_string_literals();
+void init_codegen();
 void gen(Node *);
 
 void dumpnodes(Node *node);

@@ -12,7 +12,9 @@ static const char *args_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 int stack_base = 0;
 int switch_number = 0;
 int current_break_target = 0;
+Vector *break_target_vec;
 int current_continue_target = 0;
+Vector *continue_target_vec;
 int reserverd_stack_size = 0;
 Vector *file_no_vec;
 
@@ -144,7 +146,7 @@ void gen_return() {
     printf("  ret\n");
 }
 
-void gen_string_literals() {
+static void gen_string_literals() {
     printf(".data\n");
     for(int i = 0; i < vector_size(global_string_literals); i++) {
         StringLiteral *literal = vector_get(global_string_literals, i);
@@ -177,9 +179,6 @@ void gen_builtin_call(Node *node) {
 
 void gen(Node *node){
     if(node->line_info) {
-        if(file_no_vec == NULL) {
-            file_no_vec = new_vector();
-        }
         bool found = false;
         int file_no = 0;
         for(int i = 0; i < vector_size(file_no_vec); i++) {
@@ -301,6 +300,7 @@ void gen(Node *node){
             // condition expression
             int cur = ++switch_number;
             int break_target = ++current_break_target;
+            vector_push(break_target_vec, (void*)(long)break_target);
             printf("  // switch %d\n", cur);
             gen(node->lhs);
             printf("  pop rax\n");
@@ -321,6 +321,8 @@ void gen(Node *node){
             printf("  .Lbreak_%d:\n", break_target);
             printf("  push rax\n");
 
+            vector_pop(break_target_vec);
+
             return;
         }
         case ND_CASE: {
@@ -334,16 +336,18 @@ void gen(Node *node){
             return;
         }
         case ND_BREAK: {
-            printf("  jmp .Lbreak_%d\n", current_break_target);
+            printf("  jmp .Lbreak_%d\n", (int)(long)vector_last(break_target_vec));
             return;
         }
         case ND_CONTINUE: {
-            printf("  jmp .Lcontinue_%d\n", current_continue_target);
+            printf("  jmp .Lcontinue_%d\n", (int)(long)vector_last(continue_target_vec));
             return;
         }
         case ND_FOR: {
             int break_target = ++current_break_target;
+            vector_push(break_target_vec, (void*)(long)break_target);
             int continue_targets = ++current_continue_target;
+            vector_push(continue_target_vec, (void*)(long)continue_targets);
             // clause-1
             if(node->lhs) {
                 gen(node->lhs);
@@ -374,13 +378,19 @@ void gen(Node *node){
             printf("  .Lbreak_%d:\n", break_target);
             printf(".L%d:\n", label);
             printf("  push rax\n");
+
+            vector_pop(break_target_vec);
+            vector_pop(continue_target_vec);
             return;
         }
         case ND_WHILE: {
             int break_target = ++current_break_target;
+            vector_push(break_target_vec, (void*)(long)break_target);
             int continue_targets = ++current_continue_target;
+            vector_push(continue_target_vec, (void*)(long)continue_targets);
             int label_while = ++cur_label;
             int label_while_end = ++cur_label;
+
             printf(".L%d:\n", label_while);
             printf(".Lcontinue_%d:\n", continue_targets);
             gen(node->lhs);
@@ -393,11 +403,16 @@ void gen(Node *node){
             printf("  .Lbreak_%d:\n", break_target);
             printf(".L%d:\n", label_while_end);
             printf("  push rax\n");
+
+            vector_pop(break_target_vec);
+            vector_pop(continue_target_vec);
             return;
         }
         case ND_DO: {
             int break_target = ++current_break_target;
+            vector_push(break_target_vec, (void*)(long)break_target);
             int continue_targets = ++current_continue_target;
+            vector_push(continue_target_vec, (void*)(long)continue_targets);
             int label_do = ++cur_label;
             printf(".L%d:\n", label_do);
             printf(".Lcontinue_%d:\n", continue_targets);
@@ -409,6 +424,9 @@ void gen(Node *node){
             printf("  jnz .L%d\n", label_do);
             printf("  .Lbreak_%d:\n", break_target);
             printf("  push rax\n");
+
+            vector_pop(break_target_vec);
+            vector_pop(continue_target_vec);
             return;
         }
         case ND_COMPOUND:
@@ -667,4 +685,11 @@ void gen(Node *node){
             break;
     }
     printf("  push rax\n");
+}
+
+void init_codegen() {
+    file_no_vec = new_vector();
+    break_target_vec = new_vector();
+    continue_target_vec = new_vector();
+    gen_string_literals();
 }
