@@ -1894,7 +1894,11 @@ Vector *enum_members() {
         }
 
         if(consume("=")) {
-            num = constant_fold(constant_expression())->val;
+            Node *node = constant_fold(constant_expression());
+            if(node->kind != ND_NUM) {
+                error_at(token->str, "Cannot use non-constant expression on enum.");
+            }
+            num = node->val;
         }
 
         gvar = new_gvar(globals, ident, ident_len, &signed_int_type, true);
