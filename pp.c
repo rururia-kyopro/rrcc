@@ -1547,6 +1547,13 @@ char *do_pp() {
     line_entry->ident_len = strlen(line_entry->ident);
     vector_push(macro_registry, line_entry);
 
+    inject_directive("#define __amd64 1");
+    inject_directive("#define __amd64__ 1");
+    inject_directive("#define __x86_64 1");
+    inject_directive("#define __x86_64__ 1");
+    inject_directive("#define _LP64 1");
+    inject_directive("#define __LP64__ 1");
+
     user_input = tmp;
     line_map = new_vector();
     filename = tmp_filename;
