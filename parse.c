@@ -45,9 +45,16 @@ char *node_kind(NodeKind kind){
     switch(kind){
         case ND_TRANS_UNIT: return "ND_TRANS_UNIT";
         case ND_ADD: return "ND_ADD";
+        case ND_ADD_RAW: return "ND_ADD_RAW";
         case ND_SUB: return "ND_SUB";
         case ND_MUL: return "ND_MUL";
         case ND_DIV: return "ND_DIV";
+        case ND_MOD: return "ND_MOD";
+        case ND_LSHIFT: return "ND_LSHIFT";
+        case ND_RSHIFT: return "ND_RSHIFT";
+        case ND_OR: return "ND_OR";
+        case ND_XOR: return "ND_XOR";
+        case ND_AND: return "ND_AND";
         case ND_ASSIGN: return "ND_ASSIGN";
         case ND_EQUAL: return "ND_EQUAL";
         case ND_NOT_EQUAL: return "ND_NOT_EQUAL";
@@ -55,34 +62,49 @@ char *node_kind(NodeKind kind){
         case ND_LESS_OR_EQUAL: return "ND_LESS_OR_EQUAL";
         case ND_GREATER: return "ND_GREATER";
         case ND_GREATER_OR_EQUAL: return "ND_GREATER_OR_EQUAL";
+        case ND_LOGICAL_OR: return "ND_LOGICAL_OR";
+        case ND_LOGICAL_AND: return "ND_LOGICAL_AND";
+        case ND_CAST: return "ND_CAST";
         case ND_NUM: return "ND_NUM";
         case ND_STRING_LITERAL: return "ND_STRING_LITERAL";
+        case ND_COMMA_EXPR: return "ND_COMMA_EXPR";
         case ND_LVAR: return "ND_LVAR";
         case ND_GVAR: return "ND_GVAR";
         case ND_IDENT: return "ND_IDENT";
         case ND_RETURN: return "ND_RETURN";
         case ND_IF: return "ND_IF";
+        case ND_SWITCH: return "ND_SWITCH";
+        case ND_CASE: return "ND_CASE";
+        case ND_DEFAULT: return "ND_DEFAULT";
+        case ND_BREAK: return "ND_BREAK";
+        case ND_CONTINUE: return "ND_CONTINUE";
         case ND_WHILE: return "ND_WHILE";
         case ND_FOR: return "ND_FOR";
         case ND_DO: return "ND_DO";
         case ND_COMPOUND: return "ND_COMPOUND";
         case ND_CALL: return "ND_CALL";
+        case ND_POSTFIX_INC: return "ND_POSTFIX_INC";
+        case ND_POSTFIX_DEC: return "ND_POSTFIX_DEC";
+        case ND_PREFIX_INC: return "ND_PREFIX_INC";
+        case ND_PREFIX_DEC: return "ND_PREFIX_DEC";
         case ND_FUNC_DEF: return "ND_FUNC_DEF";
         case ND_FUNC_DECL: return "ND_FUNC_DECL";
+        case ND_SCOPE: return "ND_SCOPE";
+        case ND_DECL_LIST: return "ND_DECL_LIST";
         case ND_ADDRESS_OF: return "ND_ADDRESS_OF";
         case ND_DEREF: return "ND_DEREF";
+        case ND_BIT_NOT: return "ND_BIT_NOT";
         case ND_SIZEOF: return "ND_SIZEOF";
         case ND_DECL_VAR: return "ND_DECL_VAR";
-        case ND_DECL_LIST: return "ND_DECL_LIST";
         case ND_TYPE: return "ND_TYPE";
         case ND_INIT: return "ND_INIT";
         case ND_CONVERT: return "ND_CONVERT";
         case ND_GVAR_DEF: return "ND_GVAR_DEF";
-        case ND_TYPE_FUNC: return "ND_TYPE_FUNC";
         case ND_TYPE_POINTER: return "ND_TYPE_POINTER";
         case ND_TYPE_ARRAY: return "ND_TYPE_ARRAY";
+        case ND_TYPE_FUNC: return "ND_TYPE_FUNC";
         case ND_TYPE_STRUCT: return "ND_TYPE_STRUCT";
-        case ND_TYPE_ENUM: return "ND_ENUM";
+        case ND_TYPE_ENUM: return "ND_TYPE_ENUM";
         case ND_TYPE_TYPEDEF: return "ND_TYPE_TYPEDEF";
         case ND_TYPE_EXTERN: return "ND_TYPE_EXTERN";
         default: assert(false);
@@ -2370,6 +2392,12 @@ int type_dump(Type *type, char **out) {
             }else{
                 append_printf(buf, "[] ");
             }
+        }else if(type->ty == STRUCT) {
+            append_printf(buf, "struct %.*s ", type->ident_len, type->ident);
+        }else if(type->ty == UNION) {
+            append_printf(buf, "union %.*s ", type->ident_len, type->ident);
+        }else if(type->ty == ENUM) {
+            append_printf(buf, "enum %.*s ", type->ident_len, type->ident);
         }else{
             if(type->signedness == UNSIGNED) {
                 append_printf(buf, "unsigned ");
@@ -2463,26 +2491,9 @@ void dumpnodes_inner(Node *node, int level) {
             dumpnodes_inner(decl, level + 1);
         }
     }else if(node->kind == ND_TYPE){
-        for(Type *cur = node->type.type; cur; cur = cur->ptr_to) {
-            if(cur->ty == PTR) {
-                fprintf(stderr, "* ");
-            }else if(cur->ty == FUNC) {
-                fprintf(stderr, "() ");
-            }else if(cur->ty == ARRAY) {
-                if(cur->has_array_size) {
-                    fprintf(stderr, "[%ld] ", cur->array_size);
-                }else{
-                    fprintf(stderr, "[] ");
-                }
-            }else{
-                if(cur->ty == CHAR) {
-                    fprintf(stderr, "char");
-                }else{
-                    fprintf(stderr, "int");
-                }
-            }
-        }
-        fprintf(stderr, "\n");
+        char *out;
+        type_dump(node->type.type, &out);
+        print_indent(level, "%s\n", out);
     }else if(node->kind == ND_TYPE_ARRAY){
         if(node->type.array.has_size) {
             print_indent(level, " size: %ld\n", node->type.array.size);
