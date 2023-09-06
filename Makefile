@@ -3,6 +3,7 @@ LDFLAGS=-fsanitize=undefined
 SRCS=main.c parse.c codegen.c token.c vector.c pp.c token_common.c util.c
 OBJS=$(SRCS:.c=.o)
 OBJS_2=$(SRCS:.c=_2.o)
+OBJS_3=$(SRCS:.c=_3.o)
 RRCCFLAGS=-I/usr/lib/gcc/x86_64-linux-gnu/11/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include
 
 rrcc: $(OBJS)
@@ -11,11 +12,18 @@ rrcc: $(OBJS)
 rrcc2: rrcc $(OBJS_2)
 	cc -o rrcc2 $(OBJS_2) $(LDFLAGS)
 
+rrcc3: rrcc2 $(OBJS_3)
+	cc -o rrcc3 $(OBJS_3) $(LDFLAGS)
+
 $(OBJS): rrcc.h
 
 $(OBJS_2): %_2.o: %.c rrcc
 	./rrcc $(RRCCFLAGS) $< > $(<:.c=_2.s)
 	cc -c $(<:.c=_2.s) -o $@
+
+$(OBJS_3): %_3.o: %.c rrcc2
+	./rrcc2 $(RRCCFLAGS) $< > $(<:.c=_3.s)
+	cc -c $(<:.c=_3.s) -o $@
 
 tester: rrcc tester.c
 	./rrcc tester.c > tester.s
