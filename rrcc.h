@@ -374,7 +374,7 @@ struct LVar {
     int len;
     int offset;
     Type *type;
-    FuncDefArg *func_arg; // When this LVar is a function argument.
+    int func_arg_index; // 0 means it is not func arg. For a function argument, it indicates argument index + 1.
 };
 
 extern int locals_stack_size;

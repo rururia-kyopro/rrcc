@@ -158,7 +158,7 @@ void gen_builtin_call(Node *node) {
         gen(node->call_arg_list.next->node);
         Node *arg2 = node->call_arg_list.next->next->node;
         int gp_offset = 0, fp_offset = 0;
-        gp_offset = arg2->lvar->func_arg->index * 8 + 8;
+        gp_offset = (arg2->lvar->func_arg_index - 1) * 8 + 8;
         printf("  mov dword ptr[rax], %d\n", gp_offset);
         printf("  mov dword ptr[rax+4], %d\n", fp_offset);
         printf("  lea rcx, [rbp+%d]\n", 4 * 8);

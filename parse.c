@@ -416,6 +416,11 @@ Node *function_definition(TypeStorage type_storage, Node *type_node, bool is_inl
         Node *arg_lvar_node = vector_get(type->args, i);
         Node *arg_type_node = arg_lvar_node->lhs;
         Type *arg_type = arg_type_node->type.type;
+        // Array in function argument is treated as pointer.
+        if(arg_type->ty == ARRAY) {
+            arg_type = type_new_ptr(arg_type->ptr_to);
+        }
+
         FuncDefArg *arg = calloc(1, sizeof(FuncDefArg));
         arg->index = i;
         arg->type = arg_type;
@@ -428,13 +433,9 @@ Node *function_definition(TypeStorage type_storage, Node *type_node, bool is_inl
             error_at(token->str, "Arguments with same name are defined: %.*s", arg->ident_len, arg->ident);
         }
         arg->lvar = new_lvar(scope->scope.locals, arg->ident, arg->ident_len);
-        arg->lvar->func_arg = arg;
+        arg->lvar->func_arg_index = i + 1;
+        arg->lvar->type = arg_type;
 
-        // Array in function argument is treated as pointer.
-        arg->lvar->type = arg->type;
-        if(arg->lvar->type->ty == ARRAY) {
-            arg->lvar->type = type_new_ptr(arg->lvar->type->ptr_to);
-        }
         int size = type_sizeof(arg->lvar->type);
 
         scope->scope.current += size;
