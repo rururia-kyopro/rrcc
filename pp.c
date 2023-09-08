@@ -266,7 +266,6 @@ PPToken *pp_tokenize() {
             while(*p && *p != '\n') {
                 p++;
             }
-            p++;
             continue;
         }
 

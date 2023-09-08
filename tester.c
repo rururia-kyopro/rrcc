@@ -378,6 +378,7 @@ int main() {
     assert_stdout(24, "aaaa:99 Hello va_list", "#define va_list __builtin_va_list\n#define va_start __builtin_va_start\n#define va_end __builtin_va_end\nint vprintf();int func(int a, char *p, char c, ...) {va_list ap;va_start(ap, c);vprintf(p, ap);va_end(ap);return sizeof(ap);}int main(){return func(3,\"aaaa:%d %s\",4,99,\"Hello va_list\");}");
     assert_file(45, "int main(){int i = 0;int a=0; while(1){i++;int j = 0; while(1){j++;a+=j;if(j>=5)break;} if(i<3){continue;}break;}return a;}");
     assert_file(1, "int main(){\n#ifdef __x86_64__\nreturn 1;\n#else\nreturn 2;\n#endif\n}");
+    assert_file(1, "#define A\n#ifdef A //aa\n#else\n#endif\nint main(){return 1;}");
     printf("OK\n");
     return 0;
 }
