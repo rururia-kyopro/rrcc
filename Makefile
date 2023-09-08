@@ -31,11 +31,11 @@ tester: rrcc tester.c
 
 tester2: rrcc2 tester.c
 	./rrcc2 tester.c > tester_2.s
-	cc tester_2.s -o tester_2
+	cc tester_2.s -o tester2
 
 tester3: rrcc3 tester.c
 	./rrcc3 tester.c > tester_3.s
-	cc tester_3.s -o tester_3
+	cc tester_3.s -o tester3
 
 test: rrcc tester
 	./tester
@@ -47,6 +47,6 @@ test3: rrcc3 tester3
 	./tester3
 
 clean:
-	rm -f rrcc *.o *~ tmp.c tmp.s tmp.o tmp tester *_2.s *_3.s rrcc2 rrcc3
+	rm -f rrcc *.o *~ tmp.c tmp.s tmp.o tmp tester tester2 tester3 *_2.s *_3.s rrcc2 rrcc3
 
 .PHONY: test clean
