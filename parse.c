@@ -2404,6 +2404,21 @@ bool type_find_ident(Node *node, char **ident, int *ident_len) {
     return false;
 }
 
+int type_int_conv_rank(Type *type) {
+    assert(type_is_int(type));
+
+    switch(type->ty) {
+        case BOOL: return 1;
+        case CHAR: return 2;
+        case SHORT: return 3;
+        case INT: return 4;
+        case LONG: return 5;
+        case LONGLONG: return 6;
+        case ENUM: return 4;
+    }
+    assert(false);
+}
+
 static int type_dump_inner(Type *type, Buffer *buf) {
     for(; type; type = type->ptr_to) {
         if(type->ty == PTR) {
