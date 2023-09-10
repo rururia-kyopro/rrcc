@@ -284,7 +284,18 @@ Node *new_node_num(unsigned long val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
-    node->expr_type = &signed_int_type;
+    unsigned long intmax = (1UL << 31) - 1;
+    unsigned long uintmax = (1UL << 32) - 1;
+    unsigned long longmax = (1UL << 63) - 1;
+    if(val <= intmax) {
+        node->expr_type = &signed_int_type;
+    } else if(val <= uintmax) {
+        node->expr_type = &unsigned_int_type;
+    } else if(val <= longmax) {
+        node->expr_type = &signed_long_type;
+    } else {
+        node->expr_type = &unsigned_long_type;
+    }
     return node;
 }
 
