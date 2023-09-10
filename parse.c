@@ -230,8 +230,10 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
     rhs = apply_int_promotion(rhs);
 
     Node *node;
+    Type *target_type;
     if(kind == ND_ADD) {
         node = new_node_add(lhs, rhs);
+        target_type = node->expr_type;
     }else if(kind == ND_ADD_RAW) {
         node = new_node_add(lhs, rhs);
         node->kind = kind;
@@ -247,6 +249,7 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
             case ND_DIV:
             case ND_MOD:
                 node->expr_type = type_arithmetic(lhs->expr_type, rhs->expr_type);
+                target_type = node->expr_type;
                 break;
             case ND_EQUAL:
             case ND_NOT_EQUAL:
@@ -254,23 +257,24 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
             case ND_LESS_OR_EQUAL:
             case ND_GREATER:
             case ND_GREATER_OR_EQUAL:
-                node->expr_type = type_comparator(lhs->expr_type, rhs->expr_type);
+                target_type = type_arithmetic(lhs->expr_type, rhs->expr_type);
+                node->expr_type = &signed_int_type;
                 break;
             case ND_OR:
             case ND_XOR:
             case ND_AND:
-                node->expr_type = type_bitwise(lhs->expr_type, rhs->expr_type);
+                target_type = node->expr_type = type_bitwise(lhs->expr_type, rhs->expr_type);
                 break;
             case ND_LSHIFT:
             case ND_RSHIFT:
-                node->expr_type = type_shift(lhs->expr_type, rhs->expr_type);
+                target_type = node->expr_type = type_shift(lhs->expr_type, rhs->expr_type);
                 break;
         }
     }
-    if(type_is_int(node->expr_type) && !type_is_same(node->lhs->expr_type, node->expr_type)) {
+    if(type_is_int(target_type) && !type_is_same(node->lhs->expr_type, target_type)) {
         node->lhs = new_node_conv(node->lhs, node->expr_type);
     }
-    if(type_is_int(node->expr_type) && !type_is_same(node->rhs->expr_type, node->expr_type)) {
+    if(type_is_int(target_type) && !type_is_same(node->rhs->expr_type, target_type)) {
         node->rhs = new_node_conv(node->rhs, node->expr_type);
     }
     return node;
@@ -912,7 +916,19 @@ Node *assignment_expression() {
     }else {
         return node;
     }
+    Type *f_type = rhs->expr_type;
+    Type *t_type = node->expr_type;
     node = new_node(ND_ASSIGN, node, rhs);
+    if(type_is_arithmetic(f_type) && type_is_arithmetic(t_type)) {
+        node->rhs = new_node_conv(node->rhs, t_type);
+    }else if((t_type->ty == STRUCT || t_type->ty == UNION) && type_is_same(t_type, f_type)) {
+    }else if(t_type->ty == PTR && type_is_same(t_type, f_type)) {
+    }else if(t_type->ty == PTR && f_type->ty == PTR && (f_type->ptr_to->ty == VOID || f_type->ptr_to->ty == VOID)) {
+    }else if(t_type->ty == PTR && rhs->kind == ND_NUM && rhs->val == 0) {
+        node->rhs = new_node_conv(node->rhs, t_type);
+    }else if(t_type->ty == BOOL && f_type->ty == PTR) {
+        node->rhs = new_node_conv(node->rhs, t_type);
+    }
     node->expr_type = node->lhs->expr_type;
     return node;
 }
@@ -2339,6 +2355,9 @@ Type *type_comparator(Type *type_r, Type *type_l) {
         error_at(token->str, "Invalid comparison between ptr and non-ptr");
         return NULL;
     }
+    if(type_is_arithmetic(type_r) && type_is_arithmetic(type_l)) {
+        return type_arithmetic(type_r, type_l);
+    }
     return &signed_int_type;
 }
 
@@ -2389,17 +2408,25 @@ bool type_is_scalar(Type *type) {
 
 bool type_is_same(Type *type_a, Type *type_b) {
     while(1) {
-        if(type_is_int(type_a) && type_is_int(type_b)) {
-            return true;
-        }
         if(type_a->ty != type_b->ty) {
             return false;
         }
-        if(type_is_basic(type_a) || type_is_basic(type_b)) {
-            return false;
+        if(type_a->ty == PTR || type_a->ty == ARRAY){
+            type_a = type_a->ptr_to;
+            type_b = type_b->ptr_to;
+            continue;
         }
-        type_a = type_a->ptr_to;
-        type_b = type_b->ptr_to;
+        if(type_a->ty == STRUCT || type_a->ty == UNION || type_a->ty == ENUM) {
+            return compare_ident(type_a->ident, type_a->ident_len, type_b->ident, type_b->ident_len);
+        }
+        if(type_a->ty == FUNC) {
+            // TODO: Argument type check
+            // Currently only check return type.
+            type_a = type_a->ptr_to;
+            type_b = type_b->ptr_to;
+            continue;
+        }
+        return type_a->signedness == type_b->signedness;
     }
 }
 
@@ -2411,6 +2438,15 @@ bool type_is_compatible(Type *type_a, Type *type_b) {
         return true;
     }
     return false;
+}
+
+bool type_is_signed(Type *type) {
+    assert(type_is_int(type));
+    return type->signedness == SIGNED || (type->ty == CHAR && type->signedness == NOSIGNED);
+}
+
+bool type_is_arithmetic(Type *type) {
+    return type_is_int(type) || type_is_floating(type);
 }
 
 Type *type_new_ptr(Type *type) {
@@ -2592,6 +2628,9 @@ bool compare_slice(char *slice, int slice_len, char *null_term_str) {
 void dumpnodes_inner(Node *node, int level) {
     if(node == NULL) return;
     print_indent(level, "%s\n", node_kind(node->kind));
+    char *out;
+    type_dump(node->expr_type, &out);
+    print_indent(level, " (expr_type: %s)\n", out);
 
     if(node->kind == ND_LVAR){
         print_indent(level, "name: ");
@@ -2658,6 +2697,11 @@ void dumpnodes_inner(Node *node, int level) {
 
         dumpnodes_inner(node->lhs, level + 1);
         dumpnodes_inner(node->rhs, level + 1);
+    }else if(node->kind == ND_CONVERT){
+        char *out;
+        type_dump(node->expr_type, &out);
+        print_indent(level, " to: %s\n", out);
+        dumpnodes_inner(node->lhs, level + 1);
     }else{
         dumpnodes_inner(node->lhs, level + 1);
         dumpnodes_inner(node->rhs, level + 1);

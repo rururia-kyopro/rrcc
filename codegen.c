@@ -137,6 +137,18 @@ void store(int size) {
     printf("  push rbx\n");
 }
 
+void gen_lowering_rax(int to_size) {
+    if(to_size == 1) {
+        printf("  and rax, 0xff\n");
+    }else if(to_size == 2) {
+        printf("  and rax, 0xffff\n");
+    }else if(to_size == 4) {
+        printf("  mov eax, eax\n");
+    }else{
+        // nop
+    }
+}
+
 void gen_return() {
     printf("  pop rax\n");
     printf("  mov rsp,rbp\n");
@@ -565,20 +577,41 @@ void gen(Node *node){
                 char *out_from, *out_to;
                 type_dump(node->lhs->expr_type, &out_from);
                 type_dump(node->expr_type, &out_to);
-                if(type_sizeof(node->lhs->expr_type) > type_sizeof(node->expr_type)) {
+                int from_size = type_sizeof(node->lhs->expr_type);
+                int to_size = type_sizeof(node->expr_type);
+                printf("  // convert from %s to %s\n", out_from, out_to);
+                if(from_size > to_size) {
                     // lowering size
-                    printf("  // convert from %s to %s\n", out_from, out_to);
                     printf("  pop rax\n");
-                    if(type_sizeof(node->expr_type) == 1) {
-                        printf("  and rax, ~0xff\n");
-                    }else if(type_sizeof(node->expr_type) == 2) {
-                        printf("  and rax, ~0xffff\n");
-                    }else if(type_sizeof(node->expr_type) == 4) {
-                        printf("  mov eax, eax\n");
-                    }else{
-                        error("Conversion unsupported for type %s to %s", out_from, out_to);
-                    }
+                    gen_lowering_rax(to_size);
                     printf("  push rax\n");
+                }else if(from_size < to_size) {
+                    // enlarge size
+                    if(type_is_signed(node->lhs->expr_type)) {
+                        // signed to signed
+                        // (signed char)-16 -> (signed short)-16
+                        // or, signed to unsigned
+                        // (signed char)-16 -> (unsigned short)65520
+                        // Whether converting to signed or unsigned, bit representations are the same.
+                        printf("  pop rax\n");
+                        if(from_size == 1) {
+                            printf("  movsx rax, al\n");
+                        } else if(from_size == 2) {
+                            printf("  movsx rax, ax\n");
+                        } else if(from_size == 4) {
+                            printf("  movsx rax, eax\n");
+                        } else if(from_size == 8) {
+                            error("Conversion unsupported for type %s to %s", out_from, out_to);
+                        }
+                        gen_lowering_rax(to_size);
+                        printf("  push rax\n");
+                    }else if(!type_is_signed(node->lhs->expr_type) && !type_is_signed(node->expr_type)) {
+                        // unsigned to unsigned
+                        gen_lowering_rax(from_size);
+                    }else {
+                        // unsigned to signed
+                        gen_lowering_rax(from_size);
+                    }
                 }
             }
             return;
