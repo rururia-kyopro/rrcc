@@ -199,7 +199,8 @@ void gen(Node *node){
     }
     switch(node->kind){
         case ND_NUM:
-            printf("  push %d\n", node->val);
+            printf("  mov rax, %lu\n", node->val);
+            printf("  push rax\n");
             return;
         case ND_STRING_LITERAL:
             printf("  lea rax, .L_S_%d[rip]\n", node->string_literal.literal->index);
@@ -307,8 +308,8 @@ void gen(Node *node){
             for(int i = 0; i < vector_size(node->switch_.cases); i++){
                 Node *case_node = vector_get(node->switch_.cases, i);
                 int64_t v = case_node->rhs->val;
-                printf("  cmp rax, %ld\n", v);
-                printf("  jz .Lswitch_%d_%ld\n", cur, v);
+                printf("  cmp rax, %lu\n", v);
+                printf("  jz .Lswitch_%d_%lu\n", cur, v);
             }
             if(node->switch_.default_stmt) {
                 printf("  jmp .Lswitch_%d_default\n", cur);
@@ -326,7 +327,7 @@ void gen(Node *node){
             return;
         }
         case ND_CASE: {
-            printf("  .Lswitch_%d_%d:\n", switch_number, node->rhs->val);
+            printf("  .Lswitch_%d_%lu:\n", switch_number, node->rhs->val);
             gen(node->lhs);
             return;
         }
@@ -560,7 +561,25 @@ void gen(Node *node){
             if(node->lhs->expr_type->ty == ARRAY && node->expr_type->ty == PTR) {
                 gen(node->lhs);
             } else {
-                error("Conversion unsupported for type %d and %d", node->lhs->expr_type->ty, node->expr_type->ty);
+                gen(node->lhs);
+                char *out_from, *out_to;
+                type_dump(node->lhs->expr_type, &out_from);
+                type_dump(node->expr_type, &out_to);
+                if(type_sizeof(node->lhs->expr_type) > type_sizeof(node->expr_type)) {
+                    // lowering size
+                    printf("  // convert from %s to %s\n", out_from, out_to);
+                    printf("  pop rax\n");
+                    if(type_sizeof(node->expr_type) == 1) {
+                        printf("  and rax, ~0xff\n");
+                    }else if(type_sizeof(node->expr_type) == 2) {
+                        printf("  and rax, ~0xffff\n");
+                    }else if(type_sizeof(node->expr_type) == 4) {
+                        printf("  mov eax, eax\n");
+                    }else{
+                        error("Conversion unsupported for type %s to %s", out_from, out_to);
+                    }
+                    printf("  push rax\n");
+                }
             }
             return;
         case ND_TYPE_EXTERN:

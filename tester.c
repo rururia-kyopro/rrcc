@@ -379,6 +379,11 @@ int main() {
     assert_file(45, "int main(){int i = 0;int a=0; while(1){i++;int j = 0; while(1){j++;a+=j;if(j>=5)break;} if(i<3){continue;}break;}return a;}");
     assert_file(1, "int main(){\n#ifdef __x86_64__\nreturn 1;\n#else\nreturn 2;\n#endif\n}");
     assert_file(1, "#define A\n#ifdef A //aa\n#else\n#endif\nint main(){return 1;}");
+    assert_file(4, "int main(){char a;short b;return sizeof(a+b);}");
+    assert_file(1, "int main(){char a=20;char b=30;return (a*b) == 600;}");
+    assert_file(1, "int main(){char a=20;short b=30;return (a*b) == 600;}");
+    assert_file(1, "int main(){char a=20;int b=30;return (a*b) == 600;}");
+    assert_file(1, "int main(){char a=20;long b=30000000000L;return (a*b) == 600000000000;}");
     printf("OK\n");
     return 0;
 }

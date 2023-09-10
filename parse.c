@@ -226,49 +226,57 @@ Node *new_node_add(Node *lhs, Node *rhs) {
 }
 
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
+    lhs = apply_int_promotion(lhs);
+    rhs = apply_int_promotion(rhs);
+
+    Node *node;
     if(kind == ND_ADD) {
-        return new_node_add(lhs, rhs);
-    }
-    if(kind == ND_ADD_RAW) {
-        Node *node = new_node_add(lhs, rhs);
+        node = new_node_add(lhs, rhs);
+    }else if(kind == ND_ADD_RAW) {
+        node = new_node_add(lhs, rhs);
         node->kind = kind;
         return node;
+    }else {
+        node = calloc(1, sizeof(Node));
+        node->kind = kind;
+        node->lhs = lhs;
+        node->rhs = rhs;
+        switch(kind) {
+            case ND_SUB:
+            case ND_MUL:
+            case ND_DIV:
+            case ND_MOD:
+                node->expr_type = type_arithmetic(lhs->expr_type, rhs->expr_type);
+                break;
+            case ND_EQUAL:
+            case ND_NOT_EQUAL:
+            case ND_LESS:
+            case ND_LESS_OR_EQUAL:
+            case ND_GREATER:
+            case ND_GREATER_OR_EQUAL:
+                node->expr_type = type_comparator(lhs->expr_type, rhs->expr_type);
+                break;
+            case ND_OR:
+            case ND_XOR:
+            case ND_AND:
+                node->expr_type = type_bitwise(lhs->expr_type, rhs->expr_type);
+                break;
+            case ND_LSHIFT:
+            case ND_RSHIFT:
+                node->expr_type = type_shift(lhs->expr_type, rhs->expr_type);
+                break;
+        }
     }
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = kind;
-    node->lhs = lhs;
-    node->rhs = rhs;
-    switch(kind) {
-        case ND_ADD:
-        case ND_ADD_RAW:
-        case ND_SUB:
-        case ND_MUL:
-        case ND_DIV:
-        case ND_MOD:
-            node->expr_type = type_arithmetic(lhs->expr_type, rhs->expr_type);
-            break;
-        case ND_EQUAL:
-        case ND_NOT_EQUAL:
-        case ND_LESS:
-        case ND_LESS_OR_EQUAL:
-        case ND_GREATER:
-        case ND_GREATER_OR_EQUAL:
-            node->expr_type = type_comparator(lhs->expr_type, rhs->expr_type);
-            break;
-        case ND_OR:
-        case ND_XOR:
-        case ND_AND:
-            node->expr_type = type_bitwise(lhs->expr_type, rhs->expr_type);
-            break;
-        case ND_LSHIFT:
-        case ND_RSHIFT:
-            node->expr_type = type_shift(lhs->expr_type, rhs->expr_type);
-            break;
+    if(type_is_int(node->expr_type) && !type_is_same(node->lhs->expr_type, node->expr_type)) {
+        node->lhs = new_node_conv(node->lhs, node->expr_type);
+    }
+    if(type_is_int(node->expr_type) && !type_is_same(node->rhs->expr_type, node->expr_type)) {
+        node->rhs = new_node_conv(node->rhs, node->expr_type);
     }
     return node;
 }
 
-Node *new_node_num(int val) {
+Node *new_node_num(unsigned long val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
@@ -312,6 +320,27 @@ Node *new_node_lvar(LVar *lvar) {
     node->kind = ND_LVAR;
     node->lvar = lvar;
     node->expr_type = lvar->type;
+    return node;
+}
+
+Node *new_node_conv(Node *node, Type *new_type) {
+    node = new_node(ND_CONVERT, node, NULL);
+    node->expr_type = new_type;
+    return node;
+}
+
+Node *apply_int_promotion(Node *node) {
+    if(type_is_int(node->expr_type)) {
+        if(type_int_conv_rank(&signed_int_type) >= type_int_conv_rank(node->expr_type)) {
+            if(node->expr_type->ty == INT && node->expr_type->signedness == UNSIGNED) {
+                return new_node_conv(node, &unsigned_int_type);
+            }
+            if(node->expr_type->ty == INT && node->expr_type->signedness == SIGNED) {
+                return node;
+            }
+            return new_node_conv(node, &signed_int_type);
+        }
+    }
     return node;
 }
 
@@ -2268,7 +2297,40 @@ Type *type_arithmetic(Type *type_r, Type *type_l) {
         error_at(token->str, "Invalid arithmetic operand with ptr type");
         return NULL;
     }
-    return &signed_int_type;
+    if(type_is_same(type_r, type_l)) {
+        return type_r;
+    }
+    if(type_r->signedness == type_l->signedness) {
+        if(type_int_conv_rank(type_r) < type_int_conv_rank(type_l)) {
+            return type_l;
+        }
+        return type_r;
+    }
+    Type *uns, *sig;
+    if(type_r->signedness == UNSIGNED) {
+        uns = type_r;
+        sig = type_l;
+    }else {
+        uns = type_l;
+        sig = type_r;
+    }
+    if(type_int_conv_rank(uns) >= type_int_conv_rank(sig)) {
+        return uns;
+    }
+    if(type_sizeof(sig) > type_sizeof(uns)) {
+        return sig;
+    }
+
+    if(sig->ty == INT) {
+        return &unsigned_int_type;
+    }
+    if(sig->ty == LONG) {
+        return &unsigned_long_type;
+    }
+    if(sig->ty == LONGLONG) {
+        return &unsigned_longlong_type;
+    }
+    assert(false);
 }
 
 Type *type_comparator(Type *type_r, Type *type_l) {
@@ -2559,7 +2621,7 @@ void dumpnodes_inner(Node *node, int level) {
         dumpnodes_inner(node->lhs, level + 1);
         dumpnodes_inner(node->rhs, level + 1);
     }else if(node->kind == ND_NUM){
-        print_indent(level, " value: %d\n", node->val);
+        print_indent(level, " value: %lu\n", node->val);
     }else if(node->kind == ND_STRING_LITERAL){
         print_indent(level, " value: \"%.*s\"\n", node->string_literal.literal->len, node->string_literal.literal->str);
     }else if(node->kind == ND_IF){

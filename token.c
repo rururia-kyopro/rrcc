@@ -69,10 +69,10 @@ void expect_ident(char **ident, int *ident_len) {
     }
 }
 
-int expect_number() {
+unsigned long expect_number() {
     if(token->kind != TK_NUM)
         error_at(token->str, "Not a number");
-    int val = token->val;
+    unsigned long val = token->val;
     next_token();
     return val;
 }
@@ -321,6 +321,7 @@ Token *tokenize(char *p){
         if(isdigit(*p)){
             cur = new_token(TK_NUM, cur, p, 1, current_line_info);
             cur->val = strtol(p, &p, 0);
+            // printf(" // token: %lu %.*s\n", cur->val, (int)(p - cur->str), cur->str);
             if(tolower(*p) == 'u') {
                 p++;
                 cur->suffix = SUF_U;

@@ -123,7 +123,7 @@ struct Token {
     TokenKind kind;
     Token *prev;
     Token *next;
-    int val;
+    unsigned long val;
     enum { SUF_NONE, SUF_L, SUF_LL, SUF_U, SUF_UL, SUF_ULL } suffix;
     char *str;
     int len;
@@ -147,7 +147,7 @@ void expect(char *op);
 void expect_kind(TokenKind kind);
 bool consume_ident(char **ident, int *ident_len);
 void expect_ident(char **ident, int *ident_len);
-int expect_number();
+unsigned long expect_number();
 bool peek(char* op);
 bool peek_kind(TokenKind kind);
 bool peek_ident(char **ident, int *ident_len);
@@ -243,7 +243,7 @@ struct Node {
     Type *expr_type;
     LineInfo *line_info;
     union {
-        int val;
+        unsigned long val;
         LVar *lvar;
         struct {
             Vector *decl;
@@ -369,6 +369,8 @@ TokenKind expect_type_prefix();
 bool peek_type_prefix();
 Node *constant_fold(Node *node);
 Node *create_func_name_literal();
+Node *apply_int_promotion(Node *node);
+Node *new_node_conv(Node *node, Type *new_type);
 
 /// LVar ///
 
@@ -455,6 +457,7 @@ Type *type_new_func(Type *type, Vector *args, bool is_vararg);
 Type *type_new_struct(char *ident, int ident_len);
 Type *type_new_enum(char *ident, int ident_len);
 bool type_find_ident(Node *node, char **ident, int *ident_len);
+int type_int_conv_rank(Type *type);
 int type_dump(Type *type, char **out);
 StructMember *find_struct_member(Vector *member_list, char *ident, int ident_len, size_t *offset);
 
