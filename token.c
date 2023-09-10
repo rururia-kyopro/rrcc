@@ -320,7 +320,7 @@ Token *tokenize(char *p){
 
         if(isdigit(*p)){
             cur = new_token(TK_NUM, cur, p, 1, current_line_info);
-            cur->val = strtol(p, &p, 0);
+            cur->val = strtoul(p, &p, 0);
             // printf(" // token: %lu %.*s\n", cur->val, (int)(p - cur->str), cur->str);
             if(tolower(*p) == 'u') {
                 p++;

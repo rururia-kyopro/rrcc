@@ -384,6 +384,11 @@ int main() {
     assert_file(1, "int main(){char a=20;short b=30;return (a*b) == 600;}");
     assert_file(1, "int main(){char a=20;int b=30;return (a*b) == 600;}");
     assert_file(1, "int main(){char a=20;long b=30000000000L;return (a*b) == 600000000000;}");
+    assert_file(1, "int main(){long b=30000000000L;int a=b;return a == -64771072;}");
+    assert_file(1, "#include <string.h>\nint main(){int a=-839970252;unsigned char *p=(unsigned char*)&a;return memcmp(p, \"\\x34\\x12\\xef\\xcd\", 4) == 0;}");
+    assert_file(1, "#include <string.h>\nint main(){long a=35243;unsigned char *p=(unsigned char*)&a;return memcmp(p, \"\\xab\\x89\\x00\\x00\\x00\\x00\\x00\\x00\", 8) == 0;}");
+    assert_file(1, "#include <string.h>\nint main(){long a=-9223372036854775808;unsigned char *p=(unsigned char*)&a;return memcmp(p, \"\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x80\", 8) == 0;}");
+    assert_file(1, "#include <string.h>\nint main(){long a=4021214123015969202;unsigned char *p=(unsigned char*)&a;return memcmp(p, \"\\xb2\\x99\\x26\\x88\\xf0\\x38\\xce\\x37\", 8) == 0;}");
     printf("OK\n");
     return 0;
 }
