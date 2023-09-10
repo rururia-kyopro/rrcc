@@ -17,7 +17,7 @@ int compile(char *prefix, char *source, char *suffix) {
     fwrite(source, strlen(source), 1, fp);
     fwrite(suffix, strlen(suffix), 1, fp);
     fclose(fp);
-    ret = system("./rrcc tmp.c > tmp.s");
+    ret = system("./rrcc -I/usr/include -I./include tmp.c > tmp.s");
     if(ret != 0) {
         return ret;
     }
