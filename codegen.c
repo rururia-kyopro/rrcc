@@ -580,11 +580,10 @@ void gen(Node *node){
                 int from_size = type_sizeof(node->lhs->expr_type);
                 int to_size = type_sizeof(node->expr_type);
                 printf("  // convert from %s to %s\n", out_from, out_to);
+                printf("  pop rax\n");
                 if(from_size > to_size) {
                     // lowering size
-                    printf("  pop rax\n");
                     gen_lowering_rax(to_size);
-                    printf("  push rax\n");
                 }else if(from_size < to_size) {
                     // enlarge size
                     if(type_is_signed(node->lhs->expr_type)) {
@@ -593,7 +592,6 @@ void gen(Node *node){
                         // or, signed to unsigned
                         // (signed char)-16 -> (unsigned short)65520
                         // Whether converting to signed or unsigned, bit representations are the same.
-                        printf("  pop rax\n");
                         if(from_size == 1) {
                             printf("  movsx rax, al\n");
                         } else if(from_size == 2) {
@@ -604,7 +602,6 @@ void gen(Node *node){
                             error("Conversion unsupported for type %s to %s", out_from, out_to);
                         }
                         gen_lowering_rax(to_size);
-                        printf("  push rax\n");
                     }else if(!type_is_signed(node->lhs->expr_type) && !type_is_signed(node->expr_type)) {
                         // unsigned to unsigned
                         gen_lowering_rax(from_size);
@@ -613,6 +610,7 @@ void gen(Node *node){
                         gen_lowering_rax(from_size);
                     }
                 }
+                printf("  push rax\n");
             }
             return;
         case ND_TYPE_EXTERN:

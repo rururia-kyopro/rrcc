@@ -1543,6 +1543,9 @@ Node *type_(bool need_ident, bool is_global, bool parse_one_type) {
     if(storage_type_count >= 2) {
         error_at(token->str, "Conflicting storage type keyword");
     }
+    signed_flag = tk_count[TK_SIGNED];
+    unsigned_flag = tk_count[TK_UNSIGNED];
+
     if(type_basic == TB_NONE) {
         if(signed_flag) {
             type_basic = TB_INT;
