@@ -391,6 +391,7 @@ int main() {
     assert_file(1, "#include <string.h>\nint main(){long a=4021214123015969202;unsigned char *p=(unsigned char*)&a;return memcmp(p, \"\\xb2\\x99\\x26\\x88\\xf0\\x38\\xce\\x37\", 8) == 0;}");
     assert_stdout(0, "-16\n", "#include <stdio.h>\nint main(){signed char a=0xf0;short b = a;printf(\"%hd\\n\", b);return 0;}");
     assert_stdout(0, "240\n", "#include <stdio.h>\nint main(){unsigned char a=0xf0;short b = a;printf(\"%hd\\n\", b);return 0;}");
+    assert_stdout(0, "61440\n", "#include <stdio.h>\nint main(){unsigned short a=0xf000;int b = a;printf(\"%d\\n\", b);return 0;}");
     printf("OK\n");
     return 0;
 }
