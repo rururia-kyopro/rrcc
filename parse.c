@@ -333,6 +333,24 @@ Node *new_node_conv(Node *node, Type *new_type) {
     return node;
 }
 
+Node *new_node_assignment(Node *lhs, Node *rhs) {
+    Type *f_type = rhs->expr_type;
+    Type *t_type = lhs->expr_type;
+    Node *node = new_node(ND_ASSIGN, lhs, rhs);
+    if(type_is_arithmetic(f_type) && type_is_arithmetic(t_type)) {
+        node->rhs = new_node_conv(node->rhs, t_type);
+    }else if((t_type->ty == STRUCT || t_type->ty == UNION) && type_is_same(t_type, f_type)) {
+    }else if(t_type->ty == PTR && type_is_same(t_type, f_type)) {
+    }else if(t_type->ty == PTR && f_type->ty == PTR && (f_type->ptr_to->ty == VOID || f_type->ptr_to->ty == VOID)) {
+    }else if(t_type->ty == PTR && rhs->kind == ND_NUM && rhs->val == 0) {
+        node->rhs = new_node_conv(node->rhs, t_type);
+    }else if(t_type->ty == BOOL && f_type->ty == PTR) {
+        node->rhs = new_node_conv(node->rhs, t_type);
+    }
+    node->expr_type = node->lhs->expr_type;
+    return node;
+}
+
 Node *apply_int_promotion(Node *node) {
     if(type_is_int(node->expr_type)) {
         if(type_int_conv_rank(&signed_int_type) >= type_int_conv_rank(node->expr_type)) {
@@ -916,21 +934,7 @@ Node *assignment_expression() {
     }else {
         return node;
     }
-    Type *f_type = rhs->expr_type;
-    Type *t_type = node->expr_type;
-    node = new_node(ND_ASSIGN, node, rhs);
-    if(type_is_arithmetic(f_type) && type_is_arithmetic(t_type)) {
-        node->rhs = new_node_conv(node->rhs, t_type);
-    }else if((t_type->ty == STRUCT || t_type->ty == UNION) && type_is_same(t_type, f_type)) {
-    }else if(t_type->ty == PTR && type_is_same(t_type, f_type)) {
-    }else if(t_type->ty == PTR && f_type->ty == PTR && (f_type->ptr_to->ty == VOID || f_type->ptr_to->ty == VOID)) {
-    }else if(t_type->ty == PTR && rhs->kind == ND_NUM && rhs->val == 0) {
-        node->rhs = new_node_conv(node->rhs, t_type);
-    }else if(t_type->ty == BOOL && f_type->ty == PTR) {
-        node->rhs = new_node_conv(node->rhs, t_type);
-    }
-    node->expr_type = node->lhs->expr_type;
-    return node;
+    return new_node_assignment(node, rhs);
 }
 
 Node *conditional_expression() {
@@ -2212,12 +2216,11 @@ Node *lvar_initializer_node(LVar *base_var, size_t offset, Node *init_expr, Type
         Node *lvar_node = new_node_lvar(base_var);
 
         Node *addressof = new_node(ND_ADDRESS_OF, lvar_node, NULL);
-        addressof->expr_type = type_new_ptr(&void_type);
+        addressof->expr_type = type_new_ptr(type);
         Node *deref_node = new_node(ND_DEREF, new_node_binop(ND_ADD_RAW, addressof, new_node_num(offset)), NULL);
         deref_node->expr_type = type;
 
-        Node *assign_node = new_node(ND_ASSIGN, deref_node, expr);
-        return assign_node;
+        return new_node_assignment(deref_node, expr);
     }
 }
 
