@@ -311,21 +311,13 @@ PPToken *pp_tokenize() {
             continue;
         }
 
-        if(isalpha(*p) || *p == '_') {
-            char *b = p;
-            p++;
-            while(isalpha(*p) || isdigit(*p) || *p == '_') {
-                p++;
-            }
-            cur = new_pptoken(PPTK_IDENT, cur, b, p - b);
-            if(prev_include_state == 1 && memcmp("include", b, p - b) == 0) {
-                include_state = 2;
-            }
-            continue;
-        }
-
-        if(*p == '\'') {
+        if(*p == '\'' || *p == 'L' && p[1] == '\'') {
             char *q = p;
+            bool wide_constant = false;
+            if(*p == 'L') {
+                p++;
+                wide_constant = true;
+            }
             p++;
             char c;
             if(*p == '\\') {
@@ -339,6 +331,7 @@ PPToken *pp_tokenize() {
             if(*p != '\''){
                 error("expect ' (single quote)");
             }
+            // TODO: Calculate proper value for L'*'
             cur = new_pptoken(PPTK_CHAR_CONST, cur, q, p - q);
             cur->val = c;
             p++;
@@ -352,6 +345,19 @@ PPToken *pp_tokenize() {
             cur->literal = char_vec;
             cur->literal_len = vector_size(char_vec);
             p += len;
+            continue;
+        }
+
+        if(isalpha(*p) || *p == '_') {
+            char *b = p;
+            p++;
+            while(isalpha(*p) || isdigit(*p) || *p == '_') {
+                p++;
+            }
+            cur = new_pptoken(PPTK_IDENT, cur, b, p - b);
+            if(prev_include_state == 1 && memcmp("include", b, p - b) == 0) {
+                include_state = 2;
+            }
             continue;
         }
 
@@ -1243,6 +1249,9 @@ static int eval_as_int(PPToken *token) {
             error("Invalid number token %.*s", token->len, token->str);
         }
         return ret;
+    }
+    if(token->kind == PPTK_CHAR_CONST) {
+        return token->val;
     }
     // Don't expand macro because the token is already macro expanded.
     if(token->kind == PPTK_IDENT) {
