@@ -2397,20 +2397,12 @@ Node *type_comparator(Node *node, Type *type_r, Type *type_l) {
     return node;
 }
 
-Type *type_logical(Type *type_r, Type *type_l) {
-    if(!type_is_scalar(type_r) || !type_is_scalar(type_l)) {
-        error_at(token->str, "Invalid logical evaluation of non scalar type");
-        return NULL;
-    }
-    return &signed_int_type;
-}
-
 Type *type_bitwise(Type *type_r, Type *type_l) {
     if(!type_is_int(type_r) || !type_is_int(type_l)) {
         error_at(token->str, "Invalid bitwise evaluation of non integer type");
         return NULL;
     }
-    return &signed_int_type;
+    return type_arithmetic(type_r, type_l);
 }
 
 Type *type_shift(Type *type_r, Type *type_l) {

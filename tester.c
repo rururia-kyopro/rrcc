@@ -398,6 +398,7 @@ int main() {
     assert_file(1, "int main(){int *p=0x10000000000;void *q=(void *)1;return p > q;}");
     assert_file(0, "int main(){int *p=0x10000000000;void *q=(void *)1;return q > p;}");
     assert_file(1, "int main(){long p=0x10000000000;return (1L<<40)==p;}");
+    assert_file(1, "int main(){long p=0x10000000000;long r=0x30000000000;return (p|r)==r;}");
     printf("OK\n");
     return 0;
 }
