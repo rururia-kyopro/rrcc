@@ -168,7 +168,6 @@ Token *tokenize(char *p);
 typedef enum {
     ND_TRANS_UNIT,
     ND_ADD,
-    ND_ADD_RAW,
     ND_SUB,
     ND_MUL,
     ND_DIV,
@@ -379,6 +378,7 @@ bool peek_type_prefix();
 Node *constant_fold(Node *node);
 Node *create_func_name_literal();
 Node *apply_int_promotion(Node *node);
+Node *new_node_num(unsigned long val);
 Node *new_node_conv(Node *node, Type *new_type);
 
 /// LVar ///
@@ -458,6 +458,7 @@ bool type_is_int(Type *type);
 bool type_is_floating(Type *type);
 bool type_is_basic(Type *type);
 bool type_is_scalar(Type *type);
+bool type_is_ptr_array(Type *type);
 bool type_is_same(Type *type_a, Type *type_b);
 bool type_is_compatible(Type *type_a, Type *type_b);
 bool type_is_signed(Type *type);

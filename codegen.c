@@ -635,19 +635,6 @@ void gen(Node *node){
     switch(node->kind){
         case ND_ADD:
             printf("  // add type:%d\n", node->lhs->expr_type->ty);
-            if (node->lhs->expr_type->ty == PTR) {
-                // ptr + int
-                int size = type_sizeof(node->lhs->expr_type->ptr_to);
-                printf("  mov rcx,rax\n");
-                printf("  mov rax,%d\n", size);
-                printf("  mul rsi\n");
-                printf("  add rax,rcx\n");
-            } else {
-                printf("  add rax,rsi\n");
-            }
-            break;
-        case ND_ADD_RAW:
-            printf("  // add raw\n");
             printf("  add rax,rsi\n");
             break;
         case ND_SUB:

@@ -45,7 +45,6 @@ char *node_kind(NodeKind kind){
     switch(kind){
         case ND_TRANS_UNIT: return "ND_TRANS_UNIT";
         case ND_ADD: return "ND_ADD";
-        case ND_ADD_RAW: return "ND_ADD_RAW";
         case ND_SUB: return "ND_SUB";
         case ND_MUL: return "ND_MUL";
         case ND_DIV: return "ND_DIV";
@@ -187,41 +186,43 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs){
 }
 
 Node *new_node_add(Node *lhs, Node *rhs) {
-    Node *node = new_node(ND_ADD, lhs, rhs);
-    if(type_is_int(node->lhs->expr_type)){
-        if(type_is_int(node->rhs->expr_type)) {
-            // int + int
-            node->expr_type = type_arithmetic(node->rhs->expr_type, node->lhs->expr_type);
-        }else if(node->rhs->expr_type->ty == ARRAY) {
-            // int + array -> ptr. array will be implicitly converted to ptr.
-            node->expr_type = calloc(1, sizeof(Type));
-            node->expr_type->ty = PTR;
-            node->expr_type->ptr_to = node->rhs->expr_type->ptr_to;
-            node->rhs = new_node(ND_CONVERT, node->rhs, NULL);
-            node->rhs->expr_type = node->expr_type;
-        }else if(node->rhs->expr_type->ty == PTR) {
-            // int + ptr -> ptr
-            node->expr_type = node->rhs->expr_type;
-        }else{
-            error_at(token->str, "Invalid add/sub");
+    if(type_is_ptr_array(rhs->expr_type)) {
+        if(type_is_ptr_array(lhs->expr_type)) {
+            error_at(token->str, "Invalid addition for pointer/array");
         }
-    }else{
-        if(type_is_int(node->rhs->expr_type)) {
-            // ptr + int -> ptr
-            if(node->lhs->expr_type->ty == ARRAY) {
-                node->expr_type = calloc(1, sizeof(Type));
-                node->expr_type->ty = PTR;
-                node->expr_type->ptr_to = node->lhs->expr_type->ptr_to;
-                node->lhs = new_node(ND_CONVERT, node->lhs, NULL);
-                node->lhs->expr_type = node->expr_type;
-            }else{
-                node->expr_type = node->lhs->expr_type;
-            }
-        }else {
-            // ptr + ptr -> error
-            error_at(token->str, "Add pointer to pointer");
-        }
+        Node *tmp = lhs;
+        lhs = rhs;
+        rhs = tmp;
     }
+
+    if(type_is_ptr_array(lhs->expr_type)) {
+        // array_or_ptr + int -> ptr. array will be implicitly converted to ptr.
+        // (type*)((void *)array_or_ptr + (long)i * size)
+        Type *t = lhs->expr_type->ptr_to;
+
+        // First, convert integer to long (have the same size as pointer)
+        rhs = new_node_conv(rhs, &signed_long_type);
+
+        // Scale factor also is of long type
+        Node *scale_node = new_node_num(type_sizeof(t));
+        scale_node->expr_type = &signed_long_type;
+
+        // Multiply. i * size
+        rhs = new_node(ND_MUL, rhs, scale_node);
+        rhs->expr_type = &signed_long_type;
+
+        lhs = new_node(ND_CONVERT, lhs, NULL);
+        lhs->expr_type = type_new_ptr(&void_type);
+
+        Node *node = new_node(ND_ADD, lhs, rhs);
+        node->expr_type = calloc(1, sizeof(Type));
+        node->expr_type->ty = PTR;
+        node->expr_type->ptr_to = t;
+        return node;
+    }
+    // int + int
+    Node *node = new_node(ND_ADD, lhs, rhs);
+    node->expr_type = type_arithmetic(node->rhs->expr_type, node->lhs->expr_type);
     return node;
 }
 
@@ -234,10 +235,6 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
     if(kind == ND_ADD) {
         node = new_node_add(lhs, rhs);
         target_type = node->expr_type;
-    }else if(kind == ND_ADD_RAW) {
-        node = new_node_add(lhs, rhs);
-        node->kind = kind;
-        return node;
     }else {
         node = calloc(1, sizeof(Node));
         node->kind = kind;
@@ -2236,8 +2233,8 @@ Node *lvar_initializer_node(LVar *base_var, size_t offset, Node *init_expr, Type
         Node *lvar_node = new_node_lvar(base_var);
 
         Node *addressof = new_node(ND_ADDRESS_OF, lvar_node, NULL);
-        addressof->expr_type = type_new_ptr(type);
-        Node *deref_node = new_node(ND_DEREF, new_node_binop(ND_ADD_RAW, addressof, new_node_num(offset)), NULL);
+        addressof->expr_type = type_new_ptr(&char_type);
+        Node *deref_node = new_node(ND_DEREF, new_node_binop(ND_ADD, addressof, new_node_num(offset)), NULL);
         deref_node->expr_type = type;
 
         return new_node_assignment(deref_node, expr);
@@ -2432,6 +2429,10 @@ bool type_is_basic(Type *type) {
 
 bool type_is_scalar(Type *type) {
     return type_is_basic(type) || type->ty == PTR;
+}
+
+bool type_is_ptr_array(Type *type) {
+    return type->ty == PTR || type->ty == ARRAY;
 }
 
 bool type_is_same(Type *type_a, Type *type_b) {
