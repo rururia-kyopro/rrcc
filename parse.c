@@ -2390,7 +2390,15 @@ Type *type_arithmetic(Type *type_r, Type *type_l) {
     assert(false);
 }
 
-Node *type_comparator(Node *node, Type *type_r, Type *type_l) {
+Node *type_comparator(Node *node, Type *type_l, Type *type_r) {
+    if(type_r->ty == PTR && node->lhs->kind == ND_NUM && node->lhs->val == 0) {
+        node->lhs = new_node_conv(node->lhs, type_new_ptr(&void_type));
+        return node;
+    }
+    if(type_l->ty == PTR && node->rhs->kind == ND_NUM && node->rhs->val == 0){
+        node->rhs = new_node_conv(node->rhs, type_new_ptr(&void_type));
+        return node;
+    }
     if(type_r->ty == PTR && type_l->ty != PTR ||
             type_l->ty == PTR && type_r->ty != PTR){
         error_at(token->str, "Invalid comparison between ptr and non-ptr");
