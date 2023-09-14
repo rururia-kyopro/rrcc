@@ -278,23 +278,29 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
     return node;
 }
 
-Node *new_node_num(unsigned long val) {
+Node *new_node_num_suffix(unsigned long val, NumSuffix suffix) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
     unsigned long intmax = (1UL << 31) - 1;
     unsigned long uintmax = (1UL << 32) - 1;
     unsigned long longmax = (1UL << 63) - 1;
-    if(val <= intmax) {
+    if(suffix == SUF_NONE && val <= intmax) {
         node->expr_type = &signed_int_type;
-    } else if(val <= uintmax) {
+    } else if((suffix == SUF_NONE || suffix == SUF_U) && val <= uintmax) {
         node->expr_type = &unsigned_int_type;
-    } else if(val <= longmax) {
+    } else if((suffix == SUF_NONE || suffix == SUF_L) && val <= longmax) {
         node->expr_type = &signed_long_type;
-    } else {
+    } else if(suffix != SUF_ULL && suffix != SUF_LL) {
         node->expr_type = &unsigned_long_type;
+    } else {
+        node->expr_type = &unsigned_longlong_type;
     }
     return node;
+}
+
+Node *new_node_num(unsigned long val) {
+    return new_node_num_suffix(val, SUF_NONE);
 }
 
 Node *new_node_char(int val) {
@@ -1358,7 +1364,9 @@ Node *primary_expression() {
         node->expr_type->ty = PTR;
         node->string_literal.literal = literal;
     }else {
-        node = new_node_num(expect_number());
+        Token *tk = token;
+        expect_number();
+        node = new_node_num_suffix(tk->val, tk->suffix);
     }
     return node;
 }

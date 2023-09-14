@@ -117,6 +117,15 @@ typedef enum {
     TB_TYPEDEF_NAME,
 } TypeBasic;
 
+typedef enum {
+    SUF_NONE,
+    SUF_L,
+    SUF_LL,
+    SUF_U,
+    SUF_UL,
+    SUF_ULL
+} NumSuffix;
+
 /// Token ///
 
 struct Token {
@@ -124,7 +133,7 @@ struct Token {
     Token *prev;
     Token *next;
     unsigned long val;
-    enum { SUF_NONE, SUF_L, SUF_LL, SUF_U, SUF_UL, SUF_ULL } suffix;
+    NumSuffix suffix;
     char *str;
     int len;
     Vector *literal;
