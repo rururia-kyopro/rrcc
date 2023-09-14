@@ -678,6 +678,9 @@ Node *local_variable_definition() {
         error_at(token->str, "Function was defined in non global scope");
     }
 
+    Node *decl_list_local = new_node(ND_DECL_LIST_LOCAL, NULL, NULL);
+    decl_list_local->decl_list_local.decls = new_vector();
+
     for(int i = 0; i < vector_size(decl_list->decl_list.decls); i++) {
         Node *node = vector_get(decl_list->decl_list.decls, i);
         Node *type_node = node->lhs;
@@ -702,8 +705,9 @@ Node *local_variable_definition() {
             Node *lvar_init_node = lvar_initializer_node(node->decl_var.lvar, 0, init_expr, type);
             node->rhs = lvar_init_node;
         }
+        vector_push(decl_list_local->decl_list_local.decls, node);
     }
-    return decl_list;
+    return decl_list_local;
 }
 
 // initializer = expr

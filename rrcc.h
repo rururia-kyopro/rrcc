@@ -213,6 +213,7 @@ typedef enum {
     ND_FUNC_DECL,
     ND_SCOPE,
     ND_DECL_LIST,
+    ND_DECL_LIST_LOCAL,
     ND_ADDRESS_OF,
     ND_DEREF,
     ND_BIT_NOT,
@@ -317,6 +318,9 @@ struct Node {
             Type *base_type;
             Vector *decls;
         } decl_list;
+        struct {
+            Vector *decls;
+        } decl_list_local;
         struct {
             int current;
             Node *parent;
