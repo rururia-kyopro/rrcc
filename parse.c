@@ -257,7 +257,7 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
             case ND_LESS_OR_EQUAL:
             case ND_GREATER:
             case ND_GREATER_OR_EQUAL:
-                target_type = type_arithmetic(lhs->expr_type, rhs->expr_type);
+                target_type = type_comparator(lhs->expr_type, rhs->expr_type);
                 node->expr_type = &signed_int_type;
                 break;
             case ND_OR:
@@ -2371,6 +2371,12 @@ Type *type_comparator(Type *type_r, Type *type_l) {
             type_l->ty == PTR && type_r->ty != PTR){
         error_at(token->str, "Invalid comparison between ptr and non-ptr");
         return NULL;
+    }
+    if(type_r->ty == PTR && type_l->ty == PTR) {
+        if(!type_is_same(type_r, type_l) && type_r->ptr_to->ty != VOID && type_l->ptr_to->ty != VOID) {
+            error_at(token->str, "Invalid comparison between incompatible ptrs");
+            return NULL;
+        }
     }
     if(type_is_arithmetic(type_r) && type_is_arithmetic(type_l)) {
         return type_arithmetic(type_r, type_l);
