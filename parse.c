@@ -2418,7 +2418,7 @@ Type *type_shift(Type *type_r, Type *type_l) {
         error_at(token->str, "Invalid shift evaluation of non integer type");
         return NULL;
     }
-    return &signed_int_type;
+    return type_arithmetic(type_r, type_l);
 }
 
 bool type_implicit_ptr(Type *type) {
