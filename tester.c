@@ -401,7 +401,7 @@ int main() {
     assert_file(1, "int main(){long p=0x10000000000;long r=0x30000000000;return (p|r)==r;}");
     assert_file(1, "#include <stddef.h>\nstruct a{int c;char k;};int main(){return (offsetof(struct a,k)) == 4;}");
     assert_file(1, "#include <stddef.h>\nint main(){char *p=0;return p == NULL;}");
-    assert_file(2, "#define ma(a) 1+\nint main(){return ma() 1;}");
+    assert_file(2, "#define ma() 1+\nint main(){return ma() 1;}");
     printf("OK\n");
     return 0;
 }

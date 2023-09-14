@@ -1001,8 +1001,8 @@ static void macro_invocation(PPToken **cur, Vector **arg_vec, int arglen) {
     }
     if(head.next != NULL) {
         head.next->prev = NULL;
+        vector_push(vec, head.next);
     }
-    vector_push(vec, head.next);
 }
 
 static PPToken *scan_replacement_list(MacroRegistryEntry *entry, Vector *vec) {
