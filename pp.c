@@ -999,7 +999,9 @@ static void macro_invocation(PPToken **cur, Vector **arg_vec, int arglen) {
             }
         }
     }
-    head.next->prev = NULL;
+    if(head.next != NULL) {
+        head.next->prev = NULL;
+    }
     vector_push(vec, head.next);
 }
 
