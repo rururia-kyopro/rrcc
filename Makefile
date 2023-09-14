@@ -4,7 +4,7 @@ SRCS=main.c parse.c codegen.c token.c vector.c pp.c token_common.c util.c
 OBJS=$(SRCS:.c=.o)
 OBJS_2=$(SRCS:.c=_2.o)
 OBJS_3=$(SRCS:.c=_3.o)
-RRCCFLAGS=-I/usr/lib/gcc/x86_64-linux-gnu/11/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include
+RRCCFLAGS=-I/usr/include -I./include
 
 rrcc: $(OBJS)
 	$(CC) -o rrcc $(OBJS) $(LDFLAGS)
