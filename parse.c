@@ -1169,6 +1169,7 @@ Node *cast_expression() {
             Node *node = new_node(ND_CAST, inner, NULL);
             Node *var_node = vector_get(type_node->decl_list.decls, 0);
             node->expr_type = var_node->lhs->type.type;
+            node->lhs = new_node_conv(node->lhs, node->expr_type);
             return node;
         }
         unget_token();

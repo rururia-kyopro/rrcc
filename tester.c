@@ -405,6 +405,10 @@ int main() {
     assert_file(42, "int main(){return (-1-(1*2+3)/2+(2*3*(4/9*5+(1+2-4-(3+6))))) + ((10*10*10)/10) + (1*2*3*4*5/1/2/3/(22/11*9/4));}");
     assert_file(1, "long p(int k){return (long)k * 100;}int main(){return p(1000000000) == 100000000000;}");
     assert_file(1, "long p(int k){return k * 100;}int main(){return p(1000000000) != 100000000000;}");
+    assert_file(1, "int main(){long k=100000000000;return k == 100000000000;}");
+    assert_file(0, "int main(){long k=100000000000;return (int)k == 100000000000;}");
+    assert_file(1, "int main(){long k=100000000000;return (long)k == 100000000000;}");
+    assert_file(0, "int main(){long k=100000000000;return (long)(int)k == 100000000000;}");
     printf("OK\n");
     return 0;
 }
