@@ -402,6 +402,9 @@ int main() {
     assert_file(1, "#include <stddef.h>\nstruct a{int c;char k;};int main(){return (offsetof(struct a,k)) == 4;}");
     assert_file(1, "#include <stddef.h>\nint main(){char *p=0;return p == NULL;}");
     assert_file(2, "#define ma() 1+\nint main(){return ma() 1;}");
+    assert_file(42, "int main(){return (-1-(1*2+3)/2+(2*3*(4/9*5+(1+2-4-(3+6))))) + ((10*10*10)/10) + (1*2*3*4*5/1/2/3/(22/11*9/4));}");
+    assert_file(1, "long p(int k){return (long)k * 100;}int main(){return p(1000000000) == 100000000000;}");
+    assert_file(1, "long p(int k){return k * 100;}int main(){return p(1000000000) != 100000000000;}");
     printf("OK\n");
     return 0;
 }

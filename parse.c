@@ -918,7 +918,18 @@ Node *stmt() {
             expr = expression();
             expect(";");
         }
+        Type *type = current_func->func_def.type->ptr_to;
+        if(type->ty == VOID) {
+            if(expr != NULL) {
+                error_at(token->str, "Cannot return value on void function");
+            }
+        }else if(expr == NULL){
+            error_at(token->str, "Specify expression on return statament on non-void function.");
+        }
         Node *node = new_node(ND_RETURN, expr, NULL);
+        if(expr && !type_is_same(type, node->lhs->expr_type)) {
+            node->lhs = new_node_conv(node->lhs, type);
+        }
         node->line_info = tok->line_info;
         return node;
     }else if(consume_type_prefix(&kind)) {
@@ -2391,6 +2402,7 @@ Type *type_arithmetic(Type *type_r, Type *type_l) {
 }
 
 Node *type_comparator(Node *node, Type *type_l, Type *type_r) {
+    node->expr_type = &signed_int_type;
     if(type_r->ty == PTR && node->lhs->kind == ND_NUM && node->lhs->val == 0) {
         node->lhs = new_node_conv(node->lhs, type_new_ptr(&void_type));
         return node;
@@ -2419,7 +2431,6 @@ Node *type_comparator(Node *node, Type *type_l, Type *type_r) {
             node->rhs = new_node_conv(node->rhs, target_type);
         }
     }
-    node->expr_type = &signed_int_type;
     return node;
 }
 
