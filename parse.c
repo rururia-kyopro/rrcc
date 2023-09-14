@@ -1438,6 +1438,19 @@ Node *constant_fold(Node *node) {
         node->lhs = constant_fold(node->lhs);
         return node->lhs;
     }
+    if(node->kind == ND_CONVERT) {
+        node->lhs = constant_fold(node->lhs);
+        if(node->lhs->kind == ND_NUM) {
+            if(type_sizeof(node->expr_type) == 1) {
+                node->lhs->val &= 0xff;
+            }else if(type_sizeof(node->expr_type) == 2) {
+                node->lhs->val &= 0xffff;
+            }else if(type_sizeof(node->expr_type) == 4) {
+                node->lhs->val &= 0xffffffff;
+            }
+        }
+        return node->lhs;
+    }
     if(node->kind == ND_IF) {
         node->lhs = constant_fold(node->lhs);
         if(node->lhs->kind == ND_NUM) {

@@ -409,6 +409,8 @@ int main() {
     assert_file(0, "int main(){long k=100000000000;return (int)k == 100000000000;}");
     assert_file(1, "int main(){long k=100000000000;return (long)k == 100000000000;}");
     assert_file(0, "int main(){long k=100000000000;return (long)(int)k == 100000000000;}");
+    assert_file(1, "int main(){int a[1+(int)sizeof(long)];return sizeof(a)==4*9;}");
+    assert_file(1, "int main(){int a[1+(char)(250+sizeof(long))];return sizeof(a)==4*3;}");
     printf("OK\n");
     return 0;
 }
