@@ -185,6 +185,38 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs){
     return node;
 }
 
+Node *new_node_ptr_offset(NodeKind kind, Node *lhs, Node *rhs) {
+    Type *t = lhs->expr_type->ptr_to;
+    // First, convert integer to long (have the same size as pointer)
+    rhs = new_node_conv(rhs, &signed_long_type);
+
+    // Scale factor also is of long type
+    Node *scale_node = new_node_num(type_sizeof(t));
+    scale_node->expr_type = &signed_long_type;
+
+    // Multiply. i * size
+    rhs = new_node(ND_MUL, rhs, scale_node);
+    rhs->expr_type = &signed_long_type;
+
+    lhs = new_node(ND_CONVERT, lhs, NULL);
+    lhs->expr_type = type_new_ptr(&void_type);
+
+    Node *node = new_node(kind, lhs, rhs);
+    node->expr_type = calloc(1, sizeof(Type));
+    node->expr_type->ty = PTR;
+    node->expr_type->ptr_to = t;
+    return node;
+}
+
+void conv_binop_node(Node *node) {
+    if(!type_is_same(node->rhs->expr_type, node->expr_type)) {
+        node->rhs = new_node_conv(node->rhs, node->expr_type);
+    }
+    if(!type_is_same(node->lhs->expr_type, node->expr_type)) {
+        node->lhs = new_node_conv(node->lhs, node->expr_type);
+    }
+}
+
 Node *new_node_add(Node *lhs, Node *rhs) {
     if(type_is_ptr_array(rhs->expr_type)) {
         if(type_is_ptr_array(lhs->expr_type)) {
@@ -198,31 +230,39 @@ Node *new_node_add(Node *lhs, Node *rhs) {
     if(type_is_ptr_array(lhs->expr_type)) {
         // array_or_ptr + int -> ptr. array will be implicitly converted to ptr.
         // (type*)((void *)array_or_ptr + (long)i * size)
-        Type *t = lhs->expr_type->ptr_to;
-
-        // First, convert integer to long (have the same size as pointer)
-        rhs = new_node_conv(rhs, &signed_long_type);
-
-        // Scale factor also is of long type
-        Node *scale_node = new_node_num(type_sizeof(t));
-        scale_node->expr_type = &signed_long_type;
-
-        // Multiply. i * size
-        rhs = new_node(ND_MUL, rhs, scale_node);
-        rhs->expr_type = &signed_long_type;
-
-        lhs = new_node(ND_CONVERT, lhs, NULL);
-        lhs->expr_type = type_new_ptr(&void_type);
-
-        Node *node = new_node(ND_ADD, lhs, rhs);
-        node->expr_type = calloc(1, sizeof(Type));
-        node->expr_type->ty = PTR;
-        node->expr_type->ptr_to = t;
-        return node;
+        return new_node_ptr_offset(ND_ADD, lhs, rhs);
     }
     // int + int
     Node *node = new_node(ND_ADD, lhs, rhs);
     node->expr_type = type_arithmetic(node->rhs->expr_type, node->lhs->expr_type);
+    conv_binop_node(node);
+    return node;
+}
+
+Node *new_node_sub(Node *lhs, Node *rhs) {
+    if(type_is_ptr_array(rhs->expr_type)) {
+        if(type_is_ptr_array(lhs->expr_type)) {
+            if(!type_is_same(rhs->expr_type, lhs->expr_type)) {
+                error_at(token->str, "Invalid subtract: incompatible pointers");
+                return NULL;
+            }
+            Node *node = new_node(ND_SUB, lhs, rhs);
+            node->expr_type = &signed_long_type;
+            node = new_node(ND_DIV, node, new_node_num(type_sizeof(rhs->expr_type->ptr_to)));
+            node->rhs->expr_type = &signed_long_type;
+            node->expr_type = &signed_long_type;
+            return node;
+        }
+        error_at(token->str, "Invalid subtract integer - ptr");
+        return NULL;
+    }
+    if(type_is_ptr_array(lhs->expr_type)) {
+        return new_node_ptr_offset(ND_SUB, lhs, rhs);
+    }
+    // int - int
+    Node *node = new_node(ND_SUB, lhs, rhs);
+    node->expr_type = type_arithmetic(node->rhs->expr_type, node->lhs->expr_type);
+    conv_binop_node(node);
     return node;
 }
 
@@ -233,45 +273,39 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
     Node *node;
     Type *target_type;
     if(kind == ND_ADD) {
-        node = new_node_add(lhs, rhs);
-        target_type = node->expr_type;
-    }else {
-        node = calloc(1, sizeof(Node));
-        node->kind = kind;
-        node->lhs = lhs;
-        node->rhs = rhs;
-        switch(kind) {
-            case ND_SUB:
-            case ND_MUL:
-            case ND_DIV:
-            case ND_MOD:
-                node->expr_type = type_arithmetic(lhs->expr_type, rhs->expr_type);
-                target_type = node->expr_type;
-                break;
-            case ND_EQUAL:
-            case ND_NOT_EQUAL:
-            case ND_LESS:
-            case ND_LESS_OR_EQUAL:
-            case ND_GREATER:
-            case ND_GREATER_OR_EQUAL:
-                return type_comparator(node, lhs->expr_type, rhs->expr_type);
-            case ND_OR:
-            case ND_XOR:
-            case ND_AND:
-                target_type = node->expr_type = type_bitwise(lhs->expr_type, rhs->expr_type);
-                break;
-            case ND_LSHIFT:
-            case ND_RSHIFT:
-                target_type = node->expr_type = type_shift(lhs->expr_type, rhs->expr_type);
-                break;
-        }
+        return new_node_add(lhs, rhs);
+    }else if(kind == ND_SUB) {
+        return new_node_sub(lhs, rhs);
     }
-    if(type_is_int(target_type) && !type_is_same(node->lhs->expr_type, target_type)) {
-        node->lhs = new_node_conv(node->lhs, node->expr_type);
+    node = calloc(1, sizeof(Node));
+    node->kind = kind;
+    node->lhs = lhs;
+    node->rhs = rhs;
+    switch(kind) {
+        case ND_MUL:
+        case ND_DIV:
+        case ND_MOD:
+            node->expr_type = type_arithmetic(lhs->expr_type, rhs->expr_type);
+            target_type = node->expr_type;
+            break;
+        case ND_EQUAL:
+        case ND_NOT_EQUAL:
+        case ND_LESS:
+        case ND_LESS_OR_EQUAL:
+        case ND_GREATER:
+        case ND_GREATER_OR_EQUAL:
+            return type_comparator(node, lhs->expr_type, rhs->expr_type);
+        case ND_OR:
+        case ND_XOR:
+        case ND_AND:
+            target_type = node->expr_type = type_bitwise(lhs->expr_type, rhs->expr_type);
+            break;
+        case ND_LSHIFT:
+        case ND_RSHIFT:
+            target_type = node->expr_type = type_shift(lhs->expr_type, rhs->expr_type);
+            break;
     }
-    if(type_is_int(target_type) && !type_is_same(node->rhs->expr_type, target_type)) {
-        node->rhs = new_node_conv(node->rhs, node->expr_type);
-    }
+    conv_binop_node(node);
     return node;
 }
 
@@ -1083,24 +1117,7 @@ Node *additive_expression() {
         if(consume("+")) {
             node = new_node_binop(ND_ADD, node, multiplicative_expression());
         } else if(consume("-")) {
-            node = new_node(ND_SUB, node, multiplicative_expression());
-            if(node->lhs->expr_type->ty == INT){
-                if(node->rhs->expr_type->ty == INT) {
-                    // int - int
-                    node->expr_type = type_arithmetic(node->rhs->expr_type, node->lhs->expr_type);
-                }else {
-                    // int - ptr -> error
-                    error_at(token->str, "Sub pointer from int");
-                }
-            }else{
-                if(node->rhs->expr_type->ty == INT) {
-                    // ptr - int -> ptr
-                    node->expr_type = node->lhs->expr_type;
-                }else {
-                    // ptr - ptr -> int
-                    node->expr_type = &signed_int_type;
-                }
-            }
+            node = new_node_binop(ND_SUB, node, multiplicative_expression());
         }
         else
             return node;

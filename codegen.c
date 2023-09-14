@@ -639,27 +639,7 @@ void gen(Node *node){
             break;
         case ND_SUB:
             printf("  // sub\n");
-            if (node->lhs->expr_type->ty == PTR) {
-                if(node->rhs->expr_type->ty == PTR) {
-                    // ptr - ptr
-                    int size = type_sizeof(node->lhs->expr_type->ptr_to);
-                    printf("  sub rax,rsi\n");
-                    printf("  cqto\n");
-                    printf("  mov rcx,%d\n", size);
-                    printf("  div rcx\n");
-                } else {
-                    // ptr - int
-                    int size = type_sizeof(node->lhs->expr_type->ptr_to);
-                    printf("  mov rcx,rax\n");
-                    printf("  mov rax,%d\n", size);
-                    printf("  mul rsi\n");
-                    printf("  sub rcx,rax\n");
-                    printf("  mov rax,rcx\n");
-                }
-            } else {
-                // int - int
-                printf("  sub rax,rsi\n");
-            }
+            printf("  sub rax,rsi\n");
             break;
         case ND_MUL:
             printf("  cqto\n");

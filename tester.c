@@ -187,7 +187,7 @@ int main() {
     assert_file(9, "int main(){int *a; 1+sizeof (a+1);}");
     assert_file(9, "int main(){int *a; 1+sizeof (a-1);}");
     assert_file(5, "int main(){int *a; 1+sizeof (*a-1);}");
-    assert_file(5, "int main(){int *a;int *b; 1+sizeof (a-b);}");
+    assert_file(9, "int main(){int *a;int *b; 1+sizeof (a-b);}");
     assert_file(36, "int main(){int a[9];sizeof(a);}");
     assert_file(2, "char *malloc(int size);int main(){int *a;int b;a=malloc(32);*a=1;*(a+1)=2;b=*(a+1);}");
     assert_file(2, "char *malloc(int size);int main(){int *a;int b;int *c;a=malloc(32);c=a+2;*a=1;*(a+1)=2;b=*(a+1);c-a;}");
