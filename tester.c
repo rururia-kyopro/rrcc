@@ -392,6 +392,11 @@ int main() {
     assert_stdout(0, "-16\n", "#include <stdio.h>\nint main(){signed char a=0xf0;short b = a;printf(\"%hd\\n\", b);return 0;}");
     assert_stdout(0, "240\n", "#include <stdio.h>\nint main(){unsigned char a=0xf0;short b = a;printf(\"%hd\\n\", b);return 0;}");
     assert_stdout(0, "61440\n", "#include <stdio.h>\nint main(){unsigned short a=0xf000;int b = a;printf(\"%d\\n\", b);return 0;}");
+    assert_file(0, "int main(){int *p=0x10000000000;int *q=0;return p==q;}");
+    assert_file(0, "int main(){long p=0x10000000000;int q=0;return p==q;}");
+    assert_file(1, "int main(){long p=0x10000000000;int q=1;return p!=q;}");
+    assert_file(1, "int main(){int *p=0x10000000000;void *q=(void *)1;return p > q;}");
+    assert_file(0, "int main(){int *p=0x10000000000;void *q=(void *)1;return q > p;}");
     printf("OK\n");
     return 0;
 }

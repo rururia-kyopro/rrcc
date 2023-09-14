@@ -440,7 +440,7 @@ struct Type {
 
 int type_sizeof(Type *type);
 Type *type_arithmetic(Type *type_r, Type *type_l);
-Type *type_comparator(Type *type_r, Type *type_l);
+Node *type_comparator(Node *node, Type *type_r, Type *type_l);
 Type *type_logical(Type *type_r, Type *type_l);
 Type *type_bitwise(Type *type_r, Type *type_l);
 Type *type_shift(Type *type_r, Type *type_l);

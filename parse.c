@@ -257,9 +257,7 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs){
             case ND_LESS_OR_EQUAL:
             case ND_GREATER:
             case ND_GREATER_OR_EQUAL:
-                target_type = type_comparator(lhs->expr_type, rhs->expr_type);
-                node->expr_type = &signed_int_type;
-                break;
+                return type_comparator(node, lhs->expr_type, rhs->expr_type);
             case ND_OR:
             case ND_XOR:
             case ND_AND:
@@ -2366,7 +2364,7 @@ Type *type_arithmetic(Type *type_r, Type *type_l) {
     assert(false);
 }
 
-Type *type_comparator(Type *type_r, Type *type_l) {
+Node *type_comparator(Node *node, Type *type_r, Type *type_l) {
     if(type_r->ty == PTR && type_l->ty != PTR ||
             type_l->ty == PTR && type_r->ty != PTR){
         error_at(token->str, "Invalid comparison between ptr and non-ptr");
@@ -2379,9 +2377,16 @@ Type *type_comparator(Type *type_r, Type *type_l) {
         }
     }
     if(type_is_arithmetic(type_r) && type_is_arithmetic(type_l)) {
-        return type_arithmetic(type_r, type_l);
+        Type *target_type = type_arithmetic(type_r, type_l);
+        if(!type_is_same(node->lhs->expr_type, target_type)) {
+            node->lhs = new_node_conv(node->lhs, target_type);
+        }
+        if(!type_is_same(node->rhs->expr_type, target_type)) {
+            node->rhs = new_node_conv(node->rhs, target_type);
+        }
     }
-    return &signed_int_type;
+    node->expr_type = &signed_int_type;
+    return node;
 }
 
 Type *type_logical(Type *type_r, Type *type_l) {
