@@ -920,7 +920,7 @@ Node *stmt() {
         }
         Type *type = current_func->func_def.type->ptr_to;
         if(type->ty == VOID) {
-            if(expr != NULL) {
+            if(expr != NULL && expr->expr_type->ty != VOID) {
                 error_at(token->str, "Cannot return value on void function");
             }
         }else if(expr == NULL){
